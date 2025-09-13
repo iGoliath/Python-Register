@@ -19,7 +19,7 @@ pygame.mixer.init()
 root = tk.Tk()
 root.title("TBC REGISTER")
 root.geometry("1024x600")
-#root.tk.call('tk', 'scaling', 50)
+root.tk.call('tk', 'scaling', 50)
 yes_no_var = tk.StringVar()
 reference_number_var = tk.StringVar()
 update_inventory_var = tk.StringVar()
@@ -54,11 +54,7 @@ for frame in (update_buttons_frame, reenter_frame, add_item_yes_no, void_yes_no,
 	frame.grid_columnconfigure(0, weight=1)
 	frame.grid_columnconfigure(1, weight=1)
 
-#add_item_listbox_frame.grid(row=0, column=0, sticky='nsew')
 #root.attributes("-fullscreen", True)
-
-def enter_admin_frame():
-	show_frame(password_frame)
 
 def enter_register_frame():
 	register_frame.tkraise()
@@ -69,15 +65,31 @@ def enter_register_frame():
 
 	
 def enter_add_item_frame():
-	add_item_frame.tkraise()
+	global index
+	global reentering
+	reentering = False
+	index = 0
 	add_item_entry.focus_force()
-	add_item_label.config(text="Please enter the item's barcode: ")
+	add_item_label.grid(column=1, row=0, sticky='ew')
+	add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
+	add_item_button.grid(column=1, row=3, sticky='ew')
+	back_button.grid(column=1, row=4, sticky='ew')
+	quit_button.grid(column=1, row=5, sticky='ew')
+	add_item_yes_no.grid_forget()
+	item_info_confirmation.grid_forget()
+	add_item_label.config(text="Please enter item's barcode: ")
 	if "add_item_object" not in globals():
 		global add_item_object
 		add_item_object = AddToInventory()
+	add_item_frame.tkraise()
+
 
 def enter_void_frame(event=None):
 	void_transaction_frame.tkraise()
+
+def enter_update_inventory_frame(event=None):
+	update_inventory_frame.tkraise()
+	update_inventory_entry.focus_force()
 	
 def register_go_back(event=None):
 	cancel_trans()
@@ -347,32 +359,6 @@ def clear(event=None):
 	invisible_entry.delete(0, tk.END)
 	total_entry.delete(0, tk.END)
 	total_entry.insert(tk.END, "$0.00")
-
-def yes_no_buttons(which_button):
-	# Handles what happens when a yes or no button is pressed
-	if which_button in ("void_yes", "update_yes", "add_item_yes"):
-		yes_no_var.set("yes")
-	elif which_button in ("void_no", "update_no", "add_item_no"):
-		yes_no_var.set("no")
-
-
-def yes_no_button_logic(true_false, button_selected):
-	# Logic for yes/no buttons when user is entering an item
-	# If index is 3, user is answering whether item is taxable
-	# sqlite database expects a 0 or 1
-	# If index is 5 or 6, program expects "yes"
-	if index == 3:
-		add_item_entry.delete(0, tk.END)
-		add_item_entry.insert(tk.END, true_false)
-		on_add_item_enter()
-	elif index == 5:
-		add_item_entry.delete(0, tk.END)
-		add_item_entry.insert(tk.END, button_selected)
-		on_add_item_enter()
-	elif index == 6:
-		add_item_entry.delete(0, tk.END)
-		add_item_entry.insert(tk.END, button_selected)
-		on_add_item_enter()
 		
 def get_update_barcode(event=None):
 	update_inventory_var.set(update_inventory_entry.get())
@@ -443,7 +429,7 @@ def no_sale(event=None):
 
 def go_back():
 	global index
-	# LOgic for back button during adding an item
+	# Logic for back button during adding an item
 	# If you're not on the first page, go back one
 	# If index is 0, it should stay as such
 	if index!=0:
@@ -461,12 +447,17 @@ def go_back():
 			add_item_button.grid(column=1, row=2, sticky='ew')
 			add_item_yes_no.grid_forget()
 		case 3:
+			add_item_frame.tkraise()
 			add_item_entry.grid_forget()
 			add_item_button.grid_forget()
-			add_item_yes_no.grid(column=1, row=4, sticky='nsew')
+			add_item_yes_no.grid(column=1, row=2, sticky='nsew')
 			add_item_label.config(text="Is the item taxable?")
+			on_add_item_enter()
 		case 4:
-			add_item_label.config(text="Please enter item's quantity")
+			add_item_label.config(text="Please enter the category:")
+			add_item_listbox_frame.tkraise()
+		case 5:
+			add_item_label.config(text="Please enter the quantity:")
 		
 def reenter_button_pressed(which_button):
 	# Essentially go back to the add item interface
@@ -482,7 +473,7 @@ def reenter_button_pressed(which_button):
 	match which_button:
 		case "barcode":
 			index=0
-			add_item_label.config(text="Please enter item's Barcode:")
+			add_item_label.config(text="Please enter item's barcode:")
 		case "name":
 			index=1
 			add_item_label.config(text="Please enter the item's name:")
@@ -494,7 +485,8 @@ def reenter_button_pressed(which_button):
 			add_item_label.config(text="Is the item taxable?")
 			add_item_entry.grid_forget()
 			add_item_button.grid_forget()
-			add_item_yes_no.grid(column=1, row=4, sticky='nsew')
+			add_item_yes_no.grid(column=1, row=2, sticky='nsew')
+			on_add_item_enter()
 		case "category":
 			index=4
 			add_item_listbox_frame.tkraise()
@@ -531,25 +523,24 @@ def on_add_item_enter(event=None):
 			add_item_object.price = item_info_entered
 			if not reentering:
 				add_item_label.config(text="Is the item Taxable?")
-				add_item_yes_no.grid(column=1, row=4, sticky='nsew')
+				add_item_yes_no.grid(column=1, row=2, sticky='nsew')
 				add_item_button.grid_forget()
 				add_item_entry.grid_forget()
 				index+=1
-				root.wait_variable(yes_no_var)
-				yes_no_answer = yes_no_var.get()
-				if yes_no_answer == "yes":
-					add_item_entry.delete(0, tk.END)
-					add_item_entry.insert(tk.END, 1)
-					on_add_item_enter()
-				else:
-					add_item_entry.delete(0, tk.END)
-					add_item_entry.insert(tk.END, 0)
-					on_add_item_enter()
+				on_add_item_enter()
 			elif reentering:
 				index=5
 				on_add_item_enter()
 		case 3:
-			add_item_object.taxable = item_info_entered
+			root.wait_variable(yes_no_var)
+			yes_no_answer = yes_no_var.get()
+			if yes_no_answer == "yes":
+				add_item_entry.delete(0, tk.END)
+				add_item_entry.insert(tk.END, 1)
+			else:
+				add_item_entry.delete(0, tk.END)
+				add_item_entry.insert(tk.END, 0)
+			add_item_object.taxable = add_item_entry.get()
 			if not reentering:
 				add_item_yes_no.grid_forget()
 				add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
@@ -574,7 +565,7 @@ def on_add_item_enter(event=None):
 			add_item_label_text = add_item_label.cget("text")
 			if not reentering:
 				add_item_object.quantity = item_info_entered
-			elif reentering:
+			elif reentering and add_item_label_text == "Please enter the Quantity:":
 				add_item_object.quantity = item_info_entered
 				reentering = False
 			else:
@@ -591,7 +582,7 @@ def on_add_item_enter(event=None):
 			add_item_entry.grid_forget()
 			add_item_button.grid_forget()
 			item_info_confirmation.grid(column=1, row=1, sticky='ew', padx=5)
-			add_item_yes_no.grid(column=1, row=4, sticky='nsew')
+			add_item_yes_no.grid(column=1, row=2, sticky='nsew')
 			back_button.grid_forget()
 			item_info_confirmation.delete("1.0", "end")
 			item_info_confirmation.insert(tk.END, confirm_string)
@@ -600,7 +591,6 @@ def on_add_item_enter(event=None):
 			if yes_no_answer == "yes" and coming_from_register:
 				try:
 					add_item_object.commit_item()
-					print("Coming from register")
 				except sqlite3.Error as e:
 					print("Error entering item when coming from register")
 				finally:
@@ -609,6 +599,7 @@ def on_add_item_enter(event=None):
 					item_info_confirmation.grid_forget()
 					add_item_entry.grid(row=1, column=1, sticky='ew', pady=15)
 					enter_register_frame()
+					return
 			elif yes_no_answer == "yes" and not coming_from_register:
 				try:
 					add_item_object.commit_item()
@@ -628,12 +619,9 @@ def on_add_item_enter(event=None):
 			yes_no_answer = yes_no_var.get()
 			if yes_no_answer == "yes":
 				index = 0
-				add_item_label.config(text="Please enter the item's barcode: ", font=("Arial", 50))
-				add_item_button.grid(column=1, row=2, sticky='ew')
-				add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
-				back_button.grid(column=1, row=3, sticky='ew')
-				back_button.grid()
-				add_item_yes_no.grid_forget()
+				del add_item_object
+				enter_add_item_frame()
+				
 			elif yes_no_answer == "no":
 				index = 0
 				#del add_item_object
@@ -764,7 +752,7 @@ register_add_item_no_button.grid(row=0, column=1, sticky='nsew')
 new_item_button = tk.Button(admin_frame, text = "Add New Item", font=("Arial", 50), height = 5, command = lambda: enter_add_item_frame()) 
 new_item_button.grid(column = 0, row = 1, sticky='s', padx = 5, pady = 5, ipadx=10, ipady=10)
 
-update_quantity_button = tk.Button(admin_frame, text = "Update Item \nQuantity", font=("Arial", 50), height = 5, command = lambda: update_inventory_frame.tkraise())
+update_quantity_button = tk.Button(admin_frame, text = "Update\nInventory", font=("Arial", 50), height = 5, command = lambda: enter_update_inventory_frame())
 update_quantity_button.grid(column=1, row=1, sticky='e', padx=5, pady=5, ipadx=10, ipady=10)
 
 
@@ -775,31 +763,28 @@ admin_back_button = tk.Button(admin_frame, text="Go Back", font=("Arial", 50), c
 # ==========================
 
 add_item_label = tk.Label(add_item_frame, text="Please enter the item's barcode:", font=("Arial", 50), width=27)
-add_item_label.grid(column=1, row=0, sticky='ew')
-
 
 add_item_button = tk.Button(add_item_frame, text="Next", font=("Arial", 50), command=lambda: on_add_item_enter())
-add_item_button.grid(column=1, row=2, sticky='ew')
 
 back_button = tk.Button(add_item_frame, text="Back", font=("Arial", 50), command=lambda: go_back())
-back_button.grid(column=1, row=3, sticky='ew')
 
+quit_button = tk.Button(add_item_frame, text="Quit", font=("Arial", 50), command = lambda: admin_frame.tkraise())
 
 add_item_entry = tk.Entry(add_item_frame, font=("Arial", 50), width=15, justify="right")
-add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
 add_item_entry.bind("<Return>", on_add_item_enter)
 
 item_info_confirmation = tk.Text(add_item_frame, font=("Arial", 40), width=6, height=3)
 
-yes_button = tk.Button(add_item_yes_no, text="Yes", font=("Arial", 150), command= lambda: yes_no_buttons("add_item_yes"))
+yes_button = tk.Button(add_item_yes_no, text="Yes", font=("Arial", 150), command= lambda: yes_no_var.set("yes"))
 
-no_button = tk.Button(add_item_yes_no, text="No", font=("Arial", 150), command=lambda: yes_no_buttons("add_item_no"))
+no_button = tk.Button(add_item_yes_no, text="No", font=("Arial", 150), command=lambda: yes_no_var.set("no"))
 
 yes_button.grid(column=0, row=0, sticky='nsew', padx=10)
 no_button.grid(column=1, row=0, sticky='nsew', padx=10)
 
-#add_item_exit_button = tk.Button(add_item_frame, text="Exit", font=("Arial", 50))
-
+# =========================
+# Widgets for Listbox Frame
+# =========================
 
 add_item_listbox = tk.Listbox(add_item_listbox_frame, width=20, height=5, font=("Arial", 50))
 add_item_scrollbar = tk.Scrollbar(add_item_listbox_frame, orient=tk.VERTICAL, width=40)
@@ -813,7 +798,13 @@ add_item_scrollbar_label.grid(column=1, row=0, sticky='nsew')
 add_item_scrollbar_next = tk.Button(add_item_listbox_frame, text="Next", font=("Arial", 50), command=lambda: on_add_item_scrollbar_next())
 add_item_scrollbar_next.grid(row=2, column=1, sticky='nsew')
 
-for values in ("Ice Cream", "Candy", "Propane", "Fishing", "Pool", "Toys", "Clothes", "Camping", "RV", "Dry Goods", "Cookies/Chips", "Refrigerated", "Drinks", "Gifts", "Medicinal", "Toiletries", "Paper Products", "Kitchenware"):
+add_item_scrollbar_back = tk.Button(add_item_listbox_frame, text="Back", font=("Arial", 50), command=lambda: go_back())
+add_item_scrollbar_back.grid(column=1, row=3, sticky='nsew')
+
+add_item_scrollbar_quit = tk.Button(add_item_listbox_frame, text="Quit", font=("Arial", 50), command=lambda: admin_frame.tkraise())
+add_item_scrollbar_quit.grid(column=1, row=4, sticky='nsew')
+
+for values in ("Camping", "Candy", "Cleaning", "Clothes", "Cookies/Chips", "Drinks", "Dry Goods", "Fishing", "Gifts", "Ice Cream", "Kitchenware", "Medicinal", "Paper Products", "Pool", "Propane", "Refrigerated", "RV", "Toiletries", "Toys"):
 	add_item_listbox.insert(tk.END, values)
 
 add_item_listbox.config(yscrollcommand= add_item_scrollbar.set)
@@ -851,9 +842,9 @@ update_inventory_entry.bind("<Return>", get_update_barcode)
 
 update_buttons_frame.grid(column = 1, row=1, sticky='nsew')
 
-update_yes_button = tk.Button(update_inventory_yes_no, text="Yes", font=("Arial", 150), command= lambda: yes_no_buttons("update_yes"))
+update_yes_button = tk.Button(update_inventory_yes_no, text="Yes", font=("Arial", 150), command= lambda: yes_no_var.set("yes"))
 
-update_no_button = tk.Button(update_inventory_yes_no, text="No", font=("Arial", 150), command=lambda: yes_no_buttons("update_no"))
+update_no_button = tk.Button(update_inventory_yes_no, text="No", font=("Arial", 150), command=lambda: yes_no_var.set("no"))
 
 
 update_yes_button.grid(column=0, row=0, sticky='nsew', padx=10)
@@ -895,9 +886,9 @@ number_button.grid(row=2, column=1, sticky='nsew')
 void_transaction_text = tk.Text(void_transaction_frame, width=30, height=3, font=("Arial", 40))
 
 
-void_yes_button = tk.Button(void_yes_no, text="Yes", font=("Arial", 150), command= lambda: yes_no_buttons("void_yes"))
+void_yes_button = tk.Button(void_yes_no, text="Yes", font=("Arial", 150), command= lambda: yes_no_var.set("yes"))
 
-void_no_button = tk.Button(void_yes_no, text="No", font=("Arial", 150), command=lambda: yes_no_buttons("void_no"))
+void_no_button = tk.Button(void_yes_no, text="No", font=("Arial", 150), command=lambda: yes_no_var.set("no"))
 
 
 void_yes_button.grid(column=0, row=0, sticky='nsew', padx=10)
