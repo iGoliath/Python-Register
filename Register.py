@@ -12,6 +12,7 @@ add_item_object = AddToInventory()
 index = 0
 reentering = False
 coming_from_register = False
+updating_existing_item = False
 printer = Usb(0x0fe6, 0x811e, 0) #File("/dev/usb/lp0")
 pygame.mixer.init()
 
@@ -219,7 +220,7 @@ def print_receipt(receipt_type, transaction_id, items, sale_info):
 			printer.textln(("-" * 18) + " Sale " + ("-" * 18))
 			spaces = 26 - len(str(transaction_id))
 			printer.textln("Transaction ID: " + (" " * spaces) + str(transaction_id))
-	printer.textln(date + (" " * 27) + time)
+	printer.textln(datetime.today().strftime('%Y-%m-%d') + (" " * 27) + datetime.now().strftime("%H:%M"))
 	printer.ln(2)
 	for i in range(len(items)):
 			printer.textln(items[i][1])
@@ -253,7 +254,7 @@ def on_cash_cc(event, payment_method):
 	global trans
 	pygame.mixer.music.load("short-beep.mp3")
 	pygame.mixer.music.play()
-	balance = trans.total - trans.cash_used - trans.cc_used 	# Calculate current balance remaining on the sale
+	old_balance = trans.total - trans.cash_used - trans.cc_used 	# Calculate current balance remaining on the sale
 	if payment_method == "cc":
 		entered_amount = invisible_entry.get()
 		entered_amount = entered_amount[:-1]
@@ -261,45 +262,49 @@ def on_cash_cc(event, payment_method):
 		entered_amount = invisible_entry.get().strip()	
 	invisible_entry.delete(0, tk.END)
 	length = len(entered_amount)
-	print(entered_amount)
 	if entered_amount == "":			# If user just pressed cash or credit card button, 
 		if payment_method == "cash":	# entire balance is being settled as such
-			trans.cash_used = balance
+			trans.cash_used += old_balance
 		elif payment_method == "cc":
-			trans.cc_used = balance
+			trans.cc_used += old_balance
 		display_string = "C $0.00"
 		total_entry.delete(0, tk.END)
 		total_entry.insert(tk.END, display_string)
 		complete_sale()
 		return
 	elif entered_amount != "":			# Otherwise, we need to format the user's input
+		amount_given = 0
 		if length==1:					# Then, update amount of cash or cc used in sale
-			if payment_method == "cash":
-				trans.cash_used += float("0.0" + entered_amount)
-			elif payment_method == "cc":
-				trans.cc_used += float("0.0" + entered_amount)
+				amount_given = float("0.0" + entered_amount)
 		elif length==2:
-			if payment_method == "cash":
-				trans.cash_used += float("0." + entered_amount)
-			elif payment_method == "cc":
-				trans.cc_used += float("0." + entered_amount)
+				amount_given = float("0." + entered_amount)
 		elif length>=3:					
-			if payment_method == "cash":
-				trans.cash_used += float(entered_amount[0:length-2] + "." + entered_amount[length-2:length])
-			elif paytment_method == "cc":
-				trans.cc_used += float(entered_amount[0:length-2] + "." + entered_amount[length-2:length])
-		balance = trans.total - trans.cash_used - trans.cc_used	# Grab new balance after amount was entered and provide
-		if balance<=0:											# user feedback based on remaining balance or change
-			display_string = "C: $" + f"{abs(balance):.2f}"
+				amount_given = float(entered_amount[0:length-2] + "." + entered_amount[length-2:length])
+		
+		new_balance = trans.total - trans.cash_used - trans.cc_used - amount_given
+		if new_balance<=0:
+			display_string = "C: $" + f"{abs(new_balance):.2f}"
+			if payment_method == "cc":
+				trans.cc_used += old_balance
+			elif payment_method == "cash":
+				trans.cash_used += old_balance
 			total_entry.delete(0, tk.END)
 			total_entry.insert(tk.END, display_string)
 			complete_sale()
-		elif balance>0:
-			display_string = "B: $" + f"{abs(balance):.2f}" 
+		elif new_balance>0:
+			display_string = "B: $" + f"{abs(new_balance):.2f}" 
+			if payment_method == "cc":
+				trans.cc_used += old_balance
+			elif payment_method == "cash":
+				trans.cash_used += old_balance
 			total_entry.delete(0, tk.END)
 			total_entry.insert(tk.END, display_string)
-		elif balance==0:
+		elif new_balance==0:
 			display_string = "C: $0.00"
+			if payment_method == "cc":
+				trans.cc_used += old_balance
+			elif payment_method == "cash":
+				trans.cash_used += old_balance
 			total_entry.delete(0, tk.END)
 			total_entry.insert(tk.END, display_string)
 			complete_sale()
@@ -364,14 +369,17 @@ def get_update_barcode(event=None):
 	update_inventory_var.set(update_inventory_entry.get())
 	update_inventory_entry.delete(0, tk.END)
 	
-def update_inventory(which_button):
+def update_inventory(which_button, entered_barcode):
 	update_conn = sqlite3.connect("RegisterDatabase")
 	update_cursor = update_conn.cursor()
 	update_buttons_frame.grid_forget()
 	update_inventory_entry.grid(row=1, column=1, sticky='nsew')
-	update_inventory_label.config(text="Please scan barcode of item")
-	root.wait_variable(update_inventory_var)
-	barcode = update_inventory_var.get()
+	if (entered_barcode):
+		barcode = entered_barcode
+	else:
+		update_inventory_label.config(text="Please scan barcode of item")
+		root.wait_variable(update_inventory_var)
+		barcode = update_inventory_var.get()
 	update_cursor.execute("SELECT %s FROM INVENTORY WHERE barcode = ?" % (which_button), (barcode,))
 	results = update_cursor.fetchall()
 	row = results[0]
@@ -421,7 +429,7 @@ def no_sale(event=None):
 	invisible_entry.delete(0, tk.END)
 	printer.cashdraw(pin=2)
 	printer.textln(("-" * 22) + " NS " + ("-" * 22))
-	printer.textln(date + (" " * 33) + time)
+	printer.textln(date + (" " * 33) + datetime.now().strftime("%H:%M"))
 	printer.ln(2)
 	#printer.cut()
 
@@ -501,16 +509,32 @@ def on_add_item_enter(event=None):
 	global add_item_object
 	global reentering
 	global coming_from_register
+	global updating_existing_item
 	
 	match index:
 		case 0:
-			add_item_object.barcode = item_info_entered
-			if not reentering:
-				add_item_label.config(text="Please enter item's name:")
-				index+=1
-			elif reentering:
-				index=5
+			add_item_object.c.execute("SELECT * FROM INVENTORY WHERE BARCODE=?", (item_info_entered,))
+			results = add_item_object.c.fetchall()
+			if results:
+				found_item_info = results[0]
+				add_item_object.name = found_item_info[1]
+				add_item_object.price = found_item_info[2]
+				add_item_object.taxable = found_item_info[3]
+				add_item_object.barcode = found_item_info[4]
+				add_item_object.old_barcode = found_item_info[4]
+				add_item_object.quantity = found_item_info[5]
+				add_item_object.category = found_item_info[6]
+				index = 5
+				updating_existing_item = True
 				on_add_item_enter()
+			elif not results:
+				add_item_object.barcode = item_info_entered
+				if not reentering:
+					add_item_label.config(text="Please enter item's name:")
+					index+=1
+				elif reentering:
+					index=5
+					on_add_item_enter()
 		case 1:
 			add_item_object.name = item_info_entered
 			if not reentering:
@@ -563,8 +587,10 @@ def on_add_item_enter(event=None):
 				on_add_item_enter()
 		case 5:
 			add_item_label_text = add_item_label.cget("text")
-			if not reentering:
+			if not reentering and not updating_existing_item:
 				add_item_object.quantity = item_info_entered
+			elif not reentering & updating_existing_item:
+				pass
 			elif reentering and add_item_label_text == "Please enter the Quantity:":
 				add_item_object.quantity = item_info_entered
 				reentering = False
@@ -600,6 +626,15 @@ def on_add_item_enter(event=None):
 					add_item_entry.grid(row=1, column=1, sticky='ew', pady=15)
 					enter_register_frame()
 					return
+			elif yes_no_answer == "yes" and updating_existing_item:
+				updating_existing_item = False
+				add_item_object.update_item(add_item_object.old_barcode)
+				index = 0
+				add_item_yes_no.grid_forget()
+				item_info_confirmation.grid_forget()
+				add_item_entry.grid(row=1, column=1, sticky='ew', pady=15)
+				enter_add_item_frame()
+				return
 			elif yes_no_answer == "yes" and not coming_from_register:
 				try:
 					add_item_object.commit_item()
@@ -850,22 +885,22 @@ update_no_button = tk.Button(update_inventory_yes_no, text="No", font=("Arial", 
 update_yes_button.grid(column=0, row=0, sticky='nsew', padx=10)
 update_no_button.grid(column=1, row=0, sticky='nsew', padx=10)
 
-update_name_button = tk.Button(update_buttons_frame, text="Name", font=("Arial", 75), command = lambda: update_inventory("Name"))
+update_name_button = tk.Button(update_buttons_frame, text="Name", font=("Arial", 75), command = lambda: update_inventory("Name", None))
 update_name_button.grid(row=0, column=0, sticky='nsew')
 
-update_price_button = tk.Button(update_buttons_frame, text="Price", font=("Arial", 75), command = lambda: update_inventory("Price"))
+update_price_button = tk.Button(update_buttons_frame, text="Price", font=("Arial", 75), command = lambda: update_inventory("Price", None))
 update_price_button.grid(row=0, column=1, sticky='nsew')
 
-update_barcode_button = tk.Button(update_buttons_frame, text="Barcode", font=("Arial", 75), command = lambda: update_inventory("Barcode"))
+update_barcode_button = tk.Button(update_buttons_frame, text="Barcode", font=("Arial", 75), command = lambda: update_inventory("Barcode", None))
 update_barcode_button.grid(row=1, column=0, sticky='nsew')
 
-update_taxable_button = tk.Button(update_buttons_frame, text="Taxable", font=("Arial", 75), command = lambda: update_inventory("Taxable"))
+update_taxable_button = tk.Button(update_buttons_frame, text="Taxable", font=("Arial", 75), command = lambda: update_inventory("Taxable", None))
 update_taxable_button.grid(row=1, column=1, sticky='nsew')
 
-update_quantity_button = tk.Button(update_buttons_frame, text="Quantity", font=("Arial", 75), command = lambda: update_inventory("Quantity"))
+update_quantity_button = tk.Button(update_buttons_frame, text="Quantity", font=("Arial", 75), command = lambda: update_inventory("Quantity", None))
 update_quantity_button.grid(row=2, column=0, sticky='nsew')
 
-update_category_button = tk.Button(update_buttons_frame, text="Category", font=("Arial", 75), command = lambda: update_inventory("Category"))
+update_category_button = tk.Button(update_buttons_frame, text="Category", font=("Arial", 75), command = lambda: update_inventory("Category", None))
 update_category_button.grid(row=2, column=1, sticky='nsew')
 
 # ===================================
