@@ -78,6 +78,7 @@ def enter_add_item_frame():
 	quit_button.grid(column=1, row=5, sticky='ew')
 	add_item_yes_no.grid_forget()
 	item_info_confirmation.grid_forget()
+	reenter_frame.grid_forget()
 	add_item_label.config(text="Please enter item's barcode: ")
 	if "add_item_object" not in globals():
 		global add_item_object
@@ -337,6 +338,7 @@ def complete_sale(event=None):
 	print_receipt("sale", sale_info[0], sale_items_list, sale_info)
 	sale_items.delete("1.0", "end")
 	usr_entry.delete(0, tk.END)
+	usr_entry.insert(0, "$0.00")
 	del trans
 	trans = Transaction()
 	
