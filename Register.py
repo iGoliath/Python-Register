@@ -688,9 +688,9 @@ def run_x(event=None):
 	x_conn = sqlite3.connect("RegisterDatabase")
 	x_cursor = x_conn.cursor()
 	printer.textln(("-" * 42))
-	printer.textln("--------- Daily Report ---------")
-	printer.textln("---------- " + date + " ----------")
-	printer.textln("--------------------------------")
+	printer.textln(("-" * 14) + " Daily Report " + ("-" * 14))
+	printer.textln(("-" * 12) + " " + date + " " + datetime.now().strftime("%H:%M") + " " + ("-" * 12))
+	printer.textln("-" * 42)
 	printer.ln(2)
 
 	for category in ("Cash Used", "CC Used", "Non-Tax", "Pre-Tax", "Tax"):
@@ -699,8 +699,12 @@ def run_x(event=None):
 		sum_in_question = results[0]
 		rounded = f"{sum_in_question[0]:.2f}"
 		spaces = 42 - len(category) - len(rounded)
-		printer.textln(f"{category} Collected: " + (" " * spaces) + "$" + rounded)
-		printer.cut
+		if category == "Cash Used" or category == "CC Used":
+			spaces = 42 - len(category[:-5]) - len(rounded)
+			printer.textln(f"{category[:-5]} Collected: " + (" " * spaces) + "$" + rounded)
+		else:
+			printer.textln(f"{category} Collected: " + (" " * spaces) + "$" + rounded)
+	printer.cut
 	
 
 def process_return(event=None):
@@ -980,9 +984,11 @@ number_button.grid(row=0, column=1, sticky='nsew')
 print_receipt_button = tk.Button(register_functions_buttons_frame, text="Print a Receipt", font=("Arial", 70))
 print_receipt_button.grid(row=1, column=0, sticky='nsew')
 
-make_return_button = tk.Button(register_functions_buttons_frame, text="Process Return", font=("Arial", 70), command = lambda:process_return()
-)
+make_return_button = tk.Button(register_functions_buttons_frame, text="Process Return", font=("Arial", 70), command = lambda:process_return())
 make_return_button.grid(row=1, column=1, sticky='nsew')
+
+run_x_button = tk.Button(register_functions_buttons_frame, text="Run X", font=("Arial", 50), command = lambda:run_x())
+run_x_button.grid(row=2, column=0, sticky='nsew')
 
 continue_button = tk.Button(void_transaction_frame, text="Continue", font=("Arial", 50), command= lambda: reference_number_var.set("continue"))
 
