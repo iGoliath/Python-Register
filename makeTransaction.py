@@ -2,7 +2,6 @@ import sqlite3
 from datetime import datetime
 
 date = datetime.today().strftime('%Y-%m-%d')
-time = datetime.now().strftime("%H:%M")
 
 class Transaction:
 	def __init__(self, sql_db="RegisterDatabase"):
@@ -17,6 +16,7 @@ class Transaction:
 		self.cc_used = 0
 		self.items_list = []
 		self.quantity_sold_list = []
+		self.is_returning = False
 		
 	def __del__(self):
 		self.conn_inventory.commit()
@@ -24,13 +24,14 @@ class Transaction:
 		
 	def complete_transaction(self):
 		global date
-		self.c.execute("INSERT INTO SALES VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (self.nontax, self.pretax, self.tax, self.total, self.items_sold, date, time, self.cash_used, self.cc_used, 0))
+		self.c.execute("INSERT INTO SALES VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (self.nontax, self.pretax, self.tax, self.total, self.items_sold, date, datetime.now().strftime("%H:%M"), self.cash_used, self.cc_used, 0))
 		self.c.execute('''SELECT MAX("Transaction ID") FROM Sales''')
 		results = self.c.fetchall()
 		row = results[0]
 		for i in range(len(self.items_list)):
 			self.c.execute("INSERT OR IGNORE INTO SALEITEMS VALUES(?, ?, ?, ?, ?, ?)", (row[0], self.items_list[i][0], self.items_list[i][1], self.items_list[i][2], self.items_list[i][3], self.quantity_sold_list[i][1]))
-			self.c.execute("UPDATE INVENTORY SET Quantity = Quantity - ? WHERE barcode = ?", (self.quantity_sold_list[i][1], self.quantity_sold_list[i][0]))
+			if not self.is_returning:
+				self.c.execute("UPDATE INVENTORY SET Quantity = Quantity - ? WHERE barcode = ?", (self.quantity_sold_list[i][1], self.quantity_sold_list[i][0]))
 		self.conn_inventory.commit()
 		
 			
