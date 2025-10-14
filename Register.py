@@ -1,39 +1,31 @@
 import tkinter as tk
 from makeTransaction import *
 from enteritem import *
+from stateManager import *
 from datetime import datetime
 from escpos.printer import Usb
 import pygame
 
-date = datetime.today().strftime('%Y-%m-%d')
-add_item_object = AddToInventory()
-index = 0
-reentering = False
-coming_from_register = False
-updating_existing_item = False
+
 printer = Usb(0x0fe6, 0x811e, 0) #File("/dev/usb/lp0")
 pygame.mixer.init()
-
 #Declaration of root window and all neccessary frames
 root = tk.Tk()
 root.title("TBC REGISTER")
 root.geometry("1024x600")
 root.tk.call('tk', 'scaling', 50)
-yes_no_var = tk.StringVar()
-reference_number_var = tk.StringVar()
-update_inventory_var = tk.StringVar()
-return_var = tk.StringVar()
+state_manager = StateManager(root)
 
 mode_select_frame = tk.Frame(root)
 register_frame = tk.Frame(root, bg='black')
 admin_frame = tk.Frame(root)
 add_item_frame = tk.Frame(root)
 update_inventory_frame = tk.Frame(root)
-void_transaction_frame = tk.Frame(root)
+additional_register_functions_frame = tk.Frame(root)
 update_buttons_frame = tk.Frame(update_inventory_frame)
 reenter_frame = tk.Frame(add_item_frame)
 add_item_yes_no = tk.Frame(add_item_frame)
-void_yes_no = tk.Frame(void_transaction_frame)
+additional_register_functions_yes_no = tk.Frame(additional_register_functions_frame)
 update_inventory_yes_no = tk.Frame(update_inventory_frame)
 register_widgets_frame = tk.Frame(register_frame)
 add_item_listbox_frame = tk.Frame(root)
@@ -44,34 +36,34 @@ root.grid_rowconfigure(0, weight=1)
 
 # Loop through frames, fit them to screen, and configure them so that widgets in column 1 are centered
 # Widgets in column 1 will determine the width of the rest of the widgets
-for frame in (mode_select_frame, register_frame, admin_frame, add_item_frame, update_inventory_frame, void_transaction_frame, add_item_listbox_frame, register_add_item_prompt_frame):
+for frame in (mode_select_frame, register_frame, admin_frame, add_item_frame, update_inventory_frame, additional_register_functions_frame, add_item_listbox_frame, register_add_item_prompt_frame):
 	frame.grid(row=0, column=0, sticky='nsew')
 	frame.grid_columnconfigure(0, weight=1)
 	frame.grid_columnconfigure(1, weight=0)
 	frame.grid_columnconfigure(2, weight=1)
 
-for frame in (update_buttons_frame, reenter_frame, add_item_yes_no, void_yes_no, register_widgets_frame):
+for frame in (update_buttons_frame, reenter_frame, add_item_yes_no, additional_register_functions_yes_no, register_widgets_frame):
 	frame.grid_columnconfigure(0, weight=1)
 	frame.grid_columnconfigure(1, weight=1)
 
 #root.attributes("-fullscreen", True)
 
 def enter_register_frame():
+	global state_manager
+	state_manager.new_transaction()
 	register_frame.tkraise()
 	invisible_entry.focus_force()
 	invisible_entry.delete(0, tk.END)
 	total_entry.delete(0, tk.END)
 	total_entry.insert(tk.END, "$0.00")
-	if "trans" not in globals():
-		global trans
-		trans = Transaction()
+	
 
 	
 def enter_add_item_frame():
-	global index
-	global reentering
-	reentering = False
-	index = 0
+	global state_manager
+	state_manager.new_add_item_object()
+	state_manager.reentering = False
+	state_manager.add_item_index = 0
 	add_item_entry.focus_force()
 	add_item_label.grid(column=1, row=0, sticky='ew')
 	add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
@@ -82,14 +74,11 @@ def enter_add_item_frame():
 	item_info_confirmation.grid_forget()
 	reenter_frame.grid_forget()
 	add_item_label.config(text="Please enter item's barcode: ")
-	if "add_item_object" not in globals():
-		global add_item_object
-		add_item_object = AddToInventory()
 	add_item_frame.tkraise()
 
 
 def enter_void_frame(event=None):
-	void_transaction_frame.tkraise()
+	additional_register_functions_frame.tkraise()
 
 def enter_update_inventory_frame(event=None):
 	update_inventory_frame.tkraise()
@@ -100,18 +89,18 @@ def register_go_back(event=None):
 	mode_select_frame.tkraise()		
 
 def process_sale(event=None):
-	global coming_from_register
+	global state_manager
 	total_entry.delete(0, tk.END)
 	total_entry.insert(tk.END, "$0.00")
 	barcode = invisible_entry.get()
 	invisible_entry.delete(0, tk.END)
-	total, item_name, item_price, taxable = trans.sell_item(barcode)
+	total, item_name, item_price, taxable = state_manager.trans.sell_item(barcode)
 	if total == "item_not_found":
 		register_add_item_prompt_frame.tkraise()
-		root.wait_variable(yes_no_var)
-		yes_no_answer = yes_no_var.get()
+		root.wait_variable(state_manager.yes_no_var)
+		yes_no_answer = state_manager.yes_no_var.get()
 		if yes_no_answer == "yes":
-			coming_from_register = True
+			state_manager.coming_from_register = True
 			enter_add_item_frame()
 			return
 		elif yes_no_answer == "no":
@@ -120,13 +109,13 @@ def process_sale(event=None):
 	usr_entry.delete(0, tk.END)
 	usr_entry.insert(0, "$" + f"{total:.2f}")
 	sale_items.delete("1.0", "end")
-	for i in range(len(trans.items_list)):
-		sale_info = trans.items_list[i][0] + " $" + str(trans.items_list[i][1]) + " "
-		if trans.items_list[i][2] == 1:
+	for i in range(len(state_manager.trans.items_list)):
+		sale_info = state_manager.trans.items_list[i][0] + " $" + str(state_manager.trans.items_list[i][1]) + " "
+		if state_manager.trans.items_list[i][2] == 1:
 			sale_info += "TX"
 		else:
 			sale_info += "NT"
-		sale_info += " QTY: " + str(trans.quantity_sold_list[i][1]) + "\n" 
+		sale_info += " QTY: " + str(state_manager.trans.quantity_sold_list[i][1]) + "\n" 
 		sale_items.insert("end", sale_info)
 	
 def void_transaction(which_button):
@@ -134,15 +123,15 @@ def void_transaction(which_button):
 	void_conn = sqlite3.connect("RegisterDatabase")
 	void_cursor = void_conn.cursor()
 	if which_button == "last":
-		void_transaction_text.grid(row=1, column=1, sticky='nsew')
+		additional_register_functions_text.grid(row=1, column=1, sticky='nsew')
 		void_cursor.execute('''SELECT * FROM SALES WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM SALES)''')
 		results = void_cursor.fetchall()
 		row = results[0]
 		print_void_transaction_info(row[0], row[4], row[5], row[8], row[9], row[7])
-		void_yes_no.grid(column=1, row=2, sticky='nsew')
-		void_label.config(text="Void This Transaction?")
-		root.wait_variable(yes_no_var)
-		button_pressed = yes_no_var.get()
+		additional_register_functions_yes_no.grid(column=1, row=2, sticky='nsew')
+		additional_register_functions_label.config(text="Void This Transaction?")
+		root.wait_variable(state_manager.yes_no_var)
+		button_pressed = state_manager.yes_no_var.get()
 		if button_pressed == "yes":
 			try:
 				void_cursor.execute('''UPDATE SALES SET Voided = ? WHERE "Transaction ID" = ?''', (1, row[0]))
@@ -150,37 +139,37 @@ def void_transaction(which_button):
 				item_results = void_cursor.fetchall()
 				print_receipt("void", row[0], item_results, row)
 			except sqlite3.Error as e:
-				void_transaction_text.delete("1.0", "end")
-				void_transaction_text.insert("end", "ERROR, please try again")
+				additional_register_functions_text.delete("1.0", "end")
+				additional_register_functions_text.insert("end", "ERROR, please try again")
 			finally:
 				void_conn.commit()
 				void_conn.close()
-				void_transaction_text.grid_forget()
-				void_yes_no.grid_forget()
+				additional_register_functions_text.grid_forget()
+				additional_register_functions_yes_no.grid_forget()
 				enter_register_frame()
-				void_label.config(text="Please select an option")
+				additional_register_functions_label.config(text="Please select an option")
 				last_button.grid(row=1, column=1, sticky='nsew')
 				number_button.grid(row=2, column=1, sticky='nsew')
 		elif button_pressed == "no":
 			void_conn.close()
-			void_transaction_text.grid_forget()
-			void_yes_no.grid_forget()
+			additional_register_functions_text.grid_forget()
+			additional_register_functions_yes_no.grid_forget()
 			void_transaction("ref")
 	elif which_button == "ref":
-		void_label.config(text="Please enter the reference number:")
-		void_entry.grid(row=1, column=1, sticky='nsew')
-		root.wait_variable(reference_number_var)
-		reference_number = reference_number_var.get()
-		void_entry.grid_forget()
-		void_transaction_text.grid(row=1, column=1, sticky='nsew')
-		void_yes_no.grid(column=1, row=2, sticky='nsew')
+		additional_register_functions_label.config(text="Please enter the reference number:")
+		additional_register_functions_entry.grid(row=1, column=1, sticky='nsew')
+		root.wait_variable(state_manager.reference_number_var)
+		reference_number = state_manager.reference_number_var.get()
+		additional_register_functions_entry.grid_forget()
+		additional_register_functions_text.grid(row=1, column=1, sticky='nsew')
+		additional_register_functions_yes_no.grid(column=1, row=2, sticky='nsew')
 		void_cursor.execute('''Select * FROM SALES WHERE "Transaction ID" = ?''', (reference_number, ))
 		results = void_cursor.fetchall()
 		row = results[0]
-		void_label.config(text="Void this transaction?")
+		additional_register_functions_label.config(text="Void this transaction?")
 		print_void_transaction_info(row[0], row[4], row[5], row[8], row[9], row[7])
-		root.wait_variable(yes_no_var)
-		button_pressed = yes_no_var.get()
+		root.wait_variable(state_manager.yes_no_var)
+		button_pressed = state_manager.yes_no_var.get()
 		if button_pressed == "yes":
 			try:
 
@@ -189,28 +178,28 @@ def void_transaction(which_button):
 				item_results = void_cursor.fetchall()
 				print_receipt("void", row[0], item_results, row)
 			except sqlite3.Error as e:
-				void_transaction_text.delete("1.0", "end")
-				void_transaction_text.insert("end", "ERROR, please try again")
+				additional_register_functions_text.delete("1.0", "end")
+				additional_register_functions_text.insert("end", "ERROR, please try again")
 			finally:
 				void_conn.commit()
 				void_conn.close()
-				void_transaction_text.grid_forget()
-				void_yes_no.grid_forget()
+				additional_register_functions_text.grid_forget()
+				additional_register_functions_yes_no.grid_forget()
 				enter_register_frame()
-				void_label.config(text="Please select an option")
+				additional_register_functions_label.config(text="Please select an option")
 				last_button.grid(row=1, column=1, sticky='nsew')
 				number_button.grid(row=2, column=1, sticky='nsew')
 
 
 
 def print_void_transaction_info(transaction_id, total, number_items_sold, cash_used, cc_used, time):
-		void_transaction_text.delete("1.0", "end")
-		void_transaction_text.insert("end", "Transaction ID: " + str(transaction_id) + " |\t")
-		void_transaction_text.insert("end", "Total: $" + f"{total:.2f}" + "\n")
-		void_transaction_text.insert("end", "# Items Sold: " + str(number_items_sold) + " |\t")
-		void_transaction_text.insert("end", "Cash Used: $" + f"{cash_used:.2f}" + "\n")
-		void_transaction_text.insert("end", "CC Used: $" + f"{cc_used:.2f}" + " |\t")
-		void_transaction_text.insert("end", "Time: " + time)
+		additional_register_functions_text.delete("1.0", "end")
+		additional_register_functions_text.insert("end", "Transaction ID: " + str(transaction_id) + " |\t")
+		additional_register_functions_text.insert("end", "Total: $" + f"{total:.2f}" + "\n")
+		additional_register_functions_text.insert("end", "# Items Sold: " + str(number_items_sold) + " |\t")
+		additional_register_functions_text.insert("end", "Cash Used: $" + f"{cash_used:.2f}" + "\n")
+		additional_register_functions_text.insert("end", "CC Used: $" + f"{cc_used:.2f}" + " |\t")
+		additional_register_functions_text.insert("end", "Time: " + time)
 
 def print_receipt(receipt_type, transaction_id, items, sale_info):
 	if receipt_type == "void":
@@ -255,15 +244,14 @@ def print_receipt(receipt_type, transaction_id, items, sale_info):
 	#printer.cut()
 	
 
-def on_void_entry(event=None):
-	reference_number_var.set(void_entry.get())
+def on_additional_register_functions_entry(event=None):
+	state_manager.reference_number_var.set(additional_register_functions_entry.get())
 
 		
 def on_cash_cc(event, payment_method):
-	global trans
 	pygame.mixer.music.load("short-beep.mp3")
 	pygame.mixer.music.play()
-	old_balance = trans.total - trans.cash_used - trans.cc_used 	# Calculate current balance remaining on the sale
+	old_balance = state_manager.trans.total - state_manager.trans.cash_used - state_manager.trans.cc_used 	# Calculate current balance remaining on the sale
 	if payment_method == "cc":
 		entered_amount = invisible_entry.get()
 		entered_amount = entered_amount[:-1]
@@ -273,9 +261,9 @@ def on_cash_cc(event, payment_method):
 	length = len(entered_amount)
 	if entered_amount == "":			# If user just pressed cash or credit card button, 
 		if payment_method == "cash":	# entire balance is being settled as such
-			trans.cash_used += old_balance
+			state_manager.trans.cash_used += old_balance
 		elif payment_method == "cc":
-			trans.cc_used += old_balance
+			state_manager.trans.cc_used += old_balance
 		display_string = "C $0.00"
 		total_entry.delete(0, tk.END)
 		total_entry.insert(tk.END, display_string)
@@ -290,51 +278,50 @@ def on_cash_cc(event, payment_method):
 		elif length>=3:					
 				amount_given = float(entered_amount[0:length-2] + "." + entered_amount[length-2:length])
 		
-		new_balance = trans.total - trans.cash_used - trans.cc_used - amount_given
+		new_balance = state_manager.trans.total - state_manager.trans.cash_used - state_manager.trans.cc_used - amount_given
 		if new_balance<=0:
 			display_string = "C: $" + f"{abs(new_balance):.2f}"
 			if payment_method == "cc":
-				trans.cc_used += old_balance
+				state_manager.trans.cc_used += old_balance
 			elif payment_method == "cash":
-				trans.cash_used += old_balance
+				state_manager.trans.cash_used += old_balance
 			total_entry.delete(0, tk.END)
 			total_entry.insert(tk.END, display_string)
 			complete_sale()
 		elif new_balance>0:
 			display_string = "B: $" + f"{abs(new_balance):.2f}" 
 			if payment_method == "cc":
-				trans.cc_used += old_balance
+				state_manager.trans.cc_used += old_balance
 			elif payment_method == "cash":
-				trans.cash_used += old_balance
+				state_manager.trans.cash_used += old_balance
 			total_entry.delete(0, tk.END)
 			total_entry.insert(tk.END, display_string)
 		elif new_balance==0:
 			display_string = "C: $0.00"
 			if payment_method == "cc":
-				trans.cc_used += old_balance
+				state_manager.trans.cc_used += old_balance
 			elif payment_method == "cash":
-				trans.cash_used += old_balance
+				state_manager.trans.cash_used += old_balance
 			total_entry.delete(0, tk.END)
 			total_entry.insert(tk.END, display_string)
 			complete_sale()
 
 def cancel_trans(event=None):
-		pygame.mixer.music.load("short-beep.mp3")
-		pygame.mixer.music.play()
-		global trans
-		sale_items.delete("1.0", "end")
-		invisible_entry.delete(0, tk.END)
-		usr_entry.delete(0, tk.END)
-		usr_entry.insert(0, "$0.00")
-		del trans
-		trans = Transaction()
+	global state_manager
+	state_manager.new_transaction()
+	pygame.mixer.music.load("short-beep.mp3")
+	pygame.mixer.music.play()
+	sale_items.delete("1.0", "end")
+	invisible_entry.delete(0, tk.END)
+	usr_entry.delete(0, tk.END)
+	usr_entry.insert(0, "$0.00")
 
 
 
 def complete_sale(event=None):
-	global trans
+	global state_manager
 	printer.cashdraw(pin=2)
-	trans.complete_transaction()
+	state_manager.trans.complete_transaction()
 	sale_conn = sqlite3.connect("RegisterDatabase")
 	sale_cursor = sale_conn.cursor()
 	sale_cursor.execute('''SELECT * FROM SALES WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM SALES)''')
@@ -347,8 +334,7 @@ def complete_sale(event=None):
 	sale_items.delete("1.0", "end")
 	usr_entry.delete(0, tk.END)
 	usr_entry.insert(0, "$0.00")
-	del trans
-	trans = Transaction()
+	state_manager.new_transaction()
 	
 def number_pressed(event=None):
 	pygame.mixer.music.load("short-beep.mp3")
@@ -376,8 +362,8 @@ def clear(event=None):
 	total_entry.insert(tk.END, "$0.00")
 		
 def get_update_barcode(event=None):
-	update_inventory_var.set(update_inventory_entry.get())
-	update_inventory_entry.delete(0, tk.END)
+	state_manager.update_inventory_var.set(update_inventory_entry.get())
+	state_manager.update_inventory_entry.delete(0, tk.END)
 	
 def update_inventory(which_button, entered_barcode):
 	update_conn = sqlite3.connect("RegisterDatabase")
@@ -388,8 +374,8 @@ def update_inventory(which_button, entered_barcode):
 		barcode = entered_barcode
 	else:
 		update_inventory_label.config(text="Please scan barcode of item")
-		root.wait_variable(update_inventory_var)
-		barcode = update_inventory_var.get()
+		root.wait_variable(state_manager.update_inventory_var)
+		barcode = state_manager.update_inventory_var.get()
 	update_cursor.execute("SELECT %s FROM INVENTORY WHERE barcode = ?" % (which_button), (barcode,))
 	results = update_cursor.fetchall()
 	row = results[0]
@@ -403,8 +389,8 @@ def update_inventory(which_button, entered_barcode):
 
 			update_inventory_entry.grid_forget()
 			update_inventory_yes_no.grid(row=1, column=1, sticky='nsew')
-			root.wait_variable(yes_no_var)
-			yes_no_answer = yes_no_var.get()
+			root.wait_variable(state_manager.yes_no_var)
+			yes_no_answer = state_manager.yes_no_var.get()
 			if yes_no_answer == "yes":
 				update_cursor.execute("UPDATE INVENTORY SET Taxable = ? Where Barcode = ?", (not current_value, barcode,))
 				break
@@ -414,13 +400,13 @@ def update_inventory(which_button, entered_barcode):
 				continue
 		elif which_button != "Taxable":
 			update_inventory_label.config(text=f"Current {which_button} is:\n" + str(current_value) + f"\nPlease Enter Item's New {which_button}")
-			root.wait_variable(update_inventory_var)
-			new_value = update_inventory_var.get()
+			root.wait_variable(state_manager.update_inventory_var)
+			new_value = state_manager.update_inventory_var.get()
 			update_inventory_label.config(text=f"New {which_button} will be:\n" + new_value + "\nIs this correct?")
 			update_inventory_entry.grid_forget()
 			update_inventory_yes_no.grid(row=1, column=1, sticky='nsew')
-			root.wait_variable(yes_no_var)
-			yes_no_answer = yes_no_var.get()
+			root.wait_variable(state_manager.yes_no_var)
+			yes_no_answer = state_manager.yes_no_var.get()
 			update_inventory_yes_no.grid_forget()
 			if yes_no_answer == "yes":
 				update_cursor.execute("UPDATE INVENTORY SET %s = ? WHERE %s = ?" % (which_button, which_button), (new_value, current_value, ))
@@ -439,22 +425,22 @@ def no_sale(event=None):
 	invisible_entry.delete(0, tk.END)
 	printer.cashdraw(pin=2)
 	printer.textln(("-" * 22) + " NS " + ("-" * 22))
-	printer.textln(date + (" " * 33) + datetime.now().strftime("%H:%M"))
+	printer.textln(datetime.today().strftime('%Y-%m-%d') + (" " * 33) + datetime.now().strftime("%H:%M"))
 	printer.ln(2)
 	#printer.cut()
 
 	
 
 def go_back():
-	global index
+	global state_manager
 	# Logic for back button during adding an item
 	# If you're not on the first page, go back one
-	# If index is 0, it should stay as such
-	if index!=0:
-		index-=1
-	# Acording to what index you've gone back to, update
+	# If state_manager.add_item_index is 0, it should stay as such
+	if state_manager.add_item_index!=0:
+		state_manager.add_item_index-=1
+	# Acording to what state_manager.add_item_index you've gone back to, update
 	# label so it is asking for correct information
-	match index:
+	match state_manager.add_item_index:
 		case 0:
 			add_item_label.config(text="Please enter item's barcode:")
 		case 1:
@@ -482,135 +468,131 @@ def reenter_button_pressed(which_button):
 	reenter_frame.grid_forget()
 	add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
 	add_item_button.grid(column=1, row=2, sticky='ew')
-	global index
-	global reentering
-	reentering = True
+	global state_manager
+	state_manager.reentering = True
 	# Add item logic looks for reentering flag
 	# Set flag, and reenter the logic, setting labels
 	# and any necessary buttons accordingly
 	match which_button:
 		case "barcode":
-			index=0
+			state_manager.add_item_index=0
 			add_item_label.config(text="Please enter item's barcode:")
 		case "name":
-			index=1
+			state_manager.add_item_index=1
 			add_item_label.config(text="Please enter the item's name:")
 		case "price":
-			index=2
+			state_manager.add_item_index=2
 			add_item_label.config(text="Please enter the item's price:")
 		case "taxable":
-			index=3
+			state_manager.add_item_index=3
 			add_item_label.config(text="Is the item taxable?")
 			add_item_entry.grid_forget()
 			add_item_button.grid_forget()
 			add_item_yes_no.grid(column=1, row=2, sticky='nsew')
 			on_add_item_enter()
 		case "category":
-			index=4
+			state_manager.add_item_index=4
 			add_item_listbox_frame.tkraise()
 		case "quantity":
-			index=5
+			state_manager.add_item_index=5
 			add_item_label.config(text="Please enter the Quantity:")
 
 def on_add_item_enter(event=None):
 	item_info_entered = add_item_entry.get().strip()
 	add_item_entry.delete(0, tk.END)
-	global index
-	global add_item_object
-	global reentering
-	global coming_from_register
-	global updating_existing_item
+	global state_manager
 	
-	match index:
+	
+	match state_manager.add_item_index:
 		case 0:
-			add_item_object.c.execute("SELECT * FROM INVENTORY WHERE BARCODE=?", (item_info_entered,))
-			results = add_item_object.c.fetchall()
+			state_manager.add_item_object.c.execute("SELECT * FROM INVENTORY WHERE BARCODE=?", (item_info_entered,))
+			results = state_manager.add_item_object.c.fetchall()
 			if results:
 				found_item_info = results[0]
-				add_item_object.name = found_item_info[1]
-				add_item_object.price = found_item_info[2]
-				add_item_object.taxable = found_item_info[3]
-				add_item_object.barcode = found_item_info[4]
-				add_item_object.old_barcode = found_item_info[4]
-				add_item_object.quantity = found_item_info[5]
-				add_item_object.category = found_item_info[6]
-				index = 5
-				updating_existing_item = True
+				state_manager.add_item_object.name = found_item_info[1]
+				state_manager.add_item_object.price = found_item_info[2]
+				state_manager.add_item_object.taxable = found_item_info[3]
+				state_manager.add_item_object.barcode = found_item_info[4]
+				state_manager.add_item_object.old_barcode = found_item_info[4]
+				state_manager.add_item_object.quantity = found_item_info[5]
+				state_manager.add_item_object.category = found_item_info[6]
+				state_manager.add_item_index = 5
+				state_manager.updating_existing_item = True
 				on_add_item_enter()
 			elif not results:
-				add_item_object.barcode = item_info_entered
+				state_manager.add_item_object.barcode = item_info_entered
 				if not reentering:
 					add_item_label.config(text="Please enter item's name:")
-					index+=1
+					state_manager.add_item_index+=1
 				elif reentering:
-					index=5
+					state_manager.add_item_index=5
 					on_add_item_enter()
 		case 1:
-			add_item_object.name = item_info_entered
+			state_manager.add_item_object.name = item_info_entered
 			if not reentering:
 				add_item_label.config(text="Please enter item's price:")
-				index+=1
+				state_manager.add_item_index+=1
 			elif reentering:
-				index=5
+				state_manager.add_item_index=5
 				on_add_item_enter()
 		case 2:
-			add_item_object.price = item_info_entered
+			state_manager.add_item_object.price = item_info_entered
 			if not reentering:
 				add_item_label.config(text="Is the item Taxable?")
 				add_item_yes_no.grid(column=1, row=2, sticky='nsew')
 				add_item_button.grid_forget()
 				add_item_entry.grid_forget()
-				index+=1
+				state_manager.add_item_index+=1
 				on_add_item_enter()
 			elif reentering:
-				index=5
+				state_manager.add_item_index=5
 				on_add_item_enter()
 		case 3:
-			root.wait_variable(yes_no_var)
-			yes_no_answer = yes_no_var.get()
+			root.wait_variable(state_manager.yes_no_var)
+			yes_no_answer = state_manager.yes_no_var.get()
 			if yes_no_answer == "yes":
 				add_item_entry.delete(0, tk.END)
 				add_item_entry.insert(tk.END, 1)
 			else:
 				add_item_entry.delete(0, tk.END)
 				add_item_entry.insert(tk.END, 0)
-			add_item_object.taxable = add_item_entry.get()
-			if not reentering:
+			state_manager.add_item_object.taxable = add_item_entry.get()
+			if not state_manager.reentering:
 				add_item_yes_no.grid_forget()
 				add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
 				add_item_button.grid(column=1, row=2, sticky='ew')
 				add_item_label.config(text="Please enter the category:")
 				add_item_listbox_frame.tkraise()
-				index+=1
-			elif reentering:
-				index=5
+				state_manager.add_item_index+=1
+			elif state_manager.reentering:
+				state_manager.add_item_index=5
 				on_add_item_enter()
 		case 4:
 			add_item_frame.tkraise()
 			add_item_entry.focus_force()
-			add_item_object.category = item_info_entered
+			state_manager.add_item_object.category = item_info_entered
 			if not reentering:
 				add_item_label.config(text = "Please enter the Quantity:")
-				index+=1
+				state_manager.add_item_index+=1
 			elif reentering:
-				index=5
+				state_manager.add_item_index=5
 				on_add_item_enter()
 		case 5:
 			add_item_label_text = add_item_label.cget("text")
-			if not reentering and not updating_existing_item:
-				add_item_object.quantity = item_info_entered
-			elif not reentering & updating_existing_item:
+			if not state_manager.reentering and not state_manager.updating_existing_item:
+				state_manager.add_item_object.quantity = item_info_entered
+			elif not state_manager.reentering & state_manager.updating_existing_item:
 				pass
-			elif reentering and add_item_label_text == "Please enter the Quantity:":
-				add_item_object.quantity = item_info_entered
-				reentering = False
+			elif state_manager.reentering and add_item_label_text == "Please enter the Quantity:":
+				state_manager.add_item_object.quantity = item_info_entered
+				state_manager.reentering = False
 			else:
-				reentering = False
-			index+=1
+				state_manager.reentering = False
+			state_manager.add_item_index+=1
 			add_item_label.config(text="Confirm item info is correct: ")
-			confirm_string = ("Name: " + add_item_object.name + "\nPrice: " + str(add_item_object.price) + " | \tBarcode: " + str(add_item_object.barcode) + "\nQty: " + str(add_item_object.quantity) + " | Category: " + add_item_object.category + "\tTax?: ")
+			confirm_string = ("Name: " + state_manager.add_item_object.name + "\nPrice: " + str(state_manager.add_item_object.price) + " | \tBarcode: " + str(state_manager.add_item_object.barcode) + "\nQty: " + str(state_manager.add_item_object.quantity) + " | Category: " + state_manager.add_item_object.category + "\tTax?: ")
 			
-			if add_item_object.taxable == "1":
+			if state_manager.add_item_object.taxable == "1":
 				confirm_string += "Y"
 			else: 
 				confirm_string += "N"
@@ -622,32 +604,32 @@ def on_add_item_enter(event=None):
 			back_button.grid_forget()
 			item_info_confirmation.delete("1.0", "end")
 			item_info_confirmation.insert(tk.END, confirm_string)
-			root.wait_variable(yes_no_var)
-			yes_no_answer = yes_no_var.get()
-			if yes_no_answer == "yes" and coming_from_register:
+			root.wait_variable(state_manager.yes_no_var)
+			yes_no_answer = state_manager.yes_no_var.get()
+			if yes_no_answer == "yes" and state_manager.coming_from_register:
 				try:
-					add_item_object.commit_item()
+					state_manager.add_item_object.commit_item()
 				except sqlite3.Error as e:
 					print("Error entering item when coming from register")
 				finally:
-					index=0
+					state_manager.add_item_index=0
 					add_item_yes_no.grid_forget()
 					item_info_confirmation.grid_forget()
 					add_item_entry.grid(row=1, column=1, sticky='ew', pady=15)
 					enter_register_frame()
 					return
-			elif yes_no_answer == "yes" and updating_existing_item:
-				updating_existing_item = False
-				add_item_object.update_item(add_item_object.old_barcode)
-				index = 0
+			elif yes_no_answer == "yes" and state_manager.updating_existing_item:
+				state_manager.updating_existing_item = False
+				state_manager.add_item_object.update_item(state_manager.add_item_object.old_barcode)
+				state_manager.add_item_index = 0
 				add_item_yes_no.grid_forget()
 				item_info_confirmation.grid_forget()
 				add_item_entry.grid(row=1, column=1, sticky='ew', pady=15)
 				enter_add_item_frame()
 				return
-			elif yes_no_answer == "yes" and not coming_from_register:
+			elif yes_no_answer == "yes" and not state_manager.coming_from_register:
 				try:
-					add_item_object.commit_item()
+					state_manager.add_item_object.commit_item()
 					item_info_confirmation.delete("1.0", "end")
 					item_info_confirmation.grid_forget()
 					add_item_label.config(text="Commit Successful!\n Enter Another Item?", font=("Arial", 50))
@@ -660,16 +642,14 @@ def on_add_item_enter(event=None):
 				reenter_frame.grid(column = 1, row=1, sticky='nsew')
 				add_item_yes_no.grid_forget()
 				item_info_confirmation.grid_forget()
-			root.wait_variable(yes_no_var)
-			yes_no_answer = yes_no_var.get()
+			root.wait_variable(state_manager.yes_no_var)
+			yes_no_answer = state_manager.yes_no_var.get()
 			if yes_no_answer == "yes":
-				index = 0
-				del add_item_object
+				state_manager.add_item_index = 0
 				enter_add_item_frame()
 				
 			elif yes_no_answer == "no":
-				index = 0
-				#del add_item_object
+				state_manager.add_item_index = 0
 				admin_frame.tkraise()
 				add_item_yes_no.grid_forget()
 				add_item_entry.grid(row=1, column=1, sticky='ew', pady=15)
@@ -689,12 +669,12 @@ def run_x(event=None):
 	x_cursor = x_conn.cursor()
 	printer.textln(("-" * 42))
 	printer.textln(("-" * 14) + " Daily Report " + ("-" * 14))
-	printer.textln(("-" * 12) + " " + date + " " + datetime.now().strftime("%H:%M") + " " + ("-" * 12))
+	printer.textln(("-" * 12) + " " + datetime.today().strftime('%Y-%m-%d') + " " + datetime.now().strftime("%H:%M") + " " + ("-" * 12))
 	printer.textln("-" * 42)
 	printer.ln(2)
 
 	for category in ("Cash Used", "CC Used", "Non-Tax", "Pre-Tax", "Tax"):
-		x_cursor.execute('''SELECT SUM("%s") FROM SALES WHERE Date = ?''' % (category), (date, ))
+		x_cursor.execute('''SELECT SUM("%s") FROM SALES WHERE Date = ?''' % (category), (datetime.today().strftime('%Y-%m-%d'), ))
 		results = x_cursor.fetchall()
 		sum_in_question = results[0]
 		rounded = f"{sum_in_question[0]:.2f}"
@@ -708,61 +688,59 @@ def run_x(event=None):
 	
 
 def process_return(event=None):
-	global trans
-	del trans
+	global state_manager
+	state_manager.new_transaction()
+	state_manager.trans.is_returning = True
 	register_functions_buttons_frame.grid_forget()
-	return_object = Transaction()
-	return_object.is_returning = True
-	void_label.config(text="Please scan the item(s) to return\nWhen done, press continue")
-	void_entry.grid(row=1, column=1, sticky='nsew')
-	void_entry.focus_force()
+	additional_register_functions_label.config(text="Please scan the item(s) to return\nWhen done, press continue")
+	additional_register_functions_entry.grid(row=1, column=1, sticky='nsew')
+	additional_register_functions_entry.focus_force()
 	continue_button.grid(row=2, column=1, sticky='nsew')
 	while True:
 		while True:
-			root.wait_variable(reference_number_var)
-			entry = reference_number_var.get()
+			root.wait_variable(state_manager.return_var)
+			entry = state_manager.return_var.get()
 			if entry == "continue":
 				break
 			else:
-				return_object.c.execute('''SELECT * FROM INVENTORY WHERE BARCODE=?''', (entry,))
-				results = return_object.c.fetchall()
+				state_manager.trans.c.execute('''SELECT * FROM INVENTORY WHERE BARCODE=?''', (entry,))
+				results = state_manager.trans.c.fetchall()
 				row = results[0]
-				return_object.sell_item(row[4])
-				void_entry.delete(0, tk.END)
-		void_label.config(text="Return the following item(s)?")
-		void_transaction_text.grid(row=1, column=1, sticky='nsew')
-		void_yes_no.grid(row=2, column=1, sticky='nsew')
-		void_transaction_text.delete("1.0", "end")
-		for i in range(len(return_object.quantity_sold_list)):
-			void_transaction_text.insert("end", str(return_object.quantity_sold_list[i][0]) + " | QTY: " + str(return_object.quantity_sold_list[i][1]) + "\n")
-		void_yes_no.grid(row=2, column=1, sticky='nsew')
+				state_manager.trans.sell_item(row[4])
+				additional_register_functions_entry.delete(0, tk.END)
+		additional_register_functions_label.config(text="Return the following item(s)?")
+		additional_register_functions_text.grid(row=1, column=1, sticky='nsew')
+		additional_register_functions_yes_no.grid(row=2, column=1, sticky='nsew')
+		additional_register_functions_text.delete("1.0", "end")
+		for i in range(len(state_manager.trans.quantity_sold_list)):
+			additional_register_functions_text.insert("end", str(state_manager.trans.quantity_sold_list[i][0]) + " | QTY: " + str(state_manager.trans.quantity_sold_list[i][1]) + "\n")
+		additional_register_functions_yes_no.grid(row=2, column=1, sticky='nsew')
 		continue_button.grid_forget()
-		root.wait_variable(yes_no_var)
-		button_pressed = yes_no_var.get()
+		root.wait_variable(state_manager.yes_no_var)
+		button_pressed = state_manager.yes_no_var.get()
 		if button_pressed == "yes":
-			for i in range(len(return_object.quantity_sold_list)):
-				return_object.c.execute("UPDATE INVENTORY SET Quantity = Quantity + ? WHERE Barcode = ?", (int(return_object.quantity_sold_list[i][1]), return_object.quantity_sold_list[i][0]))
+			for i in range(len(state_manager.trans.quantity_sold_list)):
+				state_manager.trans.c.execute("UPDATE INVENTORY SET Quantity = Quantity + ? WHERE Barcode = ?", (int(state_manager.trans.quantity_sold_list[i][1]), state_manager.trans.quantity_sold_list[i][0]))
 			break
 		elif button_pressed == "no":
-			void_label.config(text="Please scan the item(s) to return\nWhen done, press continue")
-			void_yes_no.grid_forget()
+			additional_register_functions_label.config(text="Please scan the item(s) to return\nWhen done, press continue")
+			additional_register_functions_yes_no.grid_forget()
 			continue_button.grid(row=2, column=1, sticky='nsew')
-			void_transaction_text.grid_forget()
-			void_transaction_text.delete("1.0", "end")
-			void_entry.grid(row=1, column=1, sticky='nsew')
-			del return_object
-			return_object = Transaction()
-	return_object.conn_inventory.commit()
-	return_object.nontax *= -1
-	return_object.pretax *= -1
-	return_object.tax *= -1
-	return_object.total *= -1
-	return_object.complete_transaction()
-	void_yes_no.grid_forget()
+			additional_register_functions_text.grid_forget()
+			additional_register_functions_text.delete("1.0", "end")
+			additional_register_functions_entry.grid(row=1, column=1, sticky='nsew')
+			state_manager.new_transaction()
+	state_manager.trans.conn_inventory.commit()
+	state_manager.trans.nontax *= -1
+	state_manager.trans.pretax *= -1
+	state_manager.trans.tax *= -1
+	state_manager.trans.total *= -1
+	state_manager.trans.complete_transaction()
+	additional_register_functions_yes_no.grid_forget()
 	register_functions_buttons_frame.grid(row=1, column=1, sticky='nsew')
-	void_label.config(text="Select an Option")
-	void_transaction_text.grid_forget()
-	void_entry.grid_forget()
+	additional_register_functions_label.config(text="Select an Option")
+	additional_register_functions_text.grid_forget()
+	additional_register_functions_entry.grid_forget()
 	return_conn = sqlite3.connect("RegisterDatabase")
 	return_cursor = return_conn.cursor()
 	return_cursor.execute('''SELECT * FROM SALES WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM SALES)''')
@@ -773,6 +751,10 @@ def process_return(event=None):
 	print_receipt("return", row[0], item_results, row)
 	enter_register_frame()
 
+
+def return_invisible_entry_focus(event):
+    invisible_entry.focus_set()
+    return "break"
 
 	
 
@@ -789,10 +771,12 @@ admin_mode_button = tk.Button(mode_select_frame, text="Enter Admin Mode", font=(
 # Widgets for Register Mode frame
 # ===============================
 
+
 #Entry box where numbers user is typing are being displayed 
 usr_entry = tk.Entry(register_frame, font=("Arial", 91), bg="black", fg="#68FF00", justify="right", width=15)
 usr_entry.insert(tk.END, "$0.00")
 usr_entry.grid(column=1, row=0, sticky='ew', padx=2)
+usr_entry.bind("<FocusIn>", return_invisible_entry_focus)
 
 # Invisible entry where user input actually occurs. Allows user entry to be untampered so 
 # same entry box can be used for barcodes and numberic values alike
@@ -819,6 +803,7 @@ new_frame.grid(column=0, row=0, sticky='nsew')
 total_entry = tk.Entry(new_frame, font=("Arial", 35), width=9)
 total_entry.insert(tk.END, "$0.00")
 total_entry.grid(column = 0, row = 0, sticky='nw')
+total_entry.bind("<FocusIn>", return_invisible_entry_focus)
 
 register_back_button = tk.Button(new_frame, text="Back", font=("Arial", 35), height=5, command = lambda: register_go_back())
 register_back_button.grid(column = 0, row = 1, sticky='nw')
@@ -826,6 +811,7 @@ register_back_button.grid(column = 0, row = 1, sticky='nw')
 #Log of what is being sold 
 sale_items = tk.Text(register_widgets_frame, width=29, font=("Arial", 35), padx=10)
 sale_items.grid(column = 1, row = 0, sticky='e')
+sale_items.bind("<FocusIn>", return_invisible_entry_focus)
 
 register_add_item_prompt_label=tk.Label(register_add_item_prompt_frame, text="Item not found\nAdd it?", font=("Arial", 50))
 register_add_item_prompt_label.grid(row=0, column=1, sticky='ew')
@@ -835,10 +821,10 @@ register_add_item_yes_no_frame.grid_columnconfigure(0, weight=1)
 register_add_item_yes_no_frame.grid_columnconfigure(1, weight=1)
 register_add_item_yes_no_frame.grid(row=1, column=1, sticky='nsew')
 
-register_add_item_yes_button=tk.Button(register_add_item_yes_no_frame, text="Yes", font=("Arial", 90), command = lambda: yes_no_var.set("yes"))
+register_add_item_yes_button=tk.Button(register_add_item_yes_no_frame, text="Yes", font=("Arial", 90), command = lambda: state_manager.yes_no_var.set("yes"))
 register_add_item_yes_button.grid(row=0, column=0, sticky='nsew')
 
-register_add_item_no_button=tk.Button(register_add_item_yes_no_frame, text="No", font=("Arial", 90), command = lambda: yes_no_var.set("no"))
+register_add_item_no_button=tk.Button(register_add_item_yes_no_frame, text="No", font=("Arial", 90), command = lambda: state_manager.yes_no_var.set("no"))
 register_add_item_no_button.grid(row=0, column=1, sticky='nsew')
 
 # ============================
@@ -870,9 +856,9 @@ add_item_entry.bind("<Return>", on_add_item_enter)
 
 item_info_confirmation = tk.Text(add_item_frame, font=("Arial", 40), width=6, height=3)
 
-yes_button = tk.Button(add_item_yes_no, text="Yes", font=("Arial", 150), command= lambda: yes_no_var.set("yes"))
+yes_button = tk.Button(add_item_yes_no, text="Yes", font=("Arial", 150), command= lambda: state_manager.yes_no_var.set("yes"))
 
-no_button = tk.Button(add_item_yes_no, text="No", font=("Arial", 150), command=lambda: yes_no_var.set("no"))
+no_button = tk.Button(add_item_yes_no, text="No", font=("Arial", 150), command=lambda: state_manager.yes_no_var.set("no"))
 
 yes_button.grid(column=0, row=0, sticky='nsew', padx=10)
 no_button.grid(column=1, row=0, sticky='nsew', padx=10)
@@ -937,9 +923,9 @@ update_inventory_entry.bind("<Return>", get_update_barcode)
 
 update_buttons_frame.grid(column = 1, row=1, sticky='nsew')
 
-update_yes_button = tk.Button(update_inventory_yes_no, text="Yes", font=("Arial", 150), command= lambda: yes_no_var.set("yes"))
+update_yes_button = tk.Button(update_inventory_yes_no, text="Yes", font=("Arial", 150), command= lambda: state_manager.yes_no_var.set("yes"))
 
-update_no_button = tk.Button(update_inventory_yes_no, text="No", font=("Arial", 150), command=lambda: yes_no_var.set("no"))
+update_no_button = tk.Button(update_inventory_yes_no, text="No", font=("Arial", 150), command=lambda: state_manager.yes_no_var.set("no"))
 
 
 update_yes_button.grid(column=0, row=0, sticky='nsew', padx=10)
@@ -963,14 +949,14 @@ update_quantity_button.grid(row=2, column=0, sticky='nsew')
 update_category_button = tk.Button(update_buttons_frame, text="Category", font=("Arial", 75), command = lambda: update_inventory("Category", None))
 update_category_button.grid(row=2, column=1, sticky='nsew')
 
-# ===================================
-# Widgets for Void Transaction screen 
-# ===================================
+# ==========================================
+# Widgets for Additional Register Functions 
+# ==========================================
 
-void_label = tk.Label(void_transaction_frame, text="Select an Option", font=("Arial", 50))
-void_label.grid(column = 1, row = 0, sticky='ew')
+additional_register_functions_label = tk.Label(additional_register_functions_frame, text="Select an Option", font=("Arial", 50))
+additional_register_functions_label.grid(column = 1, row = 0, sticky='ew')
 
-register_functions_buttons_frame=tk.Frame(void_transaction_frame)
+register_functions_buttons_frame=tk.Frame(additional_register_functions_frame)
 register_functions_buttons_frame.grid_columnconfigure(0, weight=1)
 register_functions_buttons_frame.grid_columnconfigure(1, weight=1)
 register_functions_buttons_frame.grid(row=1, column=1, sticky='nsew')
@@ -990,20 +976,20 @@ make_return_button.grid(row=1, column=1, sticky='nsew')
 run_x_button = tk.Button(register_functions_buttons_frame, text="Run X", font=("Arial", 50), command = lambda:run_x())
 run_x_button.grid(row=2, column=0, sticky='nsew')
 
-continue_button = tk.Button(void_transaction_frame, text="Continue", font=("Arial", 50), command= lambda: reference_number_var.set("continue"))
+continue_button = tk.Button(additional_register_functions_frame, text="Continue", font=("Arial", 50), command= lambda: state_manager.reference_number_var.set("continue"))
 
-void_entry = tk.Entry(void_transaction_frame, font=("Arial", 50), justify="right")
-void_entry.bind("<Return>", on_void_entry)
+additional_register_functions_entry = tk.Entry(additional_register_functions_frame, font=("Arial", 50), justify="right")
+additional_register_functions_entry.bind("<Return>", on_additional_register_functions_entry)
 
-void_transaction_text = tk.Text(void_transaction_frame, width=30, height=3, font=("Arial", 40))
-
-
-void_yes_button = tk.Button(void_yes_no, text="Yes", font=("Arial", 150), command= lambda: yes_no_var.set("yes"))
-void_no_button = tk.Button(void_yes_no, text="No", font=("Arial", 150), command=lambda: yes_no_var.set("no"))
+additional_register_functions_text = tk.Text(additional_register_functions_frame, width=30, height=3, font=("Arial", 40))
 
 
-void_yes_button.grid(column=0, row=0, sticky='nsew', padx=10)
-void_no_button.grid(column=1, row=0, sticky='nsew', padx=10)
+additional_register_functions_yes_button = tk.Button(additional_register_functions_yes_no, text="Yes", font=("Arial", 150), command= lambda: state_manager.yes_no_var.set("yes"))
+additional_register_functions_no_button = tk.Button(additional_register_functions_yes_no, text="No", font=("Arial", 150), command=lambda: state_manager.yes_no_var.set("no"))
+
+
+additional_register_functions_yes_button.grid(column=0, row=0, sticky='nsew', padx=10)
+additional_register_functions_yes_button.grid(column=1, row=0, sticky='nsew', padx=10)
 
 mode_select_frame.tkraise()
 root.mainloop()
