@@ -285,7 +285,7 @@ def on_cash_cc(event, payment_method):
 		total_entry.delete(0, tk.END)
 		total_entry.insert(tk.END, display_string)
 		complete_sale()
-		return
+		return "break"
 	elif entered_amount != "":			# Otherwise, we need to format the user's input
 		amount_given = 0
 		if length==1:					# Then, update amount of cash or cc used in sale
@@ -322,6 +322,7 @@ def on_cash_cc(event, payment_method):
 			total_entry.delete(0, tk.END)
 			total_entry.insert(tk.END, display_string)
 			complete_sale()
+	return "break"
 
 def cancel_trans(event=None):
 	global state_manager
@@ -363,7 +364,6 @@ def number_pressed(event=None, input_widget=None, output_widget=None):
 		output_widget = total_entry
 
 	entry = input_widget.get().strip()
-	print(f'Entry: {entry}')
 	length = len(entry)
 	if length == 0:
 		display_string = "$0.00"
@@ -446,11 +446,18 @@ def update_inventory(which_button, entered_barcode):
 	admin_frame.tkraise()
 
 def no_sale(event=None):
+	global state_manager
 	invisible_entry.delete(0, tk.END)
-	printer.cashdraw(pin=2)
-	printer.textln(("-" * 22) + " NS " + ("-" * 22))
-	printer.textln(datetime.today().strftime('%Y-%m-%d') + (" " * 33) + datetime.now().strftime("%H:%M"))
-	printer.ln(2)
+	#printer.cashdraw(pin=2)
+	#printer.textln(("-" * 22) + " NS " + ("-" * 22))
+	#printer.textln(datetime.today().strftime('%Y-%m-%d') + (" " * 33) + datetime.now().strftime("%H:%M"))
+	#printer.ln(2)
+	state_manager.trans.c.execute(
+		"INSERT INTO no_sale (date, times_pressed) VALUES (?, ?) ON CONFLICT (date)" \
+		" DO UPDATE SET times_pressed = times_pressed + 1",
+		  (datetime.today().strftime('%Y-%m-%d'), 1))
+	
+	return "break"
 	#printer.cut()
 
                                                                                	
@@ -469,14 +476,18 @@ def go_back():
 			add_item_label.config(text="Please enter item's barcode:")
 		case 1:
 			add_item_label.config(text="Please enter item's name:")
+			add_item_entry.unbind("<FocusIn>", state_manager.binding_manager)
 			add_item_entry.delete(0, tk.END)
+			add_item_entry.focus_set()
 		case 2:
+			state_manager.binding_manager = add_item_entry.bind("<FocusIn>", return_add_item_invisible_entry_focus)
 			add_item_label.config(text="Please enter item's price:")
 			add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
 			add_item_button.grid(column=1, row=2, sticky='ew')
 			add_item_yes_no.grid_forget()
 			add_item_entry.insert(tk.END, "$0.00")
 		case 3:
+			state_manager.yes_no_var.set("break")
 			add_item_frame.tkraise()
 			add_item_entry.grid_forget()
 			add_item_button.grid_forget()
@@ -545,7 +556,7 @@ def on_add_item_enter(event=None, entered_barcode=None):
 	"""Handle user pressing enter or next in the context of adding and item.
 	Process is handled in a series of steps."""
 	global state_manager
-
+	print(state_manager.add_item_index)
 	if entered_barcode is not None:
 		item_info_entered = entered_barcode
 	else: 
@@ -596,6 +607,8 @@ def on_add_item_enter(event=None, entered_barcode=None):
 
 			add_item_entry.delete(0, tk.END)
 			add_item_entry.insert(tk.END, "ERROR")
+
+	print(f"New index: {state_manager.add_item_index}")
 	
 def on_add_item_scrollbar_next(event=None):
 	selected_index = add_item_listbox.curselection()

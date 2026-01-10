@@ -79,7 +79,9 @@ def enter_item_taxable(
 
     root.wait_variable(state_manager.yes_no_var)
     yes_no_answer = state_manager.yes_no_var.get()
-    if yes_no_answer == "yes":
+    if yes_no_answer == "break":
+        return
+    elif yes_no_answer == "yes":
         state_manager.add_item_object.taxable = 1
     else:
         state_manager.add_item_object.taxable = 0
