@@ -1,4 +1,6 @@
 import tkinter as tk
+import inventory_functions as invf
+import widget_functions as wf
 from makeTransaction import *
 from enteritem import *
 from stateManager import *
@@ -7,13 +9,13 @@ from escpos.printer import Usb
 import pygame
 
 
-printer = Usb(0x0fe6, 0x811e, 0) #File("/dev/usb/lp0")
+#printer = Usb(0x0fe6, 0x811e, 0) #File("/dev/usb/lp0")
 pygame.mixer.init()
 #Declaration of root window and all neccessary frames
 root = tk.Tk()
 root.title("TBC REGISTER")
 root.geometry("1024x600")
-root.tk.call('tk', 'scaling', 50)
+root.tk.call('tk', 'scaling', 1)
 state_manager = StateManager(root)
 
 mode_select_frame = tk.Frame(root)
@@ -36,7 +38,10 @@ root.grid_rowconfigure(0, weight=1)
 
 # Loop through frames, fit them to screen, and configure them so that widgets in column 1 are centered
 # Widgets in column 1 will determine the width of the rest of the widgets
-for frame in (mode_select_frame, register_frame, admin_frame, add_item_frame, update_inventory_frame, additional_register_functions_frame, add_item_listbox_frame, register_add_item_prompt_frame):
+for frame in (mode_select_frame, register_frame, admin_frame, 
+			  add_item_frame, update_inventory_frame, 
+			  additional_register_functions_frame, 
+			  add_item_listbox_frame, register_add_item_prompt_frame):
 	frame.grid(row=0, column=0, sticky='nsew')
 	frame.grid_columnconfigure(0, weight=1)
 	frame.grid_columnconfigure(1, weight=0)
@@ -52,14 +57,14 @@ def enter_register_frame():
 	global state_manager
 	state_manager.new_transaction()
 	register_frame.tkraise()
-	invisible_entry.focus_force()
 	invisible_entry.delete(0, tk.END)
 	total_entry.delete(0, tk.END)
 	total_entry.insert(tk.END, "$0.00")
+	invisible_entry.focus_force()
 	
 
 	
-def enter_add_item_frame():
+def enter_add_item_frame(entered_barcode=None):
 	global state_manager
 	state_manager.new_add_item_object()
 	state_manager.reentering = False
@@ -73,8 +78,17 @@ def enter_add_item_frame():
 	add_item_yes_no.grid_forget()
 	item_info_confirmation.grid_forget()
 	reenter_frame.grid_forget()
-	add_item_label.config(text="Please enter item's barcode: ")
 	add_item_frame.tkraise()
+
+
+	#add_item_invisible_entry.config(textvariable=state_manager.add_item_var)
+	#state_manager.binding_manager = add_item_entry.bind("<FocusIn>", return_add_item_invisible_entry_focus)
+
+
+	if entered_barcode is not None:
+		on_add_item_enter(None, entered_barcode)
+	else:
+		add_item_label.config(text="Please enter item's barcode: ")
 
 
 def enter_void_frame(event=None):
@@ -88,20 +102,23 @@ def register_go_back(event=None):
 	cancel_trans()
 	mode_select_frame.tkraise()		
 
-def process_sale(event=None):
+def process_sale(event=None, entered_barcode=None):
 	global state_manager
 	total_entry.delete(0, tk.END)
 	total_entry.insert(tk.END, "$0.00")
-	barcode = invisible_entry.get()
-	invisible_entry.delete(0, tk.END)
-	total, item_name, item_price, taxable = state_manager.trans.sell_item(barcode)
+	if entered_barcode is not None:
+		total, item_name, item_price, taxable = state_manager.trans.sell_item(entered_barcode)
+	else:
+		barcode = invisible_entry.get()
+		invisible_entry.delete(0, tk.END)
+		total, item_name, item_price, taxable = state_manager.trans.sell_item(barcode)
 	if total == "item_not_found":
 		register_add_item_prompt_frame.tkraise()
 		root.wait_variable(state_manager.yes_no_var)
 		yes_no_answer = state_manager.yes_no_var.get()
 		if yes_no_answer == "yes":
 			state_manager.coming_from_register = True
-			enter_add_item_frame()
+			enter_add_item_frame(barcode)
 			return
 		elif yes_no_answer == "no":
 			enter_register_frame()
@@ -336,23 +353,30 @@ def complete_sale(event=None):
 	usr_entry.insert(0, "$0.00")
 	state_manager.new_transaction()
 	
-def number_pressed(event=None):
+def number_pressed(event=None, input_widget=None, output_widget=None):
 	pygame.mixer.music.load("short-beep.mp3")
 	pygame.mixer.music.play()
-	entry = invisible_entry.get()
+
+	if input_widget is None:
+		input_widget = invisible_entry
+	if output_widget is None:
+		output_widget = total_entry
+
+	entry = input_widget.get().strip()
+	print(f'Entry: {entry}')
 	length = len(entry)
+	if length == 0:
+		display_string = "$0.00"
 	if length == 1:
 		display_string = "$0.0" + str(entry)
-		total_entry.delete(0, tk.END)
-		total_entry.insert(tk.END, display_string)
 	elif length == 2:
 		display_string = "$0." + str(entry)
-		total_entry.delete(0, tk.END)
-		total_entry.insert(tk.END, display_string)
 	elif length >= 3:
 		display_string = "$" + entry[0:length-2] + "." + entry[length-2:length]
-		total_entry.delete(0, tk.END)
-		total_entry.insert(tk.END, display_string)
+
+	output_widget.delete(0, tk.END)
+	output_widget.insert(tk.END, display_string)
+
 
 def clear(event=None):
 	pygame.mixer.music.load("short-beep.mp3")
@@ -429,15 +453,15 @@ def no_sale(event=None):
 	printer.ln(2)
 	#printer.cut()
 
-	
+                                                                               	
 
 def go_back():
 	global state_manager
 	# Logic for back button during adding an item
 	# If you're not on the first page, go back one
 	# If state_manager.add_item_index is 0, it should stay as such
-	if state_manager.add_item_index!=0:
-		state_manager.add_item_index-=1
+	if state_manager.add_item_index != 0:
+		state_manager.add_item_index -= 1
 	# Acording to what state_manager.add_item_index you've gone back to, update
 	# label so it is asking for correct information
 	match state_manager.add_item_index:
@@ -445,11 +469,13 @@ def go_back():
 			add_item_label.config(text="Please enter item's barcode:")
 		case 1:
 			add_item_label.config(text="Please enter item's name:")
+			add_item_entry.delete(0, tk.END)
 		case 2:
 			add_item_label.config(text="Please enter item's price:")
 			add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
 			add_item_button.grid(column=1, row=2, sticky='ew')
 			add_item_yes_no.grid_forget()
+			add_item_entry.insert(tk.END, "$0.00")
 		case 3:
 			add_item_frame.tkraise()
 			add_item_entry.grid_forget()
@@ -495,164 +521,77 @@ def reenter_button_pressed(which_button):
 			add_item_listbox_frame.tkraise()
 		case "quantity":
 			state_manager.add_item_index=5
+			state_manager.reentering_quantity = True
+			state_manager.reentering = False
 			add_item_label.config(text="Please enter the Quantity:")
 
-def on_add_item_enter(event=None):
-	item_info_entered = add_item_entry.get().strip()
-	add_item_entry.delete(0, tk.END)
+
+def only_numbers(P):
+	if P.isdigit() or P == "":
+		return True
+	else:
+		return False
+	
+def quit_button_handler(event=None):
 	global state_manager
 	
+	if not state_manager.coming_from_register:
+		admin_frame.tkraise()
+	elif state_manager.coming_from_register:
+		register_frame.tkraise()
+
+
+def on_add_item_enter(event=None, entered_barcode=None):
+	"""Handle user pressing enter or next in the context of adding and item.
+	Process is handled in a series of steps."""
+	global state_manager
+
+	if entered_barcode is not None:
+		item_info_entered = entered_barcode
+	else: 
+		item_info_entered = add_item_entry.get().strip()
+		add_item_entry.delete(0, tk.END)
 	
 	match state_manager.add_item_index:
 		case 0:
-			state_manager.add_item_object.c.execute("SELECT * FROM INVENTORY WHERE BARCODE=?", (item_info_entered,))
-			results = state_manager.add_item_object.c.fetchall()
-			if results:
-				found_item_info = results[0]
-				state_manager.add_item_object.name = found_item_info[1]
-				state_manager.add_item_object.price = found_item_info[2]
-				state_manager.add_item_object.taxable = found_item_info[3]
-				state_manager.add_item_object.barcode = found_item_info[4]
-				state_manager.add_item_object.old_barcode = found_item_info[4]
-				state_manager.add_item_object.quantity = found_item_info[5]
-				state_manager.add_item_object.category = found_item_info[6]
-				state_manager.add_item_index = 5
-				state_manager.updating_existing_item = True
+			if invf.check_item_exists(state_manager, item_info_entered, add_item_label):
 				on_add_item_enter()
-			elif not results:
-				state_manager.add_item_object.barcode = item_info_entered
-				if not reentering:
-					add_item_label.config(text="Please enter item's name:")
-					state_manager.add_item_index+=1
-				elif reentering:
-					state_manager.add_item_index=5
-					on_add_item_enter()
 		case 1:
-			state_manager.add_item_object.name = item_info_entered
-			if not reentering:
-				add_item_label.config(text="Please enter item's price:")
-				state_manager.add_item_index+=1
-			elif reentering:
-				state_manager.add_item_index=5
+			if invf.enter_item_name(state_manager, item_info_entered, add_item_label):
 				on_add_item_enter()
+			add_item_entry.insert(tk.END, "$0.00")
+			add_item_invisible_entry.config(validate='key', vcmd=vcmd)
+			state_manager.add_item_var.trace('w', on_add_item_entry_update)
+			add_item_invisible_entry.config(textvariable=state_manager.add_item_var)
+			state_manager.binding_manager = add_item_entry.bind("<FocusIn>", return_add_item_invisible_entry_focus)
+			add_item_invisible_entry.focus_set()
 		case 2:
-			state_manager.add_item_object.price = item_info_entered
-			if not reentering:
-				add_item_label.config(text="Is the item Taxable?")
-				add_item_yes_no.grid(column=1, row=2, sticky='nsew')
-				add_item_button.grid_forget()
-				add_item_entry.grid_forget()
-				state_manager.add_item_index+=1
-				on_add_item_enter()
-			elif reentering:
-				state_manager.add_item_index=5
-				on_add_item_enter()
+			add_item_invisible_entry.delete(0, tk.END)
+			add_item_entry.unbind("<FocusIn>", state_manager.binding_manager)
+			invf.enter_item_price(
+				state_manager, item_info_entered, add_item_label,
+				add_item_yes_no, add_item_button, add_item_entry)
+			on_add_item_enter()
 		case 3:
-			root.wait_variable(state_manager.yes_no_var)
-			yes_no_answer = state_manager.yes_no_var.get()
-			if yes_no_answer == "yes":
-				add_item_entry.delete(0, tk.END)
-				add_item_entry.insert(tk.END, 1)
-			else:
-				add_item_entry.delete(0, tk.END)
-				add_item_entry.insert(tk.END, 0)
-			state_manager.add_item_object.taxable = add_item_entry.get()
-			if not state_manager.reentering:
-				add_item_yes_no.grid_forget()
-				add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
-				add_item_button.grid(column=1, row=2, sticky='ew')
-				add_item_label.config(text="Please enter the category:")
-				add_item_listbox_frame.tkraise()
-				state_manager.add_item_index+=1
-			elif state_manager.reentering:
-				state_manager.add_item_index=5
+			if invf.enter_item_taxable(
+				state_manager, root, add_item_yes_no, 
+				add_item_entry, add_item_button, add_item_label,
+				add_item_listbox_frame):
 				on_add_item_enter()
 		case 4:
-			add_item_frame.tkraise()
-			add_item_entry.focus_force()
-			state_manager.add_item_object.category = item_info_entered
-			if not reentering:
-				add_item_label.config(text = "Please enter the Quantity:")
-				state_manager.add_item_index+=1
-			elif reentering:
-				state_manager.add_item_index=5
+			if invf.enter_item_category(
+				state_manager, add_item_frame, add_item_entry,
+				add_item_label, add_item_listbox):
 				on_add_item_enter()
+			add_item_entry.config(validate='key', vcmd=vcmd)
+			add_item_entry.focus_set()
 		case 5:
-			add_item_label_text = add_item_label.cget("text")
-			if not state_manager.reentering and not state_manager.updating_existing_item:
-				state_manager.add_item_object.quantity = item_info_entered
-			elif not state_manager.reentering & state_manager.updating_existing_item:
-				pass
-			elif state_manager.reentering and add_item_label_text == "Please enter the Quantity:":
-				state_manager.add_item_object.quantity = item_info_entered
-				state_manager.reentering = False
-			else:
-				state_manager.reentering = False
-			state_manager.add_item_index+=1
-			add_item_label.config(text="Confirm item info is correct: ")
-			confirm_string = ("Name: " + state_manager.add_item_object.name + "\nPrice: " + str(state_manager.add_item_object.price) + " | \tBarcode: " + str(state_manager.add_item_object.barcode) + "\nQty: " + str(state_manager.add_item_object.quantity) + " | Category: " + state_manager.add_item_object.category + "\tTax?: ")
-			
-			if state_manager.add_item_object.taxable == "1":
-				confirm_string += "Y"
-			else: 
-				confirm_string += "N"
-				
-			add_item_entry.grid_forget()
-			add_item_button.grid_forget()
-			item_info_confirmation.grid(column=1, row=1, sticky='ew', padx=5)
-			add_item_yes_no.grid(column=1, row=2, sticky='nsew')
-			back_button.grid_forget()
-			item_info_confirmation.delete("1.0", "end")
-			item_info_confirmation.insert(tk.END, confirm_string)
-			root.wait_variable(state_manager.yes_no_var)
-			yes_no_answer = state_manager.yes_no_var.get()
-			if yes_no_answer == "yes" and state_manager.coming_from_register:
-				try:
-					state_manager.add_item_object.commit_item()
-				except sqlite3.Error as e:
-					print("Error entering item when coming from register")
-				finally:
-					state_manager.add_item_index=0
-					add_item_yes_no.grid_forget()
-					item_info_confirmation.grid_forget()
-					add_item_entry.grid(row=1, column=1, sticky='ew', pady=15)
-					enter_register_frame()
-					return
-			elif yes_no_answer == "yes" and state_manager.updating_existing_item:
-				state_manager.updating_existing_item = False
-				state_manager.add_item_object.update_item(state_manager.add_item_object.old_barcode)
-				state_manager.add_item_index = 0
-				add_item_yes_no.grid_forget()
-				item_info_confirmation.grid_forget()
-				add_item_entry.grid(row=1, column=1, sticky='ew', pady=15)
-				enter_add_item_frame()
-				return
-			elif yes_no_answer == "yes" and not state_manager.coming_from_register:
-				try:
-					state_manager.add_item_object.commit_item()
-					item_info_confirmation.delete("1.0", "end")
-					item_info_confirmation.grid_forget()
-					add_item_label.config(text="Commit Successful!\n Enter Another Item?", font=("Arial", 50))
-				except sqlite3.Error as e:
-					add_item_label.config(text="ERROR")
-				finally:
-					pass
-			elif yes_no_answer == "no":
-				add_item_label.config(text="What would you like to change?")
-				reenter_frame.grid(column = 1, row=1, sticky='nsew')
-				add_item_yes_no.grid_forget()
-				item_info_confirmation.grid_forget()
-			root.wait_variable(state_manager.yes_no_var)
-			yes_no_answer = state_manager.yes_no_var.get()
-			if yes_no_answer == "yes":
-				state_manager.add_item_index = 0
-				enter_add_item_frame()
-				
-			elif yes_no_answer == "no":
-				state_manager.add_item_index = 0
-				admin_frame.tkraise()
-				add_item_yes_no.grid_forget()
-				add_item_entry.grid(row=1, column=1, sticky='ew', pady=15)
+			if invf.enter_item_confirmation(
+				state_manager, item_info_entered, add_item_label,
+				add_item_entry, add_item_button, item_info_confirmation,
+				add_item_yes_no, back_button, root, reenter_frame):
+				process_sale(None, state_manager.add_item_object.barcode)
+				register_frame.tkraise()
 		case _:
 
 			add_item_entry.delete(0, tk.END)
@@ -664,6 +603,7 @@ def on_add_item_scrollbar_next(event=None):
 	add_item_entry.delete(0, tk.END)
 	add_item_entry.insert(tk.END, selected_item)
 	on_add_item_enter()
+
 def run_x(event=None):
 	x_conn = sqlite3.connect("RegisterDatabase")
 	x_cursor = x_conn.cursor()
@@ -756,7 +696,15 @@ def return_invisible_entry_focus(event):
     invisible_entry.focus_set()
     return "break"
 
-	
+def return_add_item_invisible_entry_focus(event):
+	add_item_invisible_entry.focus_set()
+	return "break"
+
+def on_add_item_entry_update(*args):
+
+	global state_manager
+
+	number_pressed(None, add_item_invisible_entry, add_item_entry)
 
 # =============================
 # Widgets for Mode select frame
@@ -833,7 +781,7 @@ register_add_item_no_button.grid(row=0, column=1, sticky='nsew')
 new_item_button = tk.Button(admin_frame, text = "Add New Item", font=("Arial", 50), height = 5, command = lambda: enter_add_item_frame()) 
 new_item_button.grid(column = 0, row = 1, sticky='s', padx = 5, pady = 5, ipadx=10, ipady=10)
 
-update_quantity_button = tk.Button(admin_frame, text = "Update\nInventory", font=("Arial", 50), height = 5, command = lambda: run_x())
+update_quantity_button = tk.Button(admin_frame, text = "Update\nInventory", font=("Arial", 50), height = 5, command = lambda: enter_update_inventory_frame())
 update_quantity_button.grid(column=1, row=1, sticky='e', padx=5, pady=5, ipadx=10, ipady=10)
 
 
@@ -849,13 +797,21 @@ add_item_button = tk.Button(add_item_frame, text="Next", font=("Arial", 50), com
 
 back_button = tk.Button(add_item_frame, text="Back", font=("Arial", 50), command=lambda: go_back())
 
-quit_button = tk.Button(add_item_frame, text="Quit", font=("Arial", 50), command = lambda: admin_frame.tkraise())
+quit_button = tk.Button(add_item_frame, text="Quit", font=("Arial", 50), command = lambda: quit_button_handler())
 
 add_item_entry = tk.Entry(add_item_frame, font=("Arial", 50), width=15, justify="right")
 add_item_entry.bind("<Return>", on_add_item_enter)
 
-item_info_confirmation = tk.Text(add_item_frame, font=("Arial", 40), width=6, height=3)
+add_item_invisible_entry = tk.Entry(add_item_frame, font=("Arial", 50), width=15, justify="right")
+add_item_invisible_entry.place(x=-10, y=-10)
+vcmd = (root.register(only_numbers), '%P')
+add_item_invisible_entry.bind("<Return>", on_add_item_enter)
+for key in ("Left", "Right", "Up", "Down"):
+	add_item_invisible_entry.bind(f"<{key}>", wf.disable_arrow_keys)
 
+
+item_info_confirmation = tk.Text(add_item_frame, font=("Arial", 40), width=6, height=3)
+item_info_confirmation.tag_configure("justify_right", justify = "right")
 yes_button = tk.Button(add_item_yes_no, text="Yes", font=("Arial", 150), command= lambda: state_manager.yes_no_var.set("yes"))
 
 no_button = tk.Button(add_item_yes_no, text="No", font=("Arial", 150), command=lambda: state_manager.yes_no_var.set("no"))

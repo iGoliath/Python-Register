@@ -1,0 +1,16 @@
+CREATE TABLE Inventory(item_id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT NOT NULL, Price REAL NOT NULL, Taxable BOOLEAN, Barcode TEXT, Quantity INTEGER, Category TEXT)
+CREATE TABLE sales("Transaction ID" INTEGER PRIMARY KEY, "Non-Tax" REAL,"Pre-Tax" REAL, Tax REAL, Total REAL, "# Items Sold" INTEGER, Date TEXT, Time TEXT, "Cash Used" REAL, "CC Used" REAL, Voided BOOLEAN)
+CREATE TABLE saleitems("Transaction ID" INTEGER, Name TEXT, Price REAL, Tax BOOLEAN, Barcode TEXT, Quantity INTEGER)
+CREATE TABLE no_sale(date TEXT UNIQUE, times_pressed INT)
+INSERT INTO Inventory VALUES(NULL, 'Test', 1.23, 0, 'Test', 100, 'Camping')
+INSERT INTO Inventory VALUES(NULL, 'Test1', 1.23, 1, 'Test1', 100, 'Camping')
+INSERT INTO Inventory VALUES(NULL, 'Test2', 1.23, 0, 'Test2', 100, 'Camping')
+INSERT INTO Inventory VALUES(NULL, 'Test3', 1.23, 1, 'Test3', 100, 'Camping')
+INSERT INTO Inventory VALUES(NULL, 'Test4', 1.23, 0, 'Test4', 100, 'Camping')
+INSERT INTO Inventory VALUES(NULL, 'Test5', 1.23, 1, 'Test5', 100, 'Camping')
+INSERT INTO Inventory VALUES(NULL, 'Test6', 1.23, 0, 'Test6', 100, 'Camping')
+INSERT INTO Inventory VALUES(NULL, 'Test7', 1.23, 1, 'Test7', 100, 'Camping')
+INSERT INTO Inventory VALUES(NULL, 'Test8', 1.23, 0, 'Test8', 100, 'Camping')
+INSERT INTO Inventory VALUES(NULL, 'Test9', 1.23, 1, 'Test9', 100, 'Camping')
+
+
