@@ -6,8 +6,8 @@ def check_item_exists(state_manager: StateManager, barcode: str, add_item_label:
     """This function is the pre-requisite to adding an item. We want to
     make sure that the item does not already exist."""
 
-    state_manager.add_item_object.c.execute("SELECT * FROM INVENTORY WHERE BARCODE=?", (barcode,))
-    results = state_manager.add_item_object.c.fetchall()
+    state_manager.cursor.execute("SELECT * FROM INVENTORY WHERE BARCODE=?", (barcode,))
+    results = state_manager.cursor.fetchall()
     if results: 
         found_item_info = results[0]
         state_manager.add_item_object.name = found_item_info[1]
@@ -57,41 +57,41 @@ def enter_item_price(
     """Set the add item object's price. If we are not re-entering, change
     the necessary widgets to ask user whether the item is taxable."""
 
-    state_manager.add_item_object.price = float(price[1:])
+    state_manager.add_item_object.price = round(float(price[1:]), 2)
+    print(state_manager.add_item_object.price)
     if not state_manager.reentering:
         add_item_label.config(text="Is the item Taxable?")
         add_item_yes_no.grid(column=1, row=2, sticky='nsew')
         add_item_button.grid_forget()
         add_item_entry.grid_forget()
         state_manager.add_item_index += 1
-        return True
     elif state_manager.reentering:
         state_manager.add_item_index = 5
         return True
 
 def enter_item_taxable(
-        state_manager: StateManager, root: tk.Tk,
+        yes_no: str, state_manager: StateManager, root: tk.Tk,
         add_item_yes_no: tk.Frame, add_item_entry: tk.Entry,
         add_item_button: tk.Button, add_item_label: tk.Label,
         add_item_listbox_frame: tk.Frame) -> bool:
     """Waits for the user to click yes/no for whether the item is taxable. 
     Set the add_item_object variable accordingly, and clean up widgets."""
 
-    root.wait_variable(state_manager.yes_no_var)
-    yes_no_answer = state_manager.yes_no_var.get()
-    if yes_no_answer == "break":
-        return
-    elif yes_no_answer == "yes":
-        state_manager.add_item_object.taxable = 1
+    #root.wait_variable(state_manager.yes_no_var)
+    #yes_no_answer = state_manager.yes_no_var.get()
+    if yes_no == "yes":
+        state_manager.add_item_object.taxable = "1"
     else:
-        state_manager.add_item_object.taxable = 0
+        state_manager.add_item_object.taxable = "0"
     if not state_manager.reentering:
+        print(state_manager.yes_no_var)
         add_item_yes_no.grid_forget()
         add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
         add_item_button.grid(column=1, row=2, sticky='ew')
         add_item_label.config(text="Please enter the category:")
         add_item_listbox_frame.tkraise()
         state_manager.add_item_index+=1
+        return False
     elif state_manager.reentering:
         state_manager.add_item_index=5
         return True
@@ -226,15 +226,15 @@ def print_confirmation_info(state_manager: StateManager, item_info_confirmation:
 
     item_info_confirmation.delete("1.0", "end")
     item_info_confirmation.insert(tk.END, "Name: " + state_manager.add_item_object.name)
-    item_info_confirmation.insert(tk.END, "\nPrice : $" + str(state_manager.add_item_object.price))
+    item_info_confirmation.insert(tk.END, "\nPrice : $" + f'{state_manager.add_item_object.price:.2f}')
     if state_manager.add_item_object.taxable == "1":
         item_info_confirmation.insert(tk.END, "Tax?: Yes", "justify_right")
     else:
         item_info_confirmation.insert(tk.END, "Tax? : No", "justify_right")
-        item_info_confirmation.insert(tk.END, "\nCat.: " + state_manager.add_item_object.category)
-        item_info_confirmation.insert(tk.END, "Qty: " + str(state_manager.add_item_object.quantity), "justify_right")
-        item_info_confirmation.insert(tk.END, "\nBarcode: " + state_manager.add_item_object.barcode)
+    item_info_confirmation.insert(tk.END, "\nCat.: " + state_manager.add_item_object.category)
+    item_info_confirmation.insert(tk.END, "Qty: " + str(state_manager.add_item_object.quantity), "justify_right")
+    item_info_confirmation.insert(tk.END, "\nBarcode: " + state_manager.add_item_object.barcode)
     
     
-    
+
     
