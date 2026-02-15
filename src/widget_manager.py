@@ -23,13 +23,15 @@ class WidgetManager:
         self.register_widgets_frame = tk.Frame(self.register_frame)
         self.register_add_item_prompt_frame = tk.Frame(self.root)
         self.mode_select_frame = tk.Frame(self.root)
+        self.browse_transactions_frame = tk.Frame(self.root)
 
         # Loop through frames, fit them to screen, and configure them so that widgets in column 1 are centered
         # Widgets in column 1 will determine the width of the rest of the widgets
         for frame in (self.mode_select_frame, self.register_frame, self.admin_frame, 
 			        self.add_item_frame, self.update_inventory_frame, 
 			        self.additional_register_functions_frame, 
-			        self.add_item_listbox_frame, self.register_add_item_prompt_frame):
+			        self.add_item_listbox_frame, self.register_add_item_prompt_frame,
+                    self.browse_transactions_frame):
             frame.grid(row=0, column=0, sticky='nsew')
             frame.grid_columnconfigure(0, weight=1)
             frame.grid_columnconfigure(1, weight=0)
@@ -59,6 +61,12 @@ class WidgetManager:
             self.mode_select_frame, text="Enter Admin Mode",
             font=("Arial", 50), command=lambda: self.admin_frame.tkraise()).grid(
             column=1, row=2, sticky='ew', pady=10)
+        self.browse_transactions_button = tk.Button(
+            self.mode_select_frame, text="Browse Transactions", 
+            font=("Arial", 50), command = lambda: self.controller.enter_browse_transactions_frame()).grid(
+                column = 1, row = 3, sticky='ew'
+            )
+
 
         # ===============================
         # Widgets for Register Mode frame
@@ -78,14 +86,7 @@ class WidgetManager:
         self.invisible_entry = tk.Entry(self.register_frame)
         self.invisible_entry.place(x=-10, y=0)
         self.invisible_entry.bind("<Return>", controller.process_sale)
-        for key in ("Home", "Up", "Prior", "Left","Begin", "Right", "End", "Down", "Next", "Insert"):
-            self.invisible_entry.bind(f"<KeyRelease-KP_{key}>", controller.number_pressed)
-        self.invisible_entry.bind("<KeyRelease-BackSpace>", controller.clear)
-        self.invisible_entry.bind("<KeyRelease-KP_Enter>", lambda event: controller.on_cash())
-        self.invisible_entry.bind("<KeyRelease-KP_Add>", lambda event: controller.on_cc())
-        self.invisible_entry.bind("<KeyRelease-KP_Multiply>", controller.enter_void_frame)
-        self.invisible_entry.bind("<KeyRelease-KP_Divide>", lambda event: controller.enter_register_frame())
-        self.invisible_entry.bind("<KeyRelease-KP_Subtract>", controller.no_sale)
+        self.bind_invisible_entry_keys()
 
         self.register_widgets_frame.grid(column=1, row=1, sticky='nsew')
 
@@ -105,17 +106,12 @@ class WidgetManager:
             height=5, command = lambda: self.mode_select_frame.tkraise())
         self.register_back_button.grid(column = 0, row = 1, sticky='nw')
 
-        #Log of what is being sold 
-        #self.sale_items = tk.Text(self.register_widgets_frame, width=29, font=("Arial", 35), padx=10)
-        #self.sale_items.grid(column = 1, row = 0, sticky='e')
-        #self.sale_items.bind("<FocusIn>", controller.return_invisible_entry_focus)
-
         self.sale_items_listbox = tk.Listbox(
             self.register_widgets_frame, width=29,
             height=8, font=("Arial", 46)
         )
         self.sale_items_listbox.grid(column = 1, row = 0, sticky='nse')
-
+        self.sale_items_listbox.bind("<FocusIn>", controller.return_invisible_entry_focus)
         self.sale_items_scrollbar = tk.Scrollbar(
             self.register_widgets_frame,
             orient=tk.VERTICAL, width=40
@@ -365,26 +361,19 @@ class WidgetManager:
         self.last_button = tk.Button(
             self.register_functions_buttons_frame, text="Void Last\nTransaction",
             font=("Arial", 70), command = lambda: controller.void_transaction("last"))
-        self.last_button.grid(row=0, column=0, sticky='nsew')
-
+        
         self.number_button = tk.Button(
             self.register_functions_buttons_frame, text="Void by\nReference #", 
             font=("Arial", 70), command = lambda: controller.void_transaction("ref"))
-        self.number_button.grid(row=0, column=1, sticky='nsew')
 
         self.print_receipt_button = tk.Button(
             self.register_functions_buttons_frame, text="Print a Receipt", font=("Arial", 70))
-        self.print_receipt_button.grid(row=1, column=0, sticky='nsew')
 
         self.make_return_button = tk.Button(
             self.register_functions_buttons_frame, text="Process Return",
             font=("Arial", 70), command = lambda: controller.process_return())
-        self.make_return_button.grid(row=1, column=1, sticky='nsew')
 
-        self.run_x_button = tk.Button(
-            self.register_functions_buttons_frame, text="Run X",
-            font=("Arial", 50), command = lambda: controller.run_x())
-        self.run_x_button.grid(row=2, column=0, sticky='nsew')
+        self.place_register_functions_buttons()
 
         self.continue_button = tk.Button(
             self.additional_register_functions_frame, text="Continue", font=("Arial", 50),
@@ -394,7 +383,7 @@ class WidgetManager:
             self.additional_register_functions_frame,
             font=("Arial", 50), justify="right")
         self.additional_register_functions_entry.bind(
-            "<Return>", controller.on_additional_register_functions_entry)
+            "<Return>", lambda event: self.controller.state_manager.reference_number_var.set(self.additional_register_functions_entry.get()))
 
         self.additional_register_functions_text = tk.Text(
             self.additional_register_functions_frame, width=30, height=3, font=("Arial", 40))
@@ -411,6 +400,30 @@ class WidgetManager:
         self.additional_register_functions_yes_button.grid(column=0, row=0, sticky='nsew', padx=10)
         self.additional_register_functions_yes_button.grid(column=1, row=0, sticky='nsew', padx=10)
 
+        # ===========================================
+        # Widgets for browsing / voiding transactions
+        # ===========================================
+
+        self.browse_label = tk.Label(
+            self.browse_transactions_frame, text="Label", font=("Arial", 50))
+        self.browse_label.grid(column = 1, row = 0, sticky='ew')
+
+        self.browse_prev_button = tk.Button(
+            self.browse_transactions_frame, text="<<", font=("Arial", 70),
+            command = lambda: self.controller.browse_transactions(-1)
+        )
+        self.browse_prev_button.grid(column = 0, row = 1, sticky='nsw')
+
+        self.browse_next_button = tk.Button(
+            self.browse_transactions_frame, text=">>", font=("Arial", 70),
+            command = lambda: self.controller.browse_transactions(1)
+        )
+        self.browse_next_button.grid(column = 2, row = 1, sticky='nse')
+
+        self.browse_text = tk.Text(
+            self.browse_transactions_frame, width=30, height=3, font=("Arial", 50)
+        )
+        self.browse_text.grid(column = 1, row = 1, sticky='ew')
 
     def enter_add_item_frame(self):
         self.add_item_label.grid(column=1, row=0, sticky='ew')
@@ -424,35 +437,30 @@ class WidgetManager:
         self.add_item_frame.tkraise()
         self.add_item_entry.focus_set()
 
-    def set_return_start(self):
-        self.register_functions_buttons_frame.grid_forget()
-        self.additional_register_functions_label.config(text="Please scan the item(s) to return\nWhen done, press continue")
-        self.additional_register_functions_entry.grid(row=1, column=1, sticky='nsew')
-        self.additional_register_functions_entry.focus_force()
-        self.continue_button.grid(row=2, column=1, sticky='nsew')
+    def bind_invisible_entry_keys(self):
+        for key in ("Home", "Up", "Prior", "Left","Begin", "Right", "End", "Down", "Next", "Insert"):
+            self.invisible_entry.bind(f"<KeyRelease-KP_{key}>", self.controller.number_pressed)
+        self.invisible_entry.bind("<KeyRelease-BackSpace>", self.controller.clear)
+        self.invisible_entry.bind("<KeyRelease-KP_Enter>", lambda event: self.controller.on_cash())
+        self.invisible_entry.bind("<KeyRelease-KP_Add>", lambda event: self.controller.on_cc())
+        self.invisible_entry.bind("<KeyRelease-KP_Multiply>", lambda event: self.additional_register_functions_frame.tkraise())
+        self.invisible_entry.bind("<KeyRelease-KP_Divide>", lambda event: self.controller.enter_register_frame())
+        self.invisible_entry.bind("<KeyRelease-KP_Subtract>", self.controller.no_sale)
 
-    def set_return_confirmation(self):
-        self.additional_register_functions_label.config(text="Return the following item(s)?")
-        self.additional_register_functions_text.grid(row=1, column=1, sticky='nsew')
-        self.additional_register_functions_yes_no.grid(row=2, column=1, sticky='nsew')
-        self.additional_register_functions_text.delete("1.0", "end")
+    def unbind_invisible_entry_keys(self):
+        for key in ("Home", "Up", "Prior", "Left","Begin", "Right", "End", "Down", "Next", "Insert"):
+            self.invisible_entry.unbind(f"<KeyRelease-KP_{key}>")
+        self.invisible_entry.unbind("<KeyRelease-BackSpace>")
+        self.invisible_entry.unbind("<KeyRelease-KP_Enter>")
+        self.invisible_entry.unbind("<KeyRelease-KP_Add>")
+        self.invisible_entry.unbind("<KeyRelease-KP_Multiply>")
+        self.invisible_entry.unbind("<KeyRelease-KP_Divide>")
+        self.invisible_entry.unbind("<KeyRelease-KP_Subtract>")
 
-    def set_return_restart(self):
-        self.additional_register_functions_label.config(text="Please scan the item(s) to return\nWhen done, press continue")
-        self.additional_register_functions_yes_no.grid_forget()
-        self.continue_button.grid(row=2, column=1, sticky='nsew')
-        self.additional_register_functions_text.grid_forget()
-        self.additional_register_functions_text.delete("1.0", "end")
-        self.additional_register_functions_entry.grid(row=1, column=1, sticky='nsew')
-
-
-    def set_return_options(self):
-        self.additional_register_functions_yes_no.grid_forget()
-        self.register_functions_buttons_frame.grid(row=1, column=1, sticky='nsew')
-        self.additional_register_functions_label.config(text="Select an Option")
-        self.additional_register_functions_text.grid_forget()
-        self.additional_register_functions_entry.grid_forget()
-
-
+    def place_register_functions_buttons(self):
+        self.last_button.grid(row=0, column=0, sticky='nsew')
+        self.number_button.grid(row=0, column=1, sticky='nsew')
+        self.print_receipt_button.grid(row=1, column=0, sticky='nsew')
+        self.make_return_button.grid(row=1, column=1, sticky='nsew')
     
 

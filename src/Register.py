@@ -11,13 +11,10 @@ from escpos.printer import Usb
 import pygame
 
 
-
-
-
-
 class Register:
 
 	def __init__(self, root):
+		"""Initialize UI, StateManager, Config, and Printer"""
 		self.ui = WidgetManager(root, self)
 		self.state_manager = StateManager(root)
 		self.config = Config()
@@ -26,26 +23,30 @@ class Register:
 		
 
 	def only_numbers(self, P):
+		"""Check if potential key is a number or space, return false if not"""
 		if P.isdigit() or P == "":
 			return True
 		else:
 			return False
          
 	def enter_register_frame(self, event = None):
+		"""Reset register environment to defaults, and raise the register frame."""
 		pygame.mixer.music.load("short-beep.mp3")
 		pygame.mixer.music.play()
 		self.state_manager.new_transaction()
-		self.ui.register_frame.tkraise()
 		self.ui.invisible_entry.delete(0, tk.END)
 		self.ui.sale_items_listbox.delete(0, tk.END)
 		self.ui.total_entry.delete(0, tk.END)
 		self.ui.total_entry.insert(tk.END, "$0.00")
 		self.ui.usr_entry.delete(0, tk.END)
 		self.ui.usr_entry.insert(tk.END, "$0.00")
+		self.ui.register_frame.tkraise()
 		self.ui.invisible_entry.focus_force()
 		return "break"
 	
 	def enter_add_item_frame(self, entered_barcode=None):
+		"""Reset the necessary add item process parameters to defaults. If a barcode
+		is present, send it to the add item process."""
 		self.state_manager.new_add_item_object()
 		self.state_manager.reentering = False
 		self.state_manager.add_item_index = 0
@@ -56,16 +57,33 @@ class Register:
 		else:
 			self.ui.add_item_label.config(text="Please enter item's barcode: ")
 
-
-	def enter_void_frame(self, event=None):
-		self.ui.additional_register_functions_frame.tkraise()
-
 	def enter_update_inventory_frame(self, event=None):
 		self.ui.update_inventory_frame.tkraise()
 		self.ui.update_inventory_entry.focus_force()	
 
+	def enter_browse_transactions_frame(self):
+		self.state_manager.cursor.execute(
+			'''SELECT * FROM SALES WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM SALES)''')
+		results = list(self.state_manager.cursor.fetchone())
+		self.state_manager.browse_index = results[0]
+		self.print_transaction_info(self.ui.browse_text, results)
+		self.ui.browse_transactions_frame.tkraise()
+
+	def browse_transactions(self, change):
+		self.state_manager.browse_index += change
+		self.state_manager.cursor.execute(
+			'''SELECT * FROM sales WHERE "Transaction ID" = ?''', (self.state_manager.browse_index, )
+		)
+		results = self.state_manager.cursor.fetchone()
+		if not results:
+			self.state_manager.browse_index -= change
+			return
+		self.print_transaction_info(self.ui.browse_text, list(results))
+
+
 	def process_sale(self, event=None, entered_barcode=None):
-		
+		"""Check for existing barcode. If so, add item to running list of sold items
+		and display info to cashier. Else, prompt user to enter the item."""
 		self.ui.total_entry.delete(0, tk.END)
 		self.ui.total_entry.insert(tk.END, "$0.00")
 		if entered_barcode is not None:
@@ -98,93 +116,67 @@ class Register:
 			self.ui.sale_items_listbox.insert(tk.END, sale_info)
 		
 	def void_transaction(self, which_button):
+		"""Set voided field in database to 1 (True) for transaction user specifies."""
 		self.ui.register_functions_buttons_frame.grid_forget()
-		void_conn = sqlite3.connect("RegisterDatabase")
-		void_cursor = void_conn.cursor()
 		if which_button == "last":
 			self.ui.additional_register_functions_text.grid(row=1, column=1, sticky='nsew')
-			void_cursor.execute('''SELECT * FROM SALES WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM SALES)''')
-			results = void_cursor.fetchall()
-			row = results[0]
-			self.print_void_transaction_info(row[0], row[4], row[5], row[8], row[9], row[7])
-			self.ui.additional_register_functions_yes_no.grid(column=1, row=2, sticky='nsew')
-			self.ui.additional_register_functions_label.config(text="Void This Transaction?")
-			root.wait_variable(self.state_manager.yes_no_var)
-			button_pressed = self.state_manager.yes_no_var.get()
-			if button_pressed == "yes":
-				try:
-					void_cursor.execute('''UPDATE SALES SET Voided = ? WHERE "Transaction ID" = ?''', (1, row[0]))
-					void_cursor.execute('''SELECT * FROM SALEITEMS WHERE "Transaction ID" = ?''', (row[0], ))
-					item_results = void_cursor.fetchall()
-					self.print_receipt("void", row[0], item_results, row)
-				except sqlite3.Error as e:
-					self.ui.additional_register_functions_text.delete("1.0", "end")
-					self.ui.additional_register_functions_text.insert("end", "ERROR, please try again")
-				finally:
-					void_conn.commit()
-					void_conn.close()
-					self.ui.additional_register_functions_text.grid_forget()
-					self.ui.additional_register_functions_yes_no.grid_forget()
-					self.enter_register_frame()
-					self.ui.additional_register_functions_label.config(text="Please select an option")
-					self.ui.last_button.grid(row=1, column=1, sticky='nsew')
-					self.ui.number_button.grid(row=2, column=1, sticky='nsew')
-			elif button_pressed == "no":
-				void_conn.close()
-				self.ui.additional_register_functions_text.grid_forget()
-				self.ui.additional_register_functions_yes_no.grid_forget()
-				self.void_transaction("ref")
+			self.state_manager.cursor.execute('''SELECT * FROM SALES WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM SALES)''')
 		elif which_button == "ref":
 			self.ui.additional_register_functions_label.config(text="Please enter the reference number:")
 			self.ui.additional_register_functions_entry.grid(row=1, column=1, sticky='nsew')
 			root.wait_variable(self.state_manager.reference_number_var)
 			reference_number = self.state_manager.reference_number_var.get()
 			self.ui.additional_register_functions_entry.grid_forget()
-			self.ui.additional_register_functions_text.grid(row=1, column=1, sticky='nsew')
-			self.ui.additional_register_functions_yes_no.grid(column=1, row=2, sticky='nsew')
-			void_cursor.execute('''Select * FROM SALES WHERE "Transaction ID" = ?''', (reference_number, ))
-			results = void_cursor.fetchall()
-			row = results[0]
-			self.ui.additional_register_functions_label.config(text="Void this transaction?")
-			self.print_void_transaction_info(row[0], row[4], row[5], row[8], row[9], row[7])
-			root.wait_variable(self.state_manager.yes_no_var)
-			button_pressed = self.state_manager.yes_no_var.get()
-			if button_pressed == "yes":
-				try:
+			self.state_manager.cursor.execute('''Select * FROM SALES WHERE "Transaction ID" = ?''', (reference_number, ))
 
-					void_cursor.execute('''UPDATE SALES SET Voided = ? WHERE "Transaction ID" = ?''', (1, row[0]))
-					void_cursor.execute('''SELECT * FROM SALEITEMS WHERE "Transaction ID" = ?''', (row[0], ))
-					item_results = void_cursor.fetchall()
-					self.print_receipt("void", row[0], item_results, row)
-				except sqlite3.Error as e:
-					self.ui.additional_register_functions_text.delete("1.0", "end")
-					self.ui.additional_register_functions_text.insert("end", "ERROR, please try again")
-				finally:
-					void_conn.commit()
-					void_conn.close()
-					self.ui.additional_register_functions_text.grid_forget()
-					self.ui.additional_register_functions_yes_no.grid_forget()
-					self.enter_register_frame()
-					self.ui.additional_register_functions_label.config(text="Please select an option")
-					self.ui.last_button.grid(row=1, column=1, sticky='nsew')
-					self.ui.number_button.grid(row=2, column=1, sticky='nsew')
+		results = self.state_manager.cursor.fetchall()
+		row = results[0]
+		self.ui.additional_register_functions_text.grid(row=1, column=1, sticky='nsew')
+		self.print_transaction_info(self.ui.additional_register_functions_text, row)
+		self.ui.additional_register_functions_yes_no.grid(column=1, row=2, sticky='nsew')
+		self.ui.additional_register_functions_label.config(text="Void This Transaction?")
+		root.wait_variable(self.state_manager.yes_no_var)
+		button_pressed = self.state_manager.yes_no_var.get()
+		if button_pressed == "yes":
+			try:
+				self.state_manager.cursor.execute('''UPDATE SALES SET Voided = ? WHERE "Transaction ID" = ?''', (1, row[0]))
+				self.state_manager.cursor.execute('''SELECT * FROM SALEITEMS WHERE "Transaction ID" = ?''', (row[0], ))
+				item_results = self.state_manager.cursor.fetchall()
+				#self.print_receipt("void", row[0], item_results, row)
+			except sqlite3.Error as e:
+				self.ui.additional_register_functions_text.delete("1.0", "end")
+				self.ui.additional_register_functions_text.insert("end", "ERROR, please try again")
+			finally:
+				self.state_manager.conn.commit()
+				self.ui.additional_register_functions_text.grid_forget()
+				self.ui.additional_register_functions_yes_no.grid_forget()
+				self.ui.additional_register_functions_label.config(text="Please select an option")
+				self.ui.register_functions_buttons_frame.grid(row = 1, column = 1, sticky='nsew')
+				self.ui.place_register_functions_buttons()
+				self.enter_register_frame()
+				
+		elif button_pressed == "no":
+			self.ui.additional_register_functions_text.grid_forget()
+			self.ui.additional_register_functions_yes_no.grid_forget()
+			self.void_transaction("ref")
+		
 
-
-
-	def print_void_transaction_info(
-			self, transaction_id, total, number_items_sold,
-			cash_used, cc_used, time):
-			self.ui.additional_register_functions_text.delete("1.0", "end")
-			self.ui.additional_register_functions_text.insert("end", "Transaction ID: " + str(transaction_id) + " |\t")
-			self.ui.additional_register_functions_text.insert("end", "Total: $" + f"{total:.2f}" + "\n")
-			self.ui.additional_register_functions_text.insert("end", "# Items Sold: " + str(number_items_sold) + " |\t")
-			self.ui.additional_register_functions_text.insert("end", "Cash Used: $" + f"{cash_used:.2f}" + "\n")
-			self.ui.additional_register_functions_text.insert("end", "CC Used: $" + f"{cc_used:.2f}" + " |\t")
-			self.ui.additional_register_functions_text.insert("end", "Time: " + time)
+	def print_transaction_info(
+			self, text_widget, transaction_info):
+			"""Print item info for transaction into a text widget. (Currently formatted for
+			3 height)."""
+			text_widget.delete("1.0", "end")
+			text_widget.insert("end", "Transaction ID: " + str(transaction_info[0]) + " |\t")
+			text_widget.insert("end", "Total: $" + f"{transaction_info[4]:.2f}" + "\n")
+			text_widget.insert("end", "# Items Sold: " + str(transaction_info[5]) + " |\t")
+			text_widget.insert("end", "Cash Used: $" + f"{transaction_info[8]:.2f}" + "\n")
+			text_widget.insert("end", "CC Used: $" + f"{transaction_info[9]:.2f}" + " |\t")
+			text_widget.insert("end", "Time: " + transaction_info[7])
 
 	def print_receipt(
 			self, receipt_type, transaction_id,
 			items, sale_info, cash_tend = None, cc_tend = None):
+		"""Print receipt based on what type of transaction occured."""
 		if receipt_type == "void":
 				self.printer.textln(("-" * 42))
 				self.printer.textln(("-" * 12) + " Void Transaction " + ("-" * 12))
@@ -223,26 +215,22 @@ class Register:
 		rounded = f"{sale_info[4]:.2f}"
 		spaces = 34 - len(rounded)
 		self.printer.textln("Total: " + (" " * spaces) + "$" + rounded)
-		if cash_tend != 0:
+		if cash_tend != 0 and cash_tend is not None:
 			rounded = f"{cash_tend:.2f}"
 			spaces = self.config.printing_width - 16 - len(rounded)
 			self.printer.textln("Cash Tendered: " + (" " * spaces) + "$" + rounded)
-		if cc_tend != 0:
+		if cc_tend != 0 and cc_tend is not None:
 			rounded = f"{cc_tend:.2f}"
 			spaces = self.config.printing_width - 14 - len(rounded)
 			self.printer.textln("CC Tendered: " + (" " * spaces) + "$" + rounded)
-		change = f"{abs(sale_info[4] - cash_tend - cc_tend):.2f}"
+		change = f"{abs(sale_info[4] - (cash_tend if cash_tend is not None else 0) - (cc_tend if cc_tend is not None else 0)):.2f}"
 		spaces = self.config.printing_width - 13 - len(change)
 		self.printer.textln("Change Due: " + (" " * spaces) + "$" + change)
 		self.printer.ln(2)
 		self.printer.cut()
 		
-
-	def on_additional_register_functions_entry(self, event=None):
-		self.state_manager.reference_number_var.set(self.ui.additional_register_functions_entry.get())
-
 	def on_cash(self, event = None):
-
+		"""Handles when cashier attempts to finalize transaction using cash."""
 		if self.state_manager.trans.total == 0:
 			return "break"
 		
@@ -299,7 +287,7 @@ class Register:
 			self.complete_sale()
 
 	def on_cc(self, event = None):
-
+		"""Handles when cashier attempts to finalize transaction with cc."""
 		if self.state_manager.trans.total == 0:
 			return "break"
 		
@@ -357,21 +345,20 @@ class Register:
 
 
 	def complete_sale(self, event=None):
-		
-		self.printer.cashdraw(pin=2)
+		"""Complete transaction, open cash drawer, print receipt, and reset register environment."""
+		#self.printer.cashdraw(pin=2)
 		self.state_manager.trans.complete_transaction()
 		self.state_manager.cursor.execute('''SELECT * FROM SALES WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM SALES)''')
 		results = self.state_manager.cursor.fetchall()
 		sale_info = results[0]
 		self.state_manager.cursor.execute('''SELECT * FROM SALEITEMS WHERE "Transaction ID" = ?''', (sale_info[0], ))
 		sale_items_list = self.state_manager.cursor.fetchall()
-		self.print_receipt("sale", sale_info[0], sale_items_list, sale_info, self.state_manager.trans.cash_tendered, self.state_manager.trans.cc_tendered)
+		#self.print_receipt("sale", sale_info[0], sale_items_list, sale_info, self.state_manager.trans.cash_tendered, self.state_manager.trans.cc_tendered)
 		self.ui.sale_items_listbox.delete(0, tk.END)
-		#self.ui.usr_entry.delete(0, tk.END)
-		#self.ui.usr_entry.insert(0, "$0.00")
 		self.state_manager.new_transaction()
 		
 	def number_pressed(self, event=None, input_widget=None, output_widget=None):
+		"""Output formatted dollar amount when user inputs numbers"""
 		pygame.mixer.music.load("short-beep.mp3")
 		pygame.mixer.music.play()
 
@@ -396,6 +383,7 @@ class Register:
 
 
 	def clear(self, event=None):
+		"""Clear number user entered in register."""
 		pygame.mixer.music.load("short-beep.mp3")
 		pygame.mixer.music.play()
 		self.ui.invisible_entry.delete(0, tk.END)
@@ -477,15 +465,9 @@ class Register:
 																					
 
 	def go_back(self):
-		
-		# Logic for back button during adding an item
-		# If you're not on the first page, go back one
-		# If self.state_manager.add_item_index is 0, it should stay as such
+		"""Changes index on back button press and resets environment accordingly."""
 		if self.state_manager.add_item_index != 0:
 			self.state_manager.add_item_index -= 1
-		print(f"new index: {self.state_manager.add_item_index}")
-		# Acording to what self.state_manager.add_item_index you've gone back to, update
-		# label so it is asking for correct information
 		match self.state_manager.add_item_index:
 			case 0:
 				self.ui.add_item_label.config(text="Please enter item's barcode:")
@@ -515,15 +497,13 @@ class Register:
 				self.ui.add_item_label.config(text="Please enter the quantity:")
 			
 	def reenter_button_pressed(self, which_button):
-		# Essentially go back to the add item interface
+		"""Reset to add item interface according to button user presses."""
 		self.ui.reenter_frame.grid_forget()
 		self.ui.add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
 		self.ui.add_item_button.grid(column=1, row=2, sticky='ew')
 		
 		self.state_manager.reentering = True
-		# Add item logic looks for reentering flag
-		# Set flag, and reenter the logic, setting labels
-		# and any necessary buttons accordingly
+
 		match which_button:
 			case "barcode":
 				self.state_manager.add_item_index=0
@@ -550,12 +530,9 @@ class Register:
 				self.state_manager.reentering = False
 				self.ui.add_item_label.config(text="Please enter the Quantity:")
 
-
-
 		
 	def quit_button_handler(self, event=None):
-		
-		
+		"""Raises frame according to where quit button is pressed."""
 		if not self.state_manager.coming_from_register:
 			self.ui.admin_frame.tkraise()
 		elif self.state_manager.coming_from_register:
@@ -621,6 +598,7 @@ class Register:
 
 		
 	def on_add_item_scrollbar_next(self, event=None):
+		"""Places entry in listbox user selected for on_add_item_enter() to pick up."""
 		selected_index = self.ui.add_item_listbox.curselection()
 		selected_item = self.ui.add_item_listbox.get(selected_index)
 		self.ui.add_item_entry.delete(0, tk.END)
@@ -628,6 +606,7 @@ class Register:
 		self.on_add_item_enter()
 
 	def run_x(self, event=None):
+		"""Sum daily totals and print them to a receipt."""
 		self.state_manager.cursor.execute('''SELECT "Transaction ID" FROM sales where date = ?''', (datetime.today().strftime('%Y-%m-%d'), ))
 		results = self.state_manager.cursor.fetchall()
 		if not results:
@@ -639,10 +618,10 @@ class Register:
 		self.printer.ln(2)
 
 		for category in ("Cash Used", "CC Used", "Non-Tax", "Pre-Tax", "Tax"):
-			self.state_manager.cursor.execute('''SELECT SUM("%s") FROM SALES WHERE Date = ?''' % (category), (datetime.today().strftime('%Y-%m-%d'), ))
-			results = self.state_manager.cursor.fetchall()
-			sum_in_question = results[0]
-			rounded = f"{sum_in_question[0]:.2f}"
+			self.state_manager.cursor.execute('''SELECT SUM("%s") FROM SALES WHERE Date = ? AND Voided != 1''' % (category), (datetime.today().strftime('%Y-%m-%d'), ))
+			results = self.state_manager.cursor.fetchone()[0]
+			sum_in_question = results if results is not None else 0
+			rounded = f"{sum_in_question:.2f}"
 			spaces = 29 - len(category) - len(rounded)
 			if category == "Cash Used" or category == "CC Used":
 				spaces = 29 - len(category[:-5]) - len(rounded)
@@ -657,73 +636,62 @@ class Register:
 		spaces = 28 - len((str(times_pressed)))
 		self.printer.textln("# Times No Sale: " + (" " * spaces) + str(times_pressed[0]))
 		self.printer.cut()
-		
 
-	def process_return(self, event=None):
-		
-		self.state_manager.new_transaction()
-		self.state_manager.trans.is_returning = True
-		self.ui.set_return_start()
-
+	def process_return(self, event = None):
+		"""Put register into 'return mode'. User can ring up items like a 
+		normal sale, but items will be returned instead."""
+		self.enter_register_frame()
+		self.state_manager.trans.ret_or_void = True
+		self.ui.unbind_invisible_entry_keys()
+		self.ui.invisible_entry.bind("<KeyRelease-KP_Enter>", lambda event: self.state_manager.return_var.set("cash"))
+		self.ui.invisible_entry.bind("<KeyRelease-KP_Add>", lambda event: self.state_manager.return_var.set("cc"))
 		while True:
-			while True:
-				root.wait_variable(self.state_manager.return_var)
-				entry = self.state_manager.return_var.get()
-				if entry == "continue":
-					break
-				else:
-					self.state_manager.trans.c.execute('''SELECT * FROM INVENTORY WHERE BARCODE=?''', (entry,))
-					results = self.state_manager.trans.c.fetchall()
-					row = results[0]
-					self.state_manager.trans.sell_item(row[4])
-					self.ui.additional_register_functions_entry.delete(0, tk.END)
-
-			self.ui.set_return_confirmation()
-
-			for i in range(len(self.state_manager.trans.quantity_sold_list)):
-				self.ui.additional_register_functions_text.insert("end", str(self.state_manager.trans.quantity_sold_list[i][0]) + " | QTY: " + str(self.state_manager.trans.quantity_sold_list[i][1]) + "\n")
-			self.ui.additional_register_functions_yes_no.grid(row=2, column=1, sticky='nsew')
-			self.ui.continue_button.grid_forget()
-			root.wait_variable(self.state_manager.yes_no_var)
-			button_pressed = self.state_manager.yes_no_var.get()
-			if button_pressed == "yes":
-				for i in range(len(self.state_manager.trans.quantity_sold_list)):
-					self.state_manager.trans.c.execute("UPDATE INVENTORY SET Quantity = Quantity + ? WHERE Barcode = ?", (int(self.state_manager.trans.quantity_sold_list[i][1]), self.state_manager.trans.quantity_sold_list[i][0]))
+			root.wait_variable(self.state_manager.return_var)
+			if self.state_manager.trans.total == 0:
+				continue
+			else:
 				break
-			elif button_pressed == "no":
-				self.ui.set_return_restart()
-				self.state_manager.new_transaction()
-		self.state_manager.trans.conn_inventory.commit()
+			
+		button_pressed = self.state_manager.return_var.get()
 		self.state_manager.trans.nontax *= -1
 		self.state_manager.trans.pretax *= -1
 		self.state_manager.trans.tax *= -1
 		self.state_manager.trans.total *= -1
+
+		if button_pressed == "cash":
+			self.state_manager.trans.cash_used = self.state_manager.trans.total 
+		elif button_pressed == "cc":
+			self.state_manager.trans.cc_used = self.state_manager.trans.total
+
 		self.state_manager.trans.complete_transaction()
-		self.ui.set_return_options()
 		self.state_manager.cursor.execute('''SELECT * FROM SALES WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM SALES)''')
 		results = self.state_manager.cursor.fetchall()
-		row = results[0]
+		row = list(results[0])
 		self.state_manager.cursor.execute('''SELECT * FROM SALEITEMS WHERE "Transaction ID" = ?''', (row[0], ))
-		item_results = self.state_manager.cursor.fetchall()
+		item_results = list(self.state_manager.cursor.fetchall())
 		self.print_receipt("return", row[0], item_results, row)
+		self.ui.bind_invisible_entry_keys()
 		self.enter_register_frame()
 
 
 	def return_invisible_entry_focus(self, event):
+		"""Bound to FocusIn on register widgets. Returns focus to invisible
+		entry, and returns 'break' to stop propagating event."""
 		self.ui.invisible_entry.focus_set()
 		return "break"
 
 	def return_add_item_invisible_entry_focus(self, event):
+		"""Bound to FocusIn on add item widgets. Returns focus to invisible
+		entry, and returns 'break' to stop propagating event."""
 		self.ui.add_item_invisible_entry.focus_set()
 		return "break"
 
 	def on_add_item_entry_update(self, *args):
+		"""Handler for when user is inputting numbers during add item process."""
 		self.number_pressed(None, self.ui.add_item_invisible_entry, self.ui.add_item_entry)
 
-	#def yes_no_handler(event=None):
-	#	print(event)
-
 	def on_yes_no(self, answer):
+		"""Handles certain pressed of yes/no buttons."""
 		if self.state_manager.add_item_index == 3:
 			self.ui.add_item_entry.delete(0, tk.END)
 			self.ui.add_item_entry.insert(tk.END, answer)

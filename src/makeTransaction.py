@@ -12,7 +12,7 @@ class Transaction:
 		self.cash_tendered = self.cc_tendered = 0
 		self.items_list = []
 		self.quantity_sold_list = []
-		self.is_returning = False
+		self.ret_or_void = False
 		
 		
 	def complete_transaction(self):
@@ -23,8 +23,11 @@ class Transaction:
 		row = results[0]
 		for i in range(len(self.items_list)):
 			self.db_cursor.execute("INSERT OR IGNORE INTO SALEITEMS VALUES(?, ?, ?, ?, ?, ?)", (row[0], self.items_list[i][0], self.items_list[i][1], self.items_list[i][2], self.items_list[i][3], self.quantity_sold_list[i][1]))
-			if not self.is_returning:
+			if not self.ret_or_void:
 				self.db_cursor.execute("UPDATE INVENTORY SET Quantity = Quantity - ? WHERE barcode = ?", (self.quantity_sold_list[i][1], self.quantity_sold_list[i][0]))
+			else:
+				print("In else block")
+				self.db_cursor.execute("UPDATE INVENTORY SET Quantity = Quantity + ? WHERE barcode = ?", (self.quantity_sold_list[i][1], self.quantity_sold_list[i][0]))
 		self.db_conn.commit()
 		
 			

@@ -9,6 +9,7 @@ import sqlite3
 def register_instance():
     root = tk.Tk()
     register = Register(root)
+    pygame.mixer.init()
     root.withdraw()
     root.update()
     yield register
@@ -154,3 +155,22 @@ def test_quantity_decrement_double(register_instance):
 
     assert item_one_final_quantity == (item_one_starting_quantity - 2)
     assert item_two_final_quantity == (item_two_starting_quantity - 1)
+
+def test_basic_return(register_instance):
+
+    global c
+
+    c.execute('SELECT Quantity FROM inventory where Barcode = ?', ("Test", ))
+    results = c.fetchone()[0]
+    starting_quantity = results
+
+    register_instance.process_return()
+    register_instance.ui.invisible_entry.insert(tk.END, "Test")
+    register_instance.process_sale()
+    register_instance.state_manager.return_var.set("cash")
+
+    c.execute('SELECT Quantity FROM inventory where Barcode = ?', ("Test", ))
+    results = c.fetchone()[0]
+    end_quantity = results
+
+    assert end_quantity == starting_quantity - 1
