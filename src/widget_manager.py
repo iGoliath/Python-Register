@@ -359,12 +359,9 @@ class WidgetManager:
         self.register_functions_buttons_frame.grid(row=1, column=1, sticky='nsew')
 
         self.last_button = tk.Button(
-            self.register_functions_buttons_frame, text="Void Last\nTransaction",
-            font=("Arial", 70), command = lambda: controller.void_transaction("last"))
+            self.register_functions_buttons_frame, text="Void Transaction",
+            font=("Arial", 70), command = lambda: controller.void_transaction())
         
-        self.number_button = tk.Button(
-            self.register_functions_buttons_frame, text="Void by\nReference #", 
-            font=("Arial", 70), command = lambda: controller.void_transaction("ref"))
 
         self.print_receipt_button = tk.Button(
             self.register_functions_buttons_frame, text="Print a Receipt", font=("Arial", 70))
@@ -405,18 +402,18 @@ class WidgetManager:
         # ===========================================
 
         self.browse_label = tk.Label(
-            self.browse_transactions_frame, text="Label", font=("Arial", 50))
+            self.browse_transactions_frame, text="Browsing Transactions", font=("Arial", 50))
         self.browse_label.grid(column = 1, row = 0, sticky='ew')
 
         self.browse_prev_button = tk.Button(
             self.browse_transactions_frame, text="<<", font=("Arial", 70),
-            command = lambda: self.controller.browse_transactions(-1)
+            command = lambda: self.controller.state_manager.browse_index.set(self.controller.state_manager.browse_index.get() - 1)
         )
         self.browse_prev_button.grid(column = 0, row = 1, sticky='nsw')
 
         self.browse_next_button = tk.Button(
             self.browse_transactions_frame, text=">>", font=("Arial", 70),
-            command = lambda: self.controller.browse_transactions(1)
+            command = lambda: self.controller.state_manager.browse_index.set(self.controller.state_manager.browse_index.get() + 1)
         )
         self.browse_next_button.grid(column = 2, row = 1, sticky='nse')
 
@@ -424,6 +421,30 @@ class WidgetManager:
             self.browse_transactions_frame, width=30, height=3, font=("Arial", 50)
         )
         self.browse_text.grid(column = 1, row = 1, sticky='ew')
+        self.browse_text.bind("<FocusIn>", self.controller.return_browse_entry_focus)
+
+        self.browse_second_label = tk.Label(
+            self.browse_transactions_frame, text="Press continue when satisfied", font=("Arial", 50)
+        )
+        
+        self.browse_entry_frame = tk.Frame(self.browse_transactions_frame)
+        self.browse_entry_frame.grid_columnconfigure(1, weight=1)
+        self.browse_entry_frame.grid_columnconfigure(0, weight=1)
+
+       
+        self.browse_entry = tk.Entry(self.browse_entry_frame, font=("Arial", 50), validate='key', vcmd=self.controller.vcmd)
+        self.browse_entry.bind("<Return>", lambda event: self.controller.state_manager.browse_index.set(int(self.browse_entry.get())))
+        self.browse_entry.grid(column = 0, row = 0, sticky='nsew')
+
+
+        self.browse_go_button = tk.Button(self.browse_entry_frame, font=("Arial", 50),
+            text = "-> GO", command = lambda: self.controller.state_manager.browse_index.set(int(self.browse_entry.get())))
+        self.browse_go_button.grid(column = 1 , row = 0, sticky='nsew')
+
+        self.browse_confirm_button = tk.Button(self.browse_transactions_frame, text="Confirm",
+            font=("Arial", 50), command = lambda: self.controller.state_manager.void_var.set("")
+        )
+
 
     def enter_add_item_frame(self):
         self.add_item_label.grid(column=1, row=0, sticky='ew')
@@ -459,8 +480,23 @@ class WidgetManager:
 
     def place_register_functions_buttons(self):
         self.last_button.grid(row=0, column=0, sticky='nsew')
-        self.number_button.grid(row=0, column=1, sticky='nsew')
         self.print_receipt_button.grid(row=1, column=0, sticky='nsew')
         self.make_return_button.grid(row=1, column=1, sticky='nsew')
+
+    def setup_void_widgets(self):
+        self.browse_label.config(text="Browse to transaction to void\nor enter the Transaction ID")
+        self.browse_second_label.grid(column = 1, row = 2, sticky='ew')
+        self.browse_entry_frame.grid(column = 1, row = 3, sticky='ew')
+        self.browse_confirm_button.grid(column = 1, row = 4, sticky='sew')
+        self.browse_entry.focus_set()
+
+    def remove_void_widgets(self):
+        self.browse_label.config(text="Browsing Transactions")
+        self.browse_second_label.grid_forget()
+        self.browse_entry.grid_forget()
+        self.browse_confirm_button.grid_forget()
+
+
+
     
 

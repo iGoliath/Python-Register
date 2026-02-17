@@ -15,10 +15,11 @@ class Register:
 
 	def __init__(self, root):
 		"""Initialize UI, StateManager, Config, and Printer"""
-		self.ui = WidgetManager(root, self)
 		self.state_manager = StateManager(root)
-		self.config = Config()
+		self.state_manager.browse_index.trace('w', self.browse_transactions)
 		self.vcmd = (root.register(self.only_numbers), '%P')
+		self.ui = WidgetManager(root, self)
+		self.config = Config()
 		self.printer = Usb(0x0fe6, 0x811e, 0) #File("/dev/usb/lp0")
 		
 
@@ -57,27 +58,32 @@ class Register:
 		else:
 			self.ui.add_item_label.config(text="Please enter item's barcode: ")
 
-	def enter_update_inventory_frame(self, event=None):
-		self.ui.update_inventory_frame.tkraise()
-		self.ui.update_inventory_entry.focus_force()	
-
-	def enter_browse_transactions_frame(self):
+	def enter_browse_transactions_frame(self, voiding = None):
+		'''Setup necessary information for browse transaction frame. If voiding,
+		set up those widgets as well.'''
 		self.state_manager.cursor.execute(
 			'''SELECT * FROM SALES WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM SALES)''')
 		results = list(self.state_manager.cursor.fetchone())
-		self.state_manager.browse_index = results[0]
+		self.state_manager.browse_index.set(results[0])
 		self.print_transaction_info(self.ui.browse_text, results)
+		if voiding:
+			self.ui.setup_void_widgets()
 		self.ui.browse_transactions_frame.tkraise()
 
-	def browse_transactions(self, change):
-		self.state_manager.browse_index += change
+	def browse_transactions(self, *args):
+		'''Called when state_manager.browse_index is written to. Move info to current index.'''
+		self.ui.browse_entry.delete(0, tk.END)
 		self.state_manager.cursor.execute(
-			'''SELECT * FROM sales WHERE "Transaction ID" = ?''', (self.state_manager.browse_index, )
+			'''SELECT * FROM sales WHERE "Transaction ID" = ?''', (self.state_manager.browse_index.get(), )
 		)
 		results = self.state_manager.cursor.fetchone()
 		if not results:
-			self.state_manager.browse_index -= change
-			return
+			if self.state_manager.browse_index.get() == 0:
+				self.state_manager.browse_index.set(1)
+				return
+			else:
+				self.state_manager.browse_index.set(self.state_manager.browse_index.get() - 1)
+				return
 		self.print_transaction_info(self.ui.browse_text, list(results))
 
 
@@ -115,51 +121,34 @@ class Register:
 			sale_info += " QTY: " + str(self.state_manager.trans.quantity_sold_list[i][1]) 
 			self.ui.sale_items_listbox.insert(tk.END, sale_info)
 		
-	def void_transaction(self, which_button):
-		"""Set voided field in database to 1 (True) for transaction user specifies."""
+	def void_transaction(self):
 		self.ui.register_functions_buttons_frame.grid_forget()
-		if which_button == "last":
-			self.ui.additional_register_functions_text.grid(row=1, column=1, sticky='nsew')
-			self.state_manager.cursor.execute('''SELECT * FROM SALES WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM SALES)''')
-		elif which_button == "ref":
-			self.ui.additional_register_functions_label.config(text="Please enter the reference number:")
-			self.ui.additional_register_functions_entry.grid(row=1, column=1, sticky='nsew')
-			root.wait_variable(self.state_manager.reference_number_var)
-			reference_number = self.state_manager.reference_number_var.get()
-			self.ui.additional_register_functions_entry.grid_forget()
-			self.state_manager.cursor.execute('''Select * FROM SALES WHERE "Transaction ID" = ?''', (reference_number, ))
+		self.enter_browse_transactions_frame(1)
+		while True:
+			root.wait_variable(self.state_manager.void_var)
+			self.state_manager.cursor.execute('''SELECT Voided FROM Sales Where "Transaction ID" = ?''', (self.state_manager.browse_index.get(), ))
+			voided = (self.state_manager.cursor.fetchall()[0])[0]
+			if voided == 1:
+				continue
+			else:
+				break
 
-		results = self.state_manager.cursor.fetchall()
-		row = results[0]
-		self.ui.additional_register_functions_text.grid(row=1, column=1, sticky='nsew')
-		self.print_transaction_info(self.ui.additional_register_functions_text, row)
-		self.ui.additional_register_functions_yes_no.grid(column=1, row=2, sticky='nsew')
-		self.ui.additional_register_functions_label.config(text="Void This Transaction?")
-		root.wait_variable(self.state_manager.yes_no_var)
-		button_pressed = self.state_manager.yes_no_var.get()
-		if button_pressed == "yes":
-			try:
-				self.state_manager.cursor.execute('''UPDATE SALES SET Voided = ? WHERE "Transaction ID" = ?''', (1, row[0]))
-				self.state_manager.cursor.execute('''SELECT * FROM SALEITEMS WHERE "Transaction ID" = ?''', (row[0], ))
-				item_results = self.state_manager.cursor.fetchall()
-				#self.print_receipt("void", row[0], item_results, row)
-			except sqlite3.Error as e:
-				self.ui.additional_register_functions_text.delete("1.0", "end")
-				self.ui.additional_register_functions_text.insert("end", "ERROR, please try again")
-			finally:
-				self.state_manager.conn.commit()
-				self.ui.additional_register_functions_text.grid_forget()
-				self.ui.additional_register_functions_yes_no.grid_forget()
-				self.ui.additional_register_functions_label.config(text="Please select an option")
-				self.ui.register_functions_buttons_frame.grid(row = 1, column = 1, sticky='nsew')
-				self.ui.place_register_functions_buttons()
-				self.enter_register_frame()
-				
-		elif button_pressed == "no":
-			self.ui.additional_register_functions_text.grid_forget()
-			self.ui.additional_register_functions_yes_no.grid_forget()
-			self.void_transaction("ref")
-		
+		try:
+			self.state_manager.cursor.execute('''UPDATE SALES SET Voided = ? WHERE "Transaction ID" = ?''', (1, self.state_manager.browse_index.get()))
+			self.state_manager.cursor.execute('''SELECT * FROM Sales Where "Transaction ID" = ?''', (self.state_manager.browse_index.get(), ))
+			transaction_info = list(self.state_manager.cursor.fetchall()[0])
+			self.state_manager.cursor.execute('''SELECT * FROM SALEITEMS WHERE "Transaction ID" = ?''', (self.state_manager.browse_index.get(), ))
+			item_results = self.state_manager.cursor.fetchall()
+			for i in range(len(item_results)):
+				self.state_manager.cursor.execute('''UPDATE Inventory SET Quantity = Quantity + ? WHERE Barcode = ?''', (item_results[i][5], item_results[i][4]))
+		except sqlite3.Error as e:
+			print(e)
+		finally:
+			self.state_manager.conn.commit()
+			self.print_receipt("void", transaction_info[0], item_results, transaction_info)
+			self.ui.register_functions_buttons_frame.grid(row = 1, column = 1, sticky='nsew')
+			self.ui.place_register_functions_buttons()
+			self.enter_register_frame()
 
 	def print_transaction_info(
 			self, text_widget, transaction_info):
@@ -685,6 +674,12 @@ class Register:
 		entry, and returns 'break' to stop propagating event."""
 		self.ui.add_item_invisible_entry.focus_set()
 		return "break"
+	
+	def return_browse_entry_focus(self, event):
+		"""Bound to FocusIn on browse items textbox. Returns focus to browse_entry,
+		and returns 'break' to stop propagating event."""
+		self.ui.browse_entry.focus_set()
+		return "break"
 
 	def on_add_item_entry_update(self, *args):
 		"""Handler for when user is inputting numbers during add item process."""
@@ -698,6 +693,7 @@ class Register:
 			self.on_add_item_enter()
 		elif self.state_manager.add_item_index == 5:
 			self.state_manager.yes_no_var.set(answer)
+
 
 if __name__ == "__main__":
 	#Declaration of root window
