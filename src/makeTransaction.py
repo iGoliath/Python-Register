@@ -47,14 +47,11 @@ class Transaction:
 		else:
 			self.nontax += item_info[1]
 		self.total = round(self.nontax + self.pretax + self.tax, 2)
-		
-		# If no items have been sold, start the list
-		# Otherwise, make sure item doesn't already exist within the list
-		if len(self.items_list) == 0:
+			
+
+		if not any(entered_barcode in sublist for sublist in self.items_list):
 			self.items_list.append(item_info)
-		elif len(self.items_list) >= 1:
-			if not any(entered_barcode in sublist for sublist in self.items_list):
-				self.items_list.append(item_info)
+			
 		self.items_sold += 1
 		
 		# Update list of barcodes for items sold and how many for 

@@ -24,6 +24,7 @@ class WidgetManager:
         self.register_add_item_prompt_frame = tk.Frame(self.root)
         self.mode_select_frame = tk.Frame(self.root)
         self.browse_transactions_frame = tk.Frame(self.root)
+        self.errors_frame = tk.Frame(self.root, width = 400, height = 300, borderwidth=20, relief="ridge", bg="black")
 
         # Loop through frames, fit them to screen, and configure them so that widgets in column 1 are centered
         # Widgets in column 1 will determine the width of the rest of the widgets
@@ -46,6 +47,10 @@ class WidgetManager:
             frame.grid_columnconfigure(1, weight=1)
             frame.grid_columnconfigure(0, weight=1)
 
+        self.errors_frame.place(relx=0.5, rely=0.5, anchor="center")
+        self.errors_frame.grid_columnconfigure(0, weight=1)
+        self.errors_frame.grid_columnconfigure(1, weight=0)
+        self.errors_frame.grid_columnconfigure(2, weight=1)
         # =============================
         # Widgets for Mode select frame
         # =============================
@@ -150,7 +155,7 @@ class WidgetManager:
             padx = 5, pady = 5, ipadx=10, ipady=10)
 
         self.run_x_button = tk.Button(
-            self.admin_frame, text = "Run\nX", font=("Arial", 50),
+            self.admin_frame, text = "Run X", font=("Arial", 50),
               height = 5, command = lambda: controller.run_x())
         self.run_x_button.grid(
             column=1, row=1, sticky='e', padx=5,
@@ -445,6 +450,15 @@ class WidgetManager:
             font=("Arial", 50), command = lambda: self.controller.state_manager.void_var.set("")
         )
 
+        self.error_label = tk.Label(self.errors_frame, text="ERROR:", font=("Arial", 50), fg="red", justify="center")
+        self.error_label.grid(column=1, row=0, sticky='ew')
+
+        self.error_description_label = tk.Label(self.errors_frame, text="", font=("Arial", 50))
+        self.error_description_label.grid(column = 1, row = 1, sticky='ew')
+
+        self.error_ok_button = tk.Button(self.errors_frame, text="Ok", font=("Arial", 50),
+            command = lambda: self.errors_frame.lower())
+        self.error_ok_button.grid(column = 1, row = 2, sticky='ew')
 
     def enter_add_item_frame(self):
         self.add_item_label.grid(column=1, row=0, sticky='ew')

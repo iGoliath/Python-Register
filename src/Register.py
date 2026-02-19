@@ -63,12 +63,17 @@ class Register:
 		set up those widgets as well.'''
 		self.state_manager.cursor.execute(
 			'''SELECT * FROM SALES WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM SALES)''')
-		results = list(self.state_manager.cursor.fetchone())
+		results = self.state_manager.cursor.fetchone()
+		if not results:
+			return False
+		else:
+			results = list(results)
 		self.state_manager.browse_index.set(results[0])
 		self.print_transaction_info(self.ui.browse_text, results)
 		if voiding:
 			self.ui.setup_void_widgets()
 		self.ui.browse_transactions_frame.tkraise()
+		return True
 
 	def browse_transactions(self, *args):
 		'''Called when state_manager.browse_index is written to. Move info to current index.'''
@@ -122,13 +127,19 @@ class Register:
 			self.ui.sale_items_listbox.insert(tk.END, sale_info)
 		
 	def void_transaction(self):
-		self.ui.register_functions_buttons_frame.grid_forget()
-		self.enter_browse_transactions_frame(1)
+
+		if not self.enter_browse_transactions_frame(1):
+			self.ui.error_description_label.config(text="No transactions to void!")
+			self.ui.errors_frame.tkraise()
+			return
+		
 		while True:
 			root.wait_variable(self.state_manager.void_var)
 			self.state_manager.cursor.execute('''SELECT Voided FROM Sales Where "Transaction ID" = ?''', (self.state_manager.browse_index.get(), ))
 			voided = (self.state_manager.cursor.fetchall()[0])[0]
 			if voided == 1:
+				self.ui.error_description_label.config(text="This transaction is already voided!")
+				self.ui.errors_frame.tkraise()
 				continue
 			else:
 				break
@@ -142,12 +153,12 @@ class Register:
 			for i in range(len(item_results)):
 				self.state_manager.cursor.execute('''UPDATE Inventory SET Quantity = Quantity + ? WHERE Barcode = ?''', (item_results[i][5], item_results[i][4]))
 		except sqlite3.Error as e:
-			print(e)
+			self.ui.error_description_label.config(text=f"{e}")
+			self.ui.errors_frame.tkraise()
 		finally:
 			self.state_manager.conn.commit()
 			self.print_receipt("void", transaction_info[0], item_results, transaction_info)
-			self.ui.register_functions_buttons_frame.grid(row = 1, column = 1, sticky='nsew')
-			self.ui.place_register_functions_buttons()
+			self.ui.remove_void_widgets()
 			self.enter_register_frame()
 
 	def print_transaction_info(
@@ -221,6 +232,8 @@ class Register:
 	def on_cash(self, event = None):
 		"""Handles when cashier attempts to finalize transaction using cash."""
 		if self.state_manager.trans.total == 0:
+			self.ui.error_description_label.config(text="No Items Entered!")
+			self.ui.errors_frame.tkraise()
 			return "break"
 		
 		pygame.mixer.music.load("short-beep.mp3")
@@ -278,6 +291,9 @@ class Register:
 	def on_cc(self, event = None):
 		"""Handles when cashier attempts to finalize transaction with cc."""
 		if self.state_manager.trans.total == 0:
+			self.ui.error_description_label.config(text="No Items Entered!")
+			self.ui.errors_frame.tkraise()
+			self.ui.invisible_entry.delete(0, tk.END)
 			return "break"
 		
 		pygame.mixer.music.load("short-beep.mp3")
@@ -599,6 +615,8 @@ class Register:
 		self.state_manager.cursor.execute('''SELECT "Transaction ID" FROM sales where date = ?''', (datetime.today().strftime('%Y-%m-%d'), ))
 		results = self.state_manager.cursor.fetchall()
 		if not results:
+			self.ui.error_description_label.config(text="No transactions made yet!\nCannot process X")
+			self.ui.errors_frame.tkraise()
 			return "break"
 		self.printer.textln(("-" * 42))
 		self.printer.textln(("-" * 14) + " Daily Report " + ("-" * 14))
