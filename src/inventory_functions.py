@@ -84,7 +84,6 @@ def enter_item_taxable(
     else:
         state_manager.add_item_object.taxable = "0"
     if not state_manager.reentering:
-        print(state_manager.yes_no_var)
         add_item_yes_no.grid_forget()
         add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
         add_item_button.grid(column=1, row=2, sticky='ew')

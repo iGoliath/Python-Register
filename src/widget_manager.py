@@ -56,31 +56,40 @@ class WidgetManager:
         # =============================
 
         self.mode_select_label = tk.Label(
-            self.mode_select_frame, text="Please select a mode: ", font=("Arial", 50))
+            self.mode_select_frame, text="Please select a mode: ", font=("Arial", 45))
         self.mode_select_label.grid(column=1, row=0, sticky='ew', pady=10)
+        self.fullscreen_button = tk.Button(
+            self.mode_select_frame, text="Fullscreen",
+            font=("Arial", 45), command = lambda: root.attributes('-fullscreen', True)
+        )
+        self.fullscreen_button.grid(column = 1, row = 1, sticky='ew', pady=10)
         self.register_mode_button = tk.Button(
             self.mode_select_frame, text="Enter Register Mode",
-            font=("Arial", 50), command=lambda: controller.enter_register_frame()).grid(
-            column=1, row=1, sticky='ew', pady=10)
+            font=("Arial", 45), command=lambda: controller.enter_register_frame()).grid(
+            column=1, row=2, sticky='ew', pady=10)
         self.admin_mode_button = tk.Button(
             self.mode_select_frame, text="Enter Admin Mode",
-            font=("Arial", 50), command=lambda: self.admin_frame.tkraise()).grid(
-            column=1, row=2, sticky='ew', pady=10)
+            font=("Arial", 45), command=lambda: self.admin_frame.tkraise()).grid(
+            column=1, row=3, sticky='ew', pady=10)
         self.browse_transactions_button = tk.Button(
             self.mode_select_frame, text="Browse Transactions", 
-            font=("Arial", 50), command = lambda: self.controller.enter_browse_transactions_frame()).grid(
-                column = 1, row = 3, sticky='ew'
+            font=("Arial", 45), command = lambda: self.controller.enter_browse_transactions_frame()).grid(
+                column = 1, row = 4, sticky='ew', pady=10
             )
+        self.quit_program_button = tk.Button(
+            self.mode_select_frame, text="Quit Program",
+            font=("Arial", 45), command = lambda: root.destroy()
+        )
+        self.quit_program_button.grid(column = 1, row = 5, sticky='ew', pady=10)
 
 
         # ===============================
         # Widgets for Register Mode frame
         # ===============================
 
-
         #Entry box where numbers user is typing are being displayed 
         self.usr_entry = tk.Entry(
-            self.register_frame, font=("Arial", 95),
+            self.register_frame, font=("Arial", 91),
             bg="black", fg="#68FF00", justify="right", width=15)
         self.usr_entry.insert(tk.END, "$0.00")
         self.usr_entry.grid(column=1, row=0, sticky='ew', padx=2)
@@ -101,7 +110,7 @@ class WidgetManager:
         self.new_frame.grid_columnconfigure(0, weight=1)
         self.new_frame.grid(column=0, row=0, sticky='nsew')
         # Box where program outputs current running total
-        self.total_entry = tk.Entry(self.new_frame, font=("Arial", 35), width=9)
+        self.total_entry = tk.Entry(self.new_frame, font=("Arial", 35), width=7)
         self.total_entry.insert(tk.END, "$0.00")
         self.total_entry.grid(column = 0, row = 0, sticky='nw')
         self.total_entry.bind("<FocusIn>", controller.return_invisible_entry_focus)
@@ -112,10 +121,10 @@ class WidgetManager:
         self.register_back_button.grid(column = 0, row = 1, sticky='nw')
 
         self.sale_items_listbox = tk.Listbox(
-            self.register_widgets_frame, width=29,
-            height=8, font=("Arial", 46)
+            self.register_widgets_frame, width=20,
+            height=6, font=("Arial", 50)
         )
-        self.sale_items_listbox.grid(column = 1, row = 0, sticky='nse')
+        self.sale_items_listbox.grid(column = 1, row = 0, sticky='nsw')
         self.sale_items_listbox.bind("<FocusIn>", controller.return_invisible_entry_focus)
         self.sale_items_scrollbar = tk.Scrollbar(
             self.register_widgets_frame,
@@ -509,6 +518,10 @@ class WidgetManager:
         self.browse_second_label.grid_forget()
         self.browse_entry.grid_forget()
         self.browse_confirm_button.grid_forget()
+
+    def update_entry(self, entry, text):
+        entry.delete(0, tk.END)
+        entry.insert(0, text)
 
 
 

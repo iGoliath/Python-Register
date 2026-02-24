@@ -37,10 +37,8 @@ class Register:
 		self.state_manager.new_transaction()
 		self.ui.invisible_entry.delete(0, tk.END)
 		self.ui.sale_items_listbox.delete(0, tk.END)
-		self.ui.total_entry.delete(0, tk.END)
-		self.ui.total_entry.insert(tk.END, "$0.00")
-		self.ui.usr_entry.delete(0, tk.END)
-		self.ui.usr_entry.insert(tk.END, "$0.00")
+		self.ui.update_entry(self.ui.total_entry, "$0.00")
+		self.ui.update_entry(self.ui.usr_entry, "$0.00")
 		self.ui.register_frame.tkraise()
 		self.ui.invisible_entry.focus_force()
 		return "break"
@@ -95,14 +93,14 @@ class Register:
 	def process_sale(self, event=None, entered_barcode=None):
 		"""Check for existing barcode. If so, add item to running list of sold items
 		and display info to cashier. Else, prompt user to enter the item."""
-		self.ui.total_entry.delete(0, tk.END)
-		self.ui.total_entry.insert(tk.END, "$0.00")
 		if entered_barcode is not None:
 			total, item_name, item_price, taxable = self.state_manager.trans.sell_item(entered_barcode)
 		else:
 			barcode = self.ui.invisible_entry.get()
+			if barcode == "":
+				return "break"
 			self.ui.invisible_entry.delete(0, tk.END)
-			total, item_name, item_price, taxable = self.state_manager.trans.sell_item(barcode)
+			total, item_name, item_price, taxable  = self.state_manager.trans.sell_item(barcode)
 		if total == "item_not_found":
 			self.ui.register_add_item_prompt_frame.tkraise()
 			root.wait_variable(self.state_manager.yes_no_var)
@@ -114,17 +112,27 @@ class Register:
 			elif yes_no_answer == "no":
 				self.ui.register_frame.tkraise()
 				return
-		self.ui.usr_entry.delete(0, tk.END)
-		self.ui.usr_entry.insert(0, f"${total:.2f}")
+		self.ui.update_entry(self.ui.usr_entry, f"${total:.2f}")
 		self.ui.sale_items_listbox.delete(0, tk.END)
-		for i in range(len(self.state_manager.trans.items_list)):
-			sale_info = self.state_manager.trans.items_list[i][0] + " $" + str(self.state_manager.trans.items_list[i][1]) + " "
-			if self.state_manager.trans.items_list[i][2] == 1:
+		for item in self.state_manager.trans.items_list:
+			sale_info = f"{item[0][:15]} ${str(item[1])} "
+			if item[2] == 1:
 				sale_info += "TX"
 			else:
 				sale_info += "NT"
-			sale_info += " QTY: " + str(self.state_manager.trans.quantity_sold_list[i][1]) 
+			sale_info += f" QTY: {str(item[-1])}"
 			self.ui.sale_items_listbox.insert(tk.END, sale_info)
+
+		'''for item in self.state_manager.trans.items_list:
+			sale_info = f"{item[0][:25]}->"
+			self.ui.sale_items_listbox.insert(tk.END, sale_info)
+			sale_info = ""
+			if item[2] == 1:
+				sale_info += "TX"
+			else:
+				sale_info += "NT"
+			sale_info += f" QTY: {str(item[-1])}"
+			self.ui.sale_items_listbox.insert(tk.END, sale_info)'''
 		
 	def void_transaction(self):
 
@@ -173,62 +181,80 @@ class Register:
 			text_widget.insert("end", "CC Used: $" + f"{transaction_info[9]:.2f}" + " |\t")
 			text_widget.insert("end", "Time: " + transaction_info[7])
 
+
+
 	def print_receipt(
 			self, receipt_type, transaction_id,
 			items, sale_info, cash_tend = None, cc_tend = None):
 		"""Print receipt based on what type of transaction occured."""
-		if receipt_type == "void":
-				self.printer.textln(("-" * 42))
-				self.printer.textln(("-" * 12) + " Void Transaction " + ("-" * 12))
-				self.printer.textln(("-" * 42))
-				spaces = 17 - len(str(transaction_id))
-				self.printer.textln("Original Transaction ID: " + (" " * spaces) + str(transaction_id))
-		elif receipt_type == "sale":
-				self.printer.textln(("-" * 18) + " Sale " + ("-" * 18))
-				spaces = self.config.printing_width - 16 - len(str(transaction_id))
-				self.printer.textln("Transaction ID: " + (" " * spaces) + str(transaction_id))
-		elif receipt_type == "return":
-				self.printer.textln(("-" * 17) + " Return " + ("-" * 17))
-				spaces = 26 - len(str(transaction_id))
-				self.printer.textln("Transaction ID: " + (" " * spaces) + str(transaction_id))
-				for i in (1, 2, 4, 5):
-					sale_info[i] *= -1
-		self.printer.textln(datetime.today().strftime('%Y-%m-%d') + (" " * 27) + datetime.now().strftime("%H:%M"))
-		self.printer.ln(2)
-		for i in range(len(items)):
-				self.printer.textln(items[i][1])
-				if items[i][3] == 1:
-					self.printer.text("TX ")
-				else:
-					self.printer.text("NT ")
-				self.printer.textln("$" + f"{items[i][2]:.2f}" + " QTY " + str(items[i][5]))
+		self.print_receipt_header(receipt_type, transaction_id)
+
+		if receipt_type == "return":
+			for i in (1, 2, 3, 4):
+				sale_info[i] *= -1
+
+		for sublist in items:
+			self.printer.textln(sublist[1])
+			if sublist[3] == 1:
+				self.printer.text("TX ")
+			else:
+				self.printer.text("NT ")
+			self.printer.textln(f"${sublist[2]:.2f} QTY {str(sublist[5])}")
 		
 		self.printer.ln(1)
+
 		if sale_info[3] != 0:
 			self.printer.ln(1)
 			rounded = f"{sale_info[1]+sale_info[2]:.2f}"
 			spaces = 31 - len(rounded)
-			self.printer.textln("Subtotal: " + (" " * spaces) + "$" + rounded)
+			self.printer.textln(f"Subtotal: {' ' * spaces}${rounded}")
 			rounded = f"{sale_info[3]:.2f}"
 			spaces = 36 - len(rounded)
-			self.printer.textln("Tax: " + (" " * spaces) + "$" + rounded)
+			self.printer.textln(f"Tax: {' ' * spaces}${rounded}")
 		rounded = f"{sale_info[4]:.2f}"
 		spaces = 34 - len(rounded)
-		self.printer.textln("Total: " + (" " * spaces) + "$" + rounded)
+		self.printer.textln(f"Total: {' '  * spaces}${rounded}")
+
 		if cash_tend != 0 and cash_tend is not None:
 			rounded = f"{cash_tend:.2f}"
 			spaces = self.config.printing_width - 16 - len(rounded)
-			self.printer.textln("Cash Tendered: " + (" " * spaces) + "$" + rounded)
+			self.printer.textln(f"Cash Tendered: {' ' * spaces}${rounded}")
 		if cc_tend != 0 and cc_tend is not None:
 			rounded = f"{cc_tend:.2f}"
 			spaces = self.config.printing_width - 14 - len(rounded)
-			self.printer.textln("CC Tendered: " + (" " * spaces) + "$" + rounded)
+			self.printer.textln(f"CC Tendered: {' ' * spaces}${rounded}")
 		change = f"{abs(sale_info[4] - (cash_tend if cash_tend is not None else 0) - (cc_tend if cc_tend is not None else 0)):.2f}"
 		spaces = self.config.printing_width - 13 - len(change)
-		self.printer.textln("Change Due: " + (" " * spaces) + "$" + change)
+		self.printer.textln(f"Change Due: {' ' * spaces}${change}")
 		self.printer.ln(2)
 		self.printer.cut()
-		
+
+	def print_receipt_header(self, receipt_type, transaction_id):
+		if receipt_type == "void":
+			self.printer.textln(("-" * 42))
+			self.printer.textln(("-" * 12) + " Void Transaction " + ("-" * 12))
+			self.printer.textln(("-" * 42))
+			spaces = 17 - len(str(transaction_id))
+			self.printer.textln("Original Transaction ID: " + (" " * spaces) + str(transaction_id))
+		elif receipt_type == "sale":
+			self.printer.textln(("-" * 18) + " Sale " + ("-" * 18))
+			spaces = self.config.printing_width - 16 - len(str(transaction_id))
+			self.printer.textln("Transaction ID: " + (" " * spaces) + str(transaction_id))
+		elif receipt_type == "return":
+			self.printer.textln(("-" * 17) + " Return " + ("-" * 17))
+			spaces = 26 - len(str(transaction_id))
+			self.printer.textln("Transaction ID: " + (" " * spaces) + str(transaction_id))
+		elif receipt_type == "x":
+			self.printer.textln(("-" * 42))
+			self.printer.textln(("-" * 14) + " Daily Report " + ("-" * 14))
+			self.printer.textln(("-" * 12) + " " + datetime.today().strftime('%Y-%m-%d') + " " + datetime.now().strftime("%H:%M") + " " + ("-" * 12))
+			self.printer.textln("-" * 42)
+			self.printer.ln(2)
+
+		if receipt_type != "x":
+			self.printer.textln(datetime.today().strftime('%Y-%m-%d') + (" " * 27) + datetime.now().strftime("%H:%M"))
+			self.printer.ln(2)
+
 	def on_cash(self, event = None):
 		"""Handles when cashier attempts to finalize transaction using cash."""
 		if self.state_manager.trans.total == 0:
@@ -249,10 +275,8 @@ class Register:
 		if length == 0:
 			self.state_manager.trans.cash_tendered += balance
 			self.state_manager.trans.cash_used += balance
-			self.ui.total_entry.delete(0, tk.END)
-			self.ui.total_entry.insert(tk.END, "C: $0.00")
-			self.ui.usr_entry.delete(0, tk.END)
-			self.ui.usr_entry.insert(tk.END, f"Sale Total: ${self.state_manager.trans.total:.2f}")
+			self.ui.update_entry(self.ui.total_entry, "C: $0.00")
+			self.ui.update_entry(self.ui.usr_entry, f"Sale Total: ${self.state_manager.trans.total:.2f}")
 			self.complete_sale()
 			return "break"
 		elif length == 1:
@@ -280,12 +304,10 @@ class Register:
 			self.state_manager.trans.cash_used += amount_given
 			display_string = "B: $" + f"{(balance - amount_given):.2f}"
 
-		self.ui.total_entry.delete(0, tk.END)
-		self.ui.total_entry.insert(tk.END, display_string)
-
+		self.ui.update_entry(self.ui.total_entry, display_string)
+		
 		if complete:
-			self.ui.usr_entry.delete(0, tk.END)
-			self.ui.usr_entry.insert(tk.END, f"Sale Total: ${self.state_manager.trans.total:.2f}")
+			self.ui.update_entry(self.ui.usr_entry, f"Sale Total: ${self.state_manager.trans.total:.2f}")
 			self.complete_sale()
 
 	def on_cc(self, event = None):
@@ -310,10 +332,8 @@ class Register:
 		if length == 0:
 			self.state_manager.trans.cc_used += balance
 			self.state_manager.trans.cc_tendered += balance
-			self.ui.total_entry.delete(0, tk.END)
-			self.ui.total_entry.insert(tk.END, "C: $0.00")
-			self.ui.usr_entry.delete(0, tk.END)
-			self.ui.usr_entry.insert(tk.END, f"Sale Total: ${self.state_manager.trans.total:.2f}")
+			self.ui.update_entry(self.ui.total_entry, "C: $0.00")
+			self.ui.update_entry(self.ui.usr_entry, f"Sale Total: ${self.state_manager.trans.total:.2f}")
 			self.complete_sale()
 			return "break"
 		elif length == 1:
@@ -340,12 +360,10 @@ class Register:
 			self.state_manager.trans.cc_used += amount_given
 			display_string = "B: $" + f"{(balance - amount_given):.2f}"
 
-		self.ui.total_entry.delete(0, tk.END)
-		self.ui.total_entry.insert(tk.END, display_string)
+		self.ui.update_entry(self.ui.total_entry, display_string)
 
 		if complete:
-			self.ui.usr_entry.delete(0, tk.END)
-			self.ui.usr_entry.insert(tk.END, f"Sale Total: ${self.state_manager.trans.total:.2f}")
+			self.ui.update_entry(self.ui.usr_entry, f"Sale Total: ${self.state_manager.trans.total:.2f}")
 			self.complete_sale()
 
 
@@ -392,8 +410,7 @@ class Register:
 		pygame.mixer.music.load("short-beep.mp3")
 		pygame.mixer.music.play()
 		self.ui.invisible_entry.delete(0, tk.END)
-		self.ui.total_entry.delete(0, tk.END)
-		self.ui.total_entry.insert(tk.END, "$0.00")
+		self.ui.update_entry(self.ui.total_entry, "$0.00")
 			
 	def get_update_barcode(self, event=None):
 		self.state_manager.update_inventory_var.set(self.ui.update_inventory_entry.get())
@@ -487,8 +504,7 @@ class Register:
 				self.ui.add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
 				self.ui.add_item_button.grid(column=1, row=2, sticky='ew')
 				self.ui.add_item_yes_no.grid_forget()
-				self.ui.add_item_entry.delete(0, tk.END)
-				self.ui.add_item_entry.insert(tk.END, "$0.00")
+				self.ui.update_entry(self.ui.add_item_entry, "$0.00")
 			case 3:
 				self.ui.add_item_frame.tkraise()
 				self.ui.add_item_entry.grid_forget()
@@ -547,8 +563,7 @@ class Register:
 	def on_add_item_enter(self, event=None, entered_barcode=None):
 		"""Handle user pressing enter or next in the context of adding and item.
 		Process is handled in a series of steps."""
-		
-		print(self.state_manager.add_item_index)
+	
 		if entered_barcode is not None:
 			item_info_entered = entered_barcode
 		else: 
@@ -597,17 +612,16 @@ class Register:
 					self.process_sale(None, self.state_manager.add_item_object.barcode)
 					self.ui.register_frame.tkraise()
 			case _:
-
-				self.ui.add_item_entry.delete(0, tk.END)
-				self.ui.add_item_entry.insert(tk.END, "ERROR")
+				
+				self.ui.error_description_label.config("Add item index out of bounds!\nPlease try again.")
+				self.ui.errors_frame.tkraise()
 
 		
 	def on_add_item_scrollbar_next(self, event=None):
 		"""Places entry in listbox user selected for on_add_item_enter() to pick up."""
 		selected_index = self.ui.add_item_listbox.curselection()
 		selected_item = self.ui.add_item_listbox.get(selected_index)
-		self.ui.add_item_entry.delete(0, tk.END)
-		self.ui.add_item_entry.insert(tk.END, selected_item)
+		self.ui.update_entry(self.ui.add_item_entry, selected_item)
 		self.on_add_item_enter()
 
 	def run_x(self, event=None):
@@ -618,25 +632,36 @@ class Register:
 			self.ui.error_description_label.config(text="No transactions made yet!\nCannot process X")
 			self.ui.errors_frame.tkraise()
 			return "break"
-		self.printer.textln(("-" * 42))
-		self.printer.textln(("-" * 14) + " Daily Report " + ("-" * 14))
-		self.printer.textln(("-" * 12) + " " + datetime.today().strftime('%Y-%m-%d') + " " + datetime.now().strftime("%H:%M") + " " + ("-" * 12))
-		self.printer.textln("-" * 42)
-		self.printer.ln(2)
+		
+		self.print_receipt_header("x", None)
+		gross_total = 0
 
 		for category in ("Cash Used", "CC Used", "Non-Tax", "Pre-Tax", "Tax"):
 			self.state_manager.cursor.execute('''SELECT SUM("%s") FROM SALES WHERE Date = ? AND Voided != 1''' % (category), (datetime.today().strftime('%Y-%m-%d'), ))
 			results = self.state_manager.cursor.fetchone()[0]
 			sum_in_question = results if results is not None else 0
+			if category in ("Non-Tax", "Pre-Tax", "Tax"):
+				gross_total += sum_in_question
 			rounded = f"{sum_in_question:.2f}"
-			spaces = 29 - len(category) - len(rounded)
-			if category == "Cash Used" or category == "CC Used":
-				spaces = 29 - len(category[:-5]) - len(rounded)
-				self.printer.textln(f"{category[:-5]} Collected: " + (" " * spaces) + "$" + rounded)
-			else:
-				self.printer.textln(f"{category} Collected: " + (" " * spaces) + "$" + rounded)
-			self.printer.ln(1)
-			
+			spaces = 29 - len(category.split()[0]) - len(rounded)
+			self.printer.textln(f"{category.split()[0]} Collected: {' ' * spaces}${rounded}\n")
+		
+		self.state_manager.cursor.execute('''SELECT SUM("Price") FROM saleitems JOIN sales ON saleitems."Transaction ID" = sales."Transaction ID" WHERE saleitems."Barcode" IN ('propane', 'also propane') AND sales."Date" = ?''', (datetime.today().strftime('%Y-%m-%d'), ))
+		results = self.state_manager.cursor.fetchone()[0]
+		propane_sold = results if results is not None else 0
+		spaces = 42 - 15 - len(f"{propane_sold:.2f}")
+		self.printer.textln(f"Propane Sold: {' ' * spaces}${propane_sold:.2f}\n")
+
+
+		spaces = 42 - 14 - len(f"{gross_total:.2f}")
+		self.printer.textln(f"Gross Total: {' ' * spaces}${gross_total:.2f}\n")
+
+		self.state_manager.cursor.execute('''SELECT SUM("Total") FROM Sales WHERE TOTAL < 0''')
+		results = self.state_manager.cursor.fetchone()[0]
+		total_returns = (results * -1) if results is not None else 0
+		spaces = 42 - 16 - len(f"{total_returns:.2f}")
+		self.printer.textln(f"Total Returns: {' ' * spaces}${total_returns:.2f}\n")
+
 		self.state_manager.cursor.execute('''SELECT times_pressed FROM no_sale WHERE date = ?''', (datetime.today().strftime('%Y-%m-%d'), ))
 		results = self.state_manager.cursor.fetchall()
 		times_pressed = results[0]
@@ -706,8 +731,7 @@ class Register:
 	def on_yes_no(self, answer):
 		"""Handles certain pressed of yes/no buttons."""
 		if self.state_manager.add_item_index == 3:
-			self.ui.add_item_entry.delete(0, tk.END)
-			self.ui.add_item_entry.insert(tk.END, answer)
+			self.ui.update_entry(self.ui.add_item_entry, answer)
 			self.on_add_item_enter()
 		elif self.state_manager.add_item_index == 5:
 			self.state_manager.yes_no_var.set(answer)
@@ -718,10 +742,11 @@ if __name__ == "__main__":
 	root = tk.Tk()
 	root.title("TBC REGISTER")
 	root.geometry("1024x600")
-	root.tk.call('tk', 'scaling', 1)
+	root.after(500, lambda: root.attributes("-fullscreen", True))
+	#root.tk.call('tk', 'scaling', 1)
 	root.grid_columnconfigure(0, weight=1)
 	root.grid_rowconfigure(0, weight=1)
-	#root.attributes("-fullscreen", True)
+	
 	register = Register(root)
 	register.state_manager.cursor.execute(
 		"INSERT INTO no_sale (date, times_pressed) VALUES (?, ?) ON CONFLICT (date)" \
@@ -730,6 +755,7 @@ if __name__ == "__main__":
 	register.state_manager.conn.commit()
 	pygame.mixer.init()
 	register.ui.mode_select_frame.tkraise()
+	
 	root.mainloop()
 
 
