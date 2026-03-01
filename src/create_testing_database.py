@@ -15,8 +15,8 @@ with open('database_commands.txt', 'r') as fp:
     for command in text:
         try:
             cursor.execute(command)
-        except sqlite3.Error:
-            print(sqlite3.Error)
+        except sqlite3.Error as e:
+            print(e)
 
 conn.commit()
 conn.close()

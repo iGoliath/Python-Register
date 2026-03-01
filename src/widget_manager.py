@@ -22,13 +22,12 @@ class WidgetManager:
         self.update_inventory_yes_no = tk.Frame(self.update_inventory_frame)
         self.register_widgets_frame = tk.Frame(self.register_frame)
         self.register_add_item_prompt_frame = tk.Frame(self.root)
-        self.mode_select_frame = tk.Frame(self.root)
         self.browse_transactions_frame = tk.Frame(self.root)
         self.errors_frame = tk.Frame(self.root, width = 400, height = 300, borderwidth=20, relief="ridge", bg="black")
 
         # Loop through frames, fit them to screen, and configure them so that widgets in column 1 are centered
         # Widgets in column 1 will determine the width of the rest of the widgets
-        for frame in (self.mode_select_frame, self.register_frame, self.admin_frame, 
+        for frame in (self.register_frame, self.admin_frame, 
 			        self.add_item_frame, self.update_inventory_frame, 
 			        self.additional_register_functions_frame, 
 			        self.add_item_listbox_frame, self.register_add_item_prompt_frame,
@@ -51,83 +50,56 @@ class WidgetManager:
         self.errors_frame.grid_columnconfigure(0, weight=1)
         self.errors_frame.grid_columnconfigure(1, weight=0)
         self.errors_frame.grid_columnconfigure(2, weight=1)
-        # =============================
-        # Widgets for Mode select frame
-        # =============================
-
-        self.mode_select_label = tk.Label(
-            self.mode_select_frame, text="Please select a mode: ", font=("Arial", 45))
-        self.mode_select_label.grid(column=1, row=0, sticky='ew', pady=10)
-        self.fullscreen_button = tk.Button(
-            self.mode_select_frame, text="Fullscreen",
-            font=("Arial", 45), command = lambda: root.attributes('-fullscreen', True)
-        )
-        self.fullscreen_button.grid(column = 1, row = 1, sticky='ew', pady=10)
-        self.register_mode_button = tk.Button(
-            self.mode_select_frame, text="Enter Register Mode",
-            font=("Arial", 45), command=lambda: controller.enter_register_frame()).grid(
-            column=1, row=2, sticky='ew', pady=10)
-        self.admin_mode_button = tk.Button(
-            self.mode_select_frame, text="Enter Admin Mode",
-            font=("Arial", 45), command=lambda: self.admin_frame.tkraise()).grid(
-            column=1, row=3, sticky='ew', pady=10)
-        self.browse_transactions_button = tk.Button(
-            self.mode_select_frame, text="Browse Transactions", 
-            font=("Arial", 45), command = lambda: self.controller.enter_browse_transactions_frame()).grid(
-                column = 1, row = 4, sticky='ew', pady=10
-            )
-        self.quit_program_button = tk.Button(
-            self.mode_select_frame, text="Quit Program",
-            font=("Arial", 45), command = lambda: root.destroy()
-        )
-        self.quit_program_button.grid(column = 1, row = 5, sticky='ew', pady=10)
 
 
         # ===============================
         # Widgets for Register Mode frame
         # ===============================
 
+        self.register_frame.config(bg="black")
+
+        self.new_frame = tk.Frame(self.register_frame, bg="black")
+        self.new_frame.columnconfigure(0, weight=1)
+        self.new_frame.columnconfigure(1, weight=1)
+
+        self.register_label = tk.Label(
+            self.new_frame, font=("Arial", 20), text="Mode: Register", fg="#68FF00", bg="black"
+        )
+        self.register_label.grid(column=0, row=0, sticky='sw', pady=5)
         #Entry box where numbers user is typing are being displayed 
         self.usr_entry = tk.Entry(
-            self.register_frame, font=("Arial", 91),
-            bg="black", fg="#68FF00", justify="right", width=15)
+            self.new_frame, font=("Arial", 91),
+            bg="black", fg="#68FF00", justify="right", width=9)
         self.usr_entry.insert(tk.END, "$0.00")
-        self.usr_entry.grid(column=1, row=0, sticky='ew', padx=2)
+        self.usr_entry.grid(column=1, row=0, sticky='e', padx=2)
         self.usr_entry.bind("<FocusIn>", controller.return_invisible_entry_focus)
 
         # Invisible entry where user input actually occurs. Allows user entry to be untampered so 
         # same entry box can be used for barcodes and numberic values alike
         self.invisible_entry = tk.Entry(self.register_frame)
-        self.invisible_entry.place(x=-10, y=0)
+        self.invisible_entry.place(x=0, y=-50)
         self.invisible_entry.bind("<Return>", controller.process_sale)
         self.bind_invisible_entry_keys()
 
-        self.register_widgets_frame.grid(column=1, row=1, sticky='nsew')
+        self.register_widgets_frame.grid(column=1, row=2, sticky='nsew')
 
-
-
-        self.new_frame = tk.Frame(self.register_widgets_frame)
-        self.new_frame.grid_columnconfigure(0, weight=1)
-        self.new_frame.grid(column=0, row=0, sticky='nsew')
         # Box where program outputs current running total
-        self.total_entry = tk.Entry(self.new_frame, font=("Arial", 35), width=7)
+        self.total_entry = tk.Entry(
+            self.new_frame, font=("Arial", 35), width=10, bg="black",
+            fg="#68FF00")
         self.total_entry.insert(tk.END, "$0.00")
         self.total_entry.grid(column = 0, row = 0, sticky='nw')
         self.total_entry.bind("<FocusIn>", controller.return_invisible_entry_focus)
 
-        self.register_back_button = tk.Button(
-            self.new_frame, text="Back", font=("Arial", 35),
-            height=5, command = lambda: self.mode_select_frame.tkraise())
-        self.register_back_button.grid(column = 0, row = 1, sticky='nw')
-
+        self.new_frame.grid(column = 1, row = 0, sticky='nsew')
         self.sale_items_listbox = tk.Listbox(
-            self.register_widgets_frame, width=20,
-            height=6, font=("Arial", 50)
+            self.register_widgets_frame, width=34, bg="black",
+            height=8, font=("Courier New", 38), fg="white"
         )
         self.sale_items_listbox.grid(column = 1, row = 0, sticky='nsw')
         self.sale_items_listbox.bind("<FocusIn>", controller.return_invisible_entry_focus)
         self.sale_items_scrollbar = tk.Scrollbar(
-            self.register_widgets_frame,
+            self.register_widgets_frame, bg="white",
             orient=tk.VERTICAL, width=40
         )
         self.sale_items_scrollbar.grid(column = 1, row = 0, sticky='nse')
@@ -153,27 +125,6 @@ class WidgetManager:
             font=("Arial", 90), command = lambda: controller.state_manager.yes_no_var.set("no"))
         self.register_add_item_no_button.grid(row=0, column=1, sticky='nsew')
 
-        # ============================
-        # Widgets for Admin Mode frame 
-        # ============================
-        self.new_item_button = tk.Button(
-            self.admin_frame, text = "Add New Item", font=("Arial", 50),
-            height = 5, command = lambda: controller.enter_add_item_frame()) 
-        self.new_item_button.grid(
-            column = 0, row = 1, sticky='s',
-            padx = 5, pady = 5, ipadx=10, ipady=10)
-
-        self.run_x_button = tk.Button(
-            self.admin_frame, text = "Run X", font=("Arial", 50),
-              height = 5, command = lambda: controller.run_x())
-        self.run_x_button.grid(
-            column=1, row=1, sticky='e', padx=5,
-            pady=5, ipadx=10, ipady=10)
-
-
-        self.admin_back_button = tk.Button(
-            self.admin_frame, text="Go Back", font=("Arial", 50),
-            command=lambda: self.mode_select_frame.tkraise()).grid(column = 0, row = 0, sticky='nw')
 
         # ==========================
         # Widgets for Add Item frame
@@ -372,20 +323,44 @@ class WidgetManager:
         self.register_functions_buttons_frame.grid_columnconfigure(1, weight=1)
         self.register_functions_buttons_frame.grid(row=1, column=1, sticky='nsew')
 
-        self.last_button = tk.Button(
-            self.register_functions_buttons_frame, text="Void Transaction",
-            font=("Arial", 70), command = lambda: controller.void_transaction())
+        self.void_button = tk.Button(
+            self.register_functions_buttons_frame, text="Void Trans",
+            font=("Arial", 58), command = lambda: controller.void_transaction())
         
-
         self.print_receipt_button = tk.Button(
-            self.register_functions_buttons_frame, text="Print a Receipt", font=("Arial", 70))
+            self.register_functions_buttons_frame, text="Print Receipt", font=("Arial", 58))
 
         self.make_return_button = tk.Button(
-            self.register_functions_buttons_frame, text="Process Return",
-            font=("Arial", 70), command = lambda: controller.process_return())
+            self.register_functions_buttons_frame, text="Make Return",
+            font=("Arial", 58), command = lambda: controller.process_return())
 
+        self.run_x_button = tk.Button(
+            self.register_functions_buttons_frame, text = "Run X", font=("Arial", 58),
+            height = 1, command = lambda: controller.run_x())
+
+        self.new_item_button = tk.Button(
+            self.register_functions_buttons_frame, text = "Manage Inv", font=("Arial", 58),
+            height = 1, command = lambda: controller.enter_add_item_frame())
+
+        self.fullscreen_button = tk.Button(
+            self.register_functions_buttons_frame, text="Fullscreen",
+            font=("Arial", 58), command = lambda: root.attributes('-fullscreen', True))
+
+        self.browse_transactions_button = tk.Button(
+            self.register_functions_buttons_frame, text="Browse Trans", 
+            font=("Arial", 58), command = lambda: self.controller.enter_browse_transactions_frame())
+        
+        self.quit_program_button = tk.Button(
+            self.register_functions_buttons_frame, text="Quit Program",
+            font=("Arial", 58), command = lambda: root.destroy())
+        
+        self.back_to_register_button = tk.Button(
+            self.register_functions_buttons_frame, text="Back",
+            font=("Arial", 58), command = lambda: self.controller.enter_register_frame())
+        
+        
         self.place_register_functions_buttons()
-
+        
         self.continue_button = tk.Button(
             self.additional_register_functions_frame, text="Continue", font=("Arial", 50),
             command= lambda: controller.state_manager.reference_number_var.set("continue"))
@@ -502,9 +477,15 @@ class WidgetManager:
         self.invisible_entry.unbind("<KeyRelease-KP_Subtract>")
 
     def place_register_functions_buttons(self):
-        self.last_button.grid(row=0, column=0, sticky='nsew')
-        self.print_receipt_button.grid(row=1, column=0, sticky='nsew')
-        self.make_return_button.grid(row=1, column=1, sticky='nsew')
+        self.void_button.grid(row=0, column=0, sticky='nsew', pady=2)
+        self.print_receipt_button.grid(row=1, column=0, sticky='nsew', pady=2)
+        self.make_return_button.grid(row=0, column=1, sticky='nsew', pady=2)
+        self.run_x_button.grid(column=1, row=1, sticky='nsew', pady=2)
+        self.new_item_button.grid(column = 0, row = 2, sticky='nsew', pady=2)
+        self.fullscreen_button.grid(column = 1, row = 2, sticky='nsew', pady=2)
+        self.browse_transactions_button.grid(column = 0, row = 3, sticky='nsew', pady=2) 
+        self.quit_program_button.grid(column = 1, row = 3, sticky='nsew', pady=2)
+        self.back_to_register_button.grid(column = 0, row = 4, sticky='nsew', pady=2)
 
     def setup_void_widgets(self):
         self.browse_label.config(text="Browse to transaction to void\nor enter the Transaction ID")

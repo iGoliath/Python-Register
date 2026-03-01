@@ -27,7 +27,7 @@ def test_basic_sale_cash(register_instance):
     register_instance.on_cash()
 
 
-    c.execute('SELECT "Non-Tax", "Cash Used" FROM sales WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM sales)')
+    c.execute('SELECT "Non-Tax", "Cash Used" FROM sales WHERE sale_id = (SELECT MAX(sale_id) FROM sales)')
     results = c.fetchall()
     row = results[0]
     assert row[0] == 1.23
@@ -41,7 +41,7 @@ def test_basic_sale_cc(register_instance):
     register_instance.process_sale()
     register_instance.on_cc()
 
-    c.execute('SELECT "Non-Tax", "CC Used" FROM sales WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM sales)')
+    c.execute('SELECT "Non-Tax", "CC Used" FROM sales WHERE sale_id = (SELECT MAX(sale_id) FROM sales)')
     results = c.fetchall()
     row = results[0]
     assert row[0] == 1.23
@@ -57,7 +57,7 @@ def test_sale_cash_cc(register_instance):
     register_instance.on_cash()
     register_instance.on_cc()
 
-    c.execute('SELECT "Non-Tax", "Cash Used", "CC Used" FROM sales WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM sales)')
+    c.execute('SELECT "Non-Tax", "Cash Used", "CC Used" FROM sales WHERE sale_id = (SELECT MAX(sale_id) FROM sales)')
     results = c.fetchall()
     row = results[0]
     assert row[0] == 1.23
@@ -73,7 +73,7 @@ def test_sale_cc_cash(register_instance):
     register_instance.on_cc()
     register_instance.on_cash()
 
-    c.execute('SELECT "Non-Tax", "Cash Used", "CC Used" FROM sales WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM sales)')
+    c.execute('SELECT "Non-Tax", "Cash Used", "CC Used" FROM sales WHERE sale_id = (SELECT MAX(sale_id) FROM sales)')
     results = c.fetchall()
     row = results[0]
     assert row[0] == 1.23

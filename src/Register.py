@@ -60,7 +60,7 @@ class Register:
 		'''Setup necessary information for browse transaction frame. If voiding,
 		set up those widgets as well.'''
 		self.state_manager.cursor.execute(
-			'''SELECT * FROM SALES WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM SALES)''')
+			'''SELECT * FROM SALES WHERE sale_id = (SELECT MAX(sale_id) FROM SALES)''')
 		results = self.state_manager.cursor.fetchone()
 		if not results:
 			return False
@@ -77,7 +77,7 @@ class Register:
 		'''Called when state_manager.browse_index is written to. Move info to current index.'''
 		self.ui.browse_entry.delete(0, tk.END)
 		self.state_manager.cursor.execute(
-			'''SELECT * FROM sales WHERE "Transaction ID" = ?''', (self.state_manager.browse_index.get(), )
+			'''SELECT * FROM sales WHERE sale_id = ?''', (self.state_manager.browse_index.get(), )
 		)
 		results = self.state_manager.cursor.fetchone()
 		if not results:
@@ -115,12 +115,11 @@ class Register:
 		self.ui.update_entry(self.ui.usr_entry, f"${total:.2f}")
 		self.ui.sale_items_listbox.delete(0, tk.END)
 		for item in self.state_manager.trans.items_list:
-			sale_info = f"{item[0][:15]} ${str(item[1])} "
-			if item[2] == 1:
-				sale_info += "TX"
+			if len(item[0]) > 13:
+				sale_info = f"{item[0][:13]}... ({str(item[-1])}) ${str(item[1])} {'TX' if item[2] == 1 else 'NT'}"
 			else:
-				sale_info += "NT"
-			sale_info += f" QTY: {str(item[-1])}"
+				sale_info = f"{item[0]} ({str(item[-1])}) ${str(item[1])} {'TX' if item[2] == 1 else 'NT'}"
+			
 			self.ui.sale_items_listbox.insert(tk.END, sale_info)
 
 		'''for item in self.state_manager.trans.items_list:
@@ -143,7 +142,7 @@ class Register:
 		
 		while True:
 			root.wait_variable(self.state_manager.void_var)
-			self.state_manager.cursor.execute('''SELECT Voided FROM Sales Where "Transaction ID" = ?''', (self.state_manager.browse_index.get(), ))
+			self.state_manager.cursor.execute('''SELECT Voided FROM Sales Where sale_id = ?''', (self.state_manager.browse_index.get(), ))
 			voided = (self.state_manager.cursor.fetchall()[0])[0]
 			if voided == 1:
 				self.ui.error_description_label.config(text="This transaction is already voided!")
@@ -153,10 +152,10 @@ class Register:
 				break
 
 		try:
-			self.state_manager.cursor.execute('''UPDATE SALES SET Voided = ? WHERE "Transaction ID" = ?''', (1, self.state_manager.browse_index.get()))
-			self.state_manager.cursor.execute('''SELECT * FROM Sales Where "Transaction ID" = ?''', (self.state_manager.browse_index.get(), ))
+			self.state_manager.cursor.execute('''UPDATE SALES SET Voided = ? WHERE sale_id = ?''', (1, self.state_manager.browse_index.get()))
+			self.state_manager.cursor.execute('''SELECT * FROM Sales Where sale_id = ?''', (self.state_manager.browse_index.get(), ))
 			transaction_info = list(self.state_manager.cursor.fetchall()[0])
-			self.state_manager.cursor.execute('''SELECT * FROM SALEITEMS WHERE "Transaction ID" = ?''', (self.state_manager.browse_index.get(), ))
+			self.state_manager.cursor.execute('''SELECT * FROM SALEITEMS WHERE sale_id = ?''', (self.state_manager.browse_index.get(), ))
 			item_results = self.state_manager.cursor.fetchall()
 			for i in range(len(item_results)):
 				self.state_manager.cursor.execute('''UPDATE Inventory SET Quantity = Quantity + ? WHERE Barcode = ?''', (item_results[i][5], item_results[i][4]))
@@ -232,27 +231,27 @@ class Register:
 	def print_receipt_header(self, receipt_type, transaction_id):
 		if receipt_type == "void":
 			self.printer.textln(("-" * 42))
-			self.printer.textln(("-" * 12) + " Void Transaction " + ("-" * 12))
+			self.printer.textln(f"{'-' * 12} Void Transaction {'-' * 12}")
 			self.printer.textln(("-" * 42))
 			spaces = 17 - len(str(transaction_id))
-			self.printer.textln("Original Transaction ID: " + (" " * spaces) + str(transaction_id))
+			self.printer.textln(f"Original Transaction ID: {' ' * spaces}{str(transaction_id)}")
 		elif receipt_type == "sale":
-			self.printer.textln(("-" * 18) + " Sale " + ("-" * 18))
+			self.printer.textln(f"{'-' * 18} Sale {'-' * 18}")
 			spaces = self.config.printing_width - 16 - len(str(transaction_id))
-			self.printer.textln("Transaction ID: " + (" " * spaces) + str(transaction_id))
+			self.printer.textln(f"Transaction ID: {' ' * spaces}{str(transaction_id)}")
 		elif receipt_type == "return":
-			self.printer.textln(("-" * 17) + " Return " + ("-" * 17))
+			self.printer.textln(f"{'-' * 17} Return {'-' * 17}")
 			spaces = 26 - len(str(transaction_id))
-			self.printer.textln("Transaction ID: " + (" " * spaces) + str(transaction_id))
+			self.printer.textln(f"Transaction ID: {' ' * spaces}{str(transaction_id)}")
 		elif receipt_type == "x":
 			self.printer.textln(("-" * 42))
-			self.printer.textln(("-" * 14) + " Daily Report " + ("-" * 14))
-			self.printer.textln(("-" * 12) + " " + datetime.today().strftime('%Y-%m-%d') + " " + datetime.now().strftime("%H:%M") + " " + ("-" * 12))
+			self.printer.textln(f"{'-' * 14} Daily Report {'-' * 14}")
+			self.printer.textln(f"{'-' * 12} {datetime.today().strftime('%Y-%m-%d')} {datetime.now().strftime('%H:%M')} {'-' * 12}")
 			self.printer.textln("-" * 42)
 			self.printer.ln(2)
 
 		if receipt_type != "x":
-			self.printer.textln(datetime.today().strftime('%Y-%m-%d') + (" " * 27) + datetime.now().strftime("%H:%M"))
+			self.printer.textln(f"{datetime.today().strftime('%Y-%m-%d')}{' ' * 27}{datetime.now().strftime('%H:%M')}")
 			self.printer.ln(2)
 
 	def on_cash(self, event = None):
@@ -276,15 +275,15 @@ class Register:
 			self.state_manager.trans.cash_tendered += balance
 			self.state_manager.trans.cash_used += balance
 			self.ui.update_entry(self.ui.total_entry, "C: $0.00")
-			self.ui.update_entry(self.ui.usr_entry, f"Sale Total: ${self.state_manager.trans.total:.2f}")
+			#self.ui.update_entry(self.ui.usr_entry, f"${self.state_manager.trans.total:.2f}")
 			self.complete_sale()
 			return "break"
 		elif length == 1:
-			amount_given = float("0.0" + entered_amount)
+			amount_given = float(f"0.0{entered_amount}")
 		elif length == 2:
-			amount_given = float("0." + entered_amount)
-		elif length == 3:
-			amount_given = float(entered_amount[0:length-2] + "." + entered_amount[length-2:length])
+			amount_given = float(f"0.{entered_amount}")
+		elif length >= 3:
+			amount_given = float(f"{entered_amount[0:length-2]}.{entered_amount[length-2:length]}")
 		
 		display_string = "" 
 		complete = False
@@ -297,17 +296,17 @@ class Register:
 		elif amount_given > balance:
 			self.state_manager.trans.cash_tendered += amount_given
 			self.state_manager.trans.cash_used += balance
-			display_string = "C: $" + f"{abs(balance-amount_given):.2f}"
+			display_string = f"C: ${abs(balance-amount_given):.2f}"
 			complete = True
 		elif amount_given < balance:
 			self.state_manager.trans.cash_tendered += amount_given
 			self.state_manager.trans.cash_used += amount_given
-			display_string = "B: $" + f"{(balance - amount_given):.2f}"
+			display_string = f"B: ${(balance - amount_given):.2f}"
 
 		self.ui.update_entry(self.ui.total_entry, display_string)
 		
 		if complete:
-			self.ui.update_entry(self.ui.usr_entry, f"Sale Total: ${self.state_manager.trans.total:.2f}")
+			#self.ui.update_entry(self.ui.usr_entry, f"Sale Total: ${self.state_manager.trans.total:.2f}")
 			self.complete_sale()
 
 	def on_cc(self, event = None):
@@ -325,7 +324,7 @@ class Register:
 		entered_amount = entered_amount[:-1]
 		self.ui.invisible_entry.delete(0, tk.END)
 		length = len(entered_amount)
-		
+
 		balance = round(self.state_manager.trans.total - self.state_manager.trans.cash_used - self.state_manager.trans.cc_used, 2)
 		amount_given = 0.0
 		
@@ -333,18 +332,19 @@ class Register:
 			self.state_manager.trans.cc_used += balance
 			self.state_manager.trans.cc_tendered += balance
 			self.ui.update_entry(self.ui.total_entry, "C: $0.00")
-			self.ui.update_entry(self.ui.usr_entry, f"Sale Total: ${self.state_manager.trans.total:.2f}")
+			#self.ui.update_entry(self.ui.usr_entry, f"Sale Total: ${self.state_manager.trans.total:.2f}")
 			self.complete_sale()
 			return "break"
 		elif length == 1:
-			amount_given = float("0.0" + entered_amount)
+			amount_given = float(f"0.0{entered_amount}")
 		elif length == 2:
-			amount_given = float("0." + entered_amount)
-		elif length == 3:
-			amount_given = float(entered_amount[0:length-2] + "." + entered_amount[length-2:length])
-		
+			amount_given = float(f"0.{entered_amount}")
+		elif length >= 3:
+			amount_given = float(f"{entered_amount[0:length-2]}.{entered_amount[length-2:length]}")
+
 		if amount_given > balance:
-			self.ui.total_entry.insert(tk.END, "ERR: CC")
+			self.ui.error_description_label.config(text="CC Amount Entered\nExceeds Balance!")
+			self.ui.errors_frame.tkraise()
 			return "break"
 		
 		display_string = "" 
@@ -363,7 +363,7 @@ class Register:
 		self.ui.update_entry(self.ui.total_entry, display_string)
 
 		if complete:
-			self.ui.update_entry(self.ui.usr_entry, f"Sale Total: ${self.state_manager.trans.total:.2f}")
+			#self.ui.update_entry(self.ui.usr_entry, f"Sale Total: ${self.state_manager.trans.total:.2f}")
 			self.complete_sale()
 
 
@@ -371,10 +371,10 @@ class Register:
 		"""Complete transaction, open cash drawer, print receipt, and reset register environment."""
 		#self.printer.cashdraw(pin=2)
 		self.state_manager.trans.complete_transaction()
-		self.state_manager.cursor.execute('''SELECT * FROM SALES WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM SALES)''')
+		self.state_manager.cursor.execute('''SELECT * FROM SALES WHERE sale_id = (SELECT MAX(sale_id) FROM SALES)''')
 		results = self.state_manager.cursor.fetchall()
 		sale_info = results[0]
-		self.state_manager.cursor.execute('''SELECT * FROM SALEITEMS WHERE "Transaction ID" = ?''', (sale_info[0], ))
+		self.state_manager.cursor.execute('''SELECT * FROM SALEITEMS WHERE sale_id = ?''', (sale_info[0], ))
 		sale_items_list = self.state_manager.cursor.fetchall()
 		#self.print_receipt("sale", sale_info[0], sale_items_list, sale_info, self.state_manager.trans.cash_tendered, self.state_manager.trans.cc_tendered)
 		self.ui.sale_items_listbox.delete(0, tk.END)
@@ -610,7 +610,9 @@ class Register:
 					self.ui.add_item_entry, self.ui.add_item_button, self.ui.item_info_confirmation,
 					self.ui.add_item_yes_no, self.ui.back_button, root, self.ui.reenter_frame):
 					self.process_sale(None, self.state_manager.add_item_object.barcode)
+					self.state_manager.coming_from_register = False
 					self.ui.register_frame.tkraise()
+					self.ui.invisible_entry.focus_set()
 			case _:
 				
 				self.ui.error_description_label.config("Add item index out of bounds!\nPlease try again.")
@@ -626,7 +628,7 @@ class Register:
 
 	def run_x(self, event=None):
 		"""Sum daily totals and print them to a receipt."""
-		self.state_manager.cursor.execute('''SELECT "Transaction ID" FROM sales where date = ?''', (datetime.today().strftime('%Y-%m-%d'), ))
+		self.state_manager.cursor.execute('''SELECT sale_id FROM sales where date = ?''', (datetime.today().strftime('%Y-%m-%d'), ))
 		results = self.state_manager.cursor.fetchall()
 		if not results:
 			self.ui.error_description_label.config(text="No transactions made yet!\nCannot process X")
@@ -646,7 +648,7 @@ class Register:
 			spaces = 29 - len(category.split()[0]) - len(rounded)
 			self.printer.textln(f"{category.split()[0]} Collected: {' ' * spaces}${rounded}\n")
 		
-		self.state_manager.cursor.execute('''SELECT SUM("Price") FROM saleitems JOIN sales ON saleitems."Transaction ID" = sales."Transaction ID" WHERE saleitems."Barcode" IN ('propane', 'also propane') AND sales."Date" = ?''', (datetime.today().strftime('%Y-%m-%d'), ))
+		self.state_manager.cursor.execute('''SELECT SUM("Price") FROM saleitems JOIN sales ON saleitems.sale_id = sales.sale_id WHERE saleitems."Barcode" IN ('propane', 'also propane') AND sales."Date" = ?''', (datetime.today().strftime('%Y-%m-%d'), ))
 		results = self.state_manager.cursor.fetchone()[0]
 		propane_sold = results if results is not None else 0
 		spaces = 42 - 15 - len(f"{propane_sold:.2f}")
@@ -672,6 +674,7 @@ class Register:
 	def process_return(self, event = None):
 		"""Put register into 'return mode'. User can ring up items like a 
 		normal sale, but items will be returned instead."""
+		self.ui.register_label.config(text="Mode: Return", fg="red")
 		self.enter_register_frame()
 		self.state_manager.trans.ret_or_void = True
 		self.ui.unbind_invisible_entry_keys()
@@ -696,13 +699,14 @@ class Register:
 			self.state_manager.trans.cc_used = self.state_manager.trans.total
 
 		self.state_manager.trans.complete_transaction()
-		self.state_manager.cursor.execute('''SELECT * FROM SALES WHERE "Transaction ID" = (SELECT MAX("Transaction ID") FROM SALES)''')
+		self.state_manager.cursor.execute('''SELECT * FROM SALES WHERE sale_id = (SELECT MAX(sale_id) FROM SALES)''')
 		results = self.state_manager.cursor.fetchall()
 		row = list(results[0])
-		self.state_manager.cursor.execute('''SELECT * FROM SALEITEMS WHERE "Transaction ID" = ?''', (row[0], ))
+		self.state_manager.cursor.execute('''SELECT * FROM SALEITEMS WHERE sale_id = ?''', (row[0], ))
 		item_results = list(self.state_manager.cursor.fetchall())
 		self.print_receipt("return", row[0], item_results, row)
 		self.ui.bind_invisible_entry_keys()
+		self.ui.register_label.config(text="Mode: Register", fg="#68FF00")
 		self.enter_register_frame()
 
 
@@ -742,7 +746,6 @@ if __name__ == "__main__":
 	root = tk.Tk()
 	root.title("TBC REGISTER")
 	root.geometry("1024x600")
-	root.after(500, lambda: root.attributes("-fullscreen", True))
 	#root.tk.call('tk', 'scaling', 1)
 	root.grid_columnconfigure(0, weight=1)
 	root.grid_rowconfigure(0, weight=1)
@@ -750,12 +753,13 @@ if __name__ == "__main__":
 	register = Register(root)
 	register.state_manager.cursor.execute(
 		"INSERT INTO no_sale (date, times_pressed) VALUES (?, ?) ON CONFLICT (date)" \
-		"DO NOTHING",
-		(datetime.today().strftime('%Y-%m-%d'), 0))
+		"DO NOTHING", (datetime.today().strftime('%Y-%m-%d'), 0))
 	register.state_manager.conn.commit()
 	pygame.mixer.init()
-	register.ui.mode_select_frame.tkraise()
-	
+	register.enter_register_frame()
+
+	root.after(500, lambda: root.attributes("-fullscreen", True))
+
 	root.mainloop()
 
 

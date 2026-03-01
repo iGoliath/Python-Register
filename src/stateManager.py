@@ -16,6 +16,7 @@ class StateManager:
         self.browse_index = tk.IntVar(root_window)
         self.binding_manager = None
         self.conn = sqlite3.connect("/tmp/RegisterDatabase")
+        self.conn.execute("PRAGMA foreign_keys = ON")
         self.cursor = self.conn.cursor()
         self.trans = Transaction(self.conn, self.cursor)
         self.add_item_object = AddToInventory(self.conn, self.cursor)
