@@ -17,7 +17,7 @@ class Transaction:
 	def complete_transaction(self):
 		global date
 		self.db_cursor.execute("INSERT INTO SALES VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (self.nontax, self.pretax, self.tax, self.total, self.items_sold, date, datetime.now().strftime("%H:%M"), self.cash_used, self.cc_used, 0))
-		self.db_cursor.execute('''SELECT MAX("Transaction ID") FROM Sales''')
+		self.db_cursor.execute('''SELECT MAX(sale_id) FROM Sales''')
 		results = self.db_cursor.fetchall()[0]
 		for item in self.items_list:
 			self.db_cursor.execute("INSERT OR IGNORE INTO SALEITEMS VALUES(?, ?, ?, ?, ?, ?)",
