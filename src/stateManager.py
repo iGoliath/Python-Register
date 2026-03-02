@@ -6,10 +6,10 @@ import sqlite3
 class StateManager:
     def __init__(self, root_window):
         self.add_item_index = 0
-        self.reentering = self.coming_from_register = self.updating_existing_item = self.reentering_quantity = False 
+        self.reentering = self.coming_from_register = self.updating_existing_item = False
+        self.reentering_quantity = False 
         self.yes_no_var = tk.StringVar(root_window)
-        self.reference_number_var = tk.StringVar(root_window)
-        self.update_inventory_var = tk.StringVar(root_window)
+        self.seasonal_id_var = tk.StringVar(root_window)
         self.return_var = tk.StringVar(root_window)
         self.add_item_var = tk.StringVar(root_window)
         self.void_var = tk.StringVar(root_window)

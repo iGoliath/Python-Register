@@ -14,27 +14,36 @@ class Transaction:
 		self.ret_or_void = False
 		
 		
-	def complete_transaction(self):
+	def complete_transaction(self, seasonal_id = None):
 		global date
-		self.db_cursor.execute("INSERT INTO SALES VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (self.nontax, self.pretax, self.tax, self.total, self.items_sold, date, datetime.now().strftime("%H:%M"), self.cash_used, self.cc_used, 0))
+		self.db_cursor.execute("INSERT INTO SALES VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			(self.nontax, self.pretax, self.tax, self.total, self.items_sold, date,
+			datetime.now().strftime("%H:%M"), self.cash_used, self.cc_used, 0))
 		self.db_cursor.execute('''SELECT MAX(sale_id) FROM Sales''')
-		results = self.db_cursor.fetchall()[0]
+		max_sale_id = (self.db_cursor.fetchall()[0])[0]
 		for item in self.items_list:
 			self.db_cursor.execute("INSERT OR IGNORE INTO SALEITEMS VALUES(?, ?, ?, ?, ?, ?)",
-				(results[0], item[0], item[1], item[2], item[3], item[4]))
+				(max_sale_id, item[0], item[1], item[2], item[3], item[4]))
 			if not self.ret_or_void:
 				self.db_cursor.execute("UPDATE INVENTORY SET Quantity = Quantity - ? WHERE barcode = ?",
 					(item[4], item[3]))
 			else:
 				self.db_cursor.execute("UPDATE INVENTORY SET Quantity = Quantity + ? WHERE barcode = ?",
 					(item[4], item[3]))
+		
+		if seasonal_id is not None:
+			self.db_cursor.execute('''INSERT INTO seasonals VALUES (NULL, ?, ?)''', (seasonal_id, max_sale_id))
+
 		self.db_conn.commit()
 		
-			
+	def update_seasonal_info(self, seasonal_id):
+
+		self.db_cursor.execute('''INSERT INTO seasonals ''')
 
 	def sell_item(self, entered_barcode):
 	
-		self.db_cursor.execute('''SELECT "Name", "Price", "Taxable" FROM INVENTORY WHERE BARCODE = ?''', (entered_barcode,))
+		self.db_cursor.execute('''SELECT "Name", "Price", "Taxable" FROM INVENTORY WHERE BARCODE = ?''',
+			(entered_barcode,))
 		results = self.db_cursor.fetchone()
 		if not results:
 			return "item_not_found", None, None, None

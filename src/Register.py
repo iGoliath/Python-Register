@@ -21,7 +21,6 @@ class Register:
 		self.ui = WidgetManager(root, self)
 		self.config = Config()
 		self.printer = Usb(0x0fe6, 0x811e, 0) #File("/dev/usb/lp0")
-		
 
 	def only_numbers(self, P):
 		"""Check if potential key is a number or space, return false if not"""
@@ -121,17 +120,7 @@ class Register:
 				sale_info = f"{item[0]} ({str(item[-1])}) ${str(item[1])} {'TX' if item[2] == 1 else 'NT'}"
 			
 			self.ui.sale_items_listbox.insert(tk.END, sale_info)
-
-		'''for item in self.state_manager.trans.items_list:
-			sale_info = f"{item[0][:25]}->"
-			self.ui.sale_items_listbox.insert(tk.END, sale_info)
-			sale_info = ""
-			if item[2] == 1:
-				sale_info += "TX"
-			else:
-				sale_info += "NT"
-			sale_info += f" QTY: {str(item[-1])}"
-			self.ui.sale_items_listbox.insert(tk.END, sale_info)'''
+		self.ui.sale_items_listbox.yview_moveto(1.0)
 		
 	def void_transaction(self):
 
@@ -175,7 +164,7 @@ class Register:
 			text_widget.delete("1.0", "end")
 			text_widget.insert("end", "Transaction ID: " + str(transaction_info[0]) + " |\t")
 			text_widget.insert("end", "Total: $" + f"{transaction_info[4]:.2f}" + "\n")
-			text_widget.insert("end", "# Items Sold: " + str(transaction_info[5]) + " |\t")
+			text_widget.insert("end", "Items Sold: " + str(transaction_info[5]) + " |\t")
 			text_widget.insert("end", "Cash Used: $" + f"{transaction_info[8]:.2f}" + "\n")
 			text_widget.insert("end", "CC Used: $" + f"{transaction_info[9]:.2f}" + " |\t")
 			text_widget.insert("end", "Time: " + transaction_info[7])
@@ -259,6 +248,7 @@ class Register:
 		if self.state_manager.trans.total == 0:
 			self.ui.error_description_label.config(text="No Items Entered!")
 			self.ui.errors_frame.tkraise()
+			self.clear()
 			return "break"
 		
 		pygame.mixer.music.load("short-beep.mp3")
@@ -314,7 +304,7 @@ class Register:
 		if self.state_manager.trans.total == 0:
 			self.ui.error_description_label.config(text="No Items Entered!")
 			self.ui.errors_frame.tkraise()
-			self.ui.invisible_entry.delete(0, tk.END)
+			self.clear()
 			return "break"
 		
 		pygame.mixer.music.load("short-beep.mp3")
@@ -412,63 +402,6 @@ class Register:
 		self.ui.invisible_entry.delete(0, tk.END)
 		self.ui.update_entry(self.ui.total_entry, "$0.00")
 			
-	def get_update_barcode(self, event=None):
-		self.state_manager.update_inventory_var.set(self.ui.update_inventory_entry.get())
-		self.ui.update_inventory_entry.delete(0, tk.END)
-		
-	def update_inventory(self, which_button, entered_barcode):
-		self.ui.update_buttons_frame.grid_forget()
-		self.ui.update_inventory_entry.grid(row=1, column=1, sticky='nsew')
-		if (entered_barcode):
-			barcode = entered_barcode
-		else:
-			self.ui.update_inventory_label.config(text="Please scan barcode of item")
-			root.wait_variable(self.state_manager.update_inventory_var)
-			barcode = self.state_manager.update_inventory_var.get()
-		self.state_manager.cursor.execute("SELECT %s FROM INVENTORY WHERE barcode = ?" % (which_button), (barcode,))
-		results = self.state_manager.cursor.fetchall()
-		row = results[0]
-		current_value = row[0]
-		while True:
-			if which_button == "Taxable":
-				if current_value == 1:
-					self.ui.update_inventory_label.config(text="Item is Currently Taxable\nSwitch to Non-Taxable?")
-				elif current_value == 0:		
-					self.ui.update_inventory_label.config(text="Item is Currently Non-Taxable\nSwitch to Taxable?")
-
-				self.ui.update_inventory_entry.grid_forget()
-				self.ui.update_inventory_yes_no.grid(row=1, column=1, sticky='nsew')
-				root.wait_variable(self.state_manager.yes_no_var)
-				yes_no_answer = self.state_manager.yes_no_var.get()
-				if yes_no_answer == "yes":
-					self.state_manager.cursor.execute("UPDATE INVENTORY SET Taxable = ? Where Barcode = ?", (not current_value, barcode,))
-					break
-				elif yes_no_answer == "no":
-					self.ui.update_inventory_yes_no.grid_forget()
-					self.ui.update_inventory_entry.grid(row=1, column=1, sticky='nsew')
-					continue
-			elif which_button != "Taxable":
-				self.ui.update_inventory_label.config(text=f"Current {which_button} is:\n" + str(current_value) + f"\nPlease Enter Item's New {which_button}")
-				root.wait_variable(self.state_manager.update_inventory_var)
-				new_value = self.state_manager.update_inventory_var.get()
-				self.ui.update_inventory_label.config(text=f"New {which_button} will be:\n" + new_value + "\nIs this correct?")
-				self.ui.update_inventory_entry.grid_forget()
-				self.ui.update_inventory_yes_no.grid(row=1, column=1, sticky='nsew')
-				root.wait_variable(self.state_manager.yes_no_var)
-				yes_no_answer = self.state_manager.yes_no_var.get()
-				self.ui.update_inventory_yes_no.grid_forget()
-				if yes_no_answer == "yes":
-					self.state_manager.cursor.execute("UPDATE INVENTORY SET %s = ? WHERE %s = ?" % (which_button, which_button), (new_value, current_value, ))
-					break
-				elif yes_no_answer == "no":
-					self.ui.update_inventory_entry.grid(row=1, column=1, sticky='nsew')
-					continue
-		self.ui.update_inventory_yes_no.grid_forget()
-		self.ui.update_buttons_frame.grid(column = 1, row=1, sticky='nsew')
-		self.ui.update_inventory_label.config(text="What would you\nlike to update?")
-		self.state_manager.conn.commit()
-		self.state_manager.conn.close()
-		self.ui.admin_frame.tkraise()
 
 	def no_sale(self, event=None):
 		
@@ -483,6 +416,14 @@ class Register:
 		self.state_manager.conn.commit()
 		return "break"
 		
+	def make_seasonal_sale(self):
+
+		root.wait_variable(self.state_manager.seasonal_id_var)
+		self.state_manager.trans.complete_transaction()
+
+
+
+
 
 																					
 

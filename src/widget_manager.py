@@ -12,26 +12,22 @@ class WidgetManager:
         self.admin_frame = tk.Frame(self.root)
         self.add_item_listbox_frame = tk.Frame(self.root)
         self.add_item_frame = tk.Frame(self.root)
-        self.update_inventory_frame = tk.Frame(self.root)
         self.register_frame = tk.Frame(self.root, bg='black')
         self.additional_register_functions_frame = tk.Frame(self.root)
-        self.update_buttons_frame = tk.Frame(self.update_inventory_frame)
         self.reenter_frame = tk.Frame(self.add_item_frame)
         self.add_item_yes_no = tk.Frame(self.add_item_frame)
-        self.additional_register_functions_yes_no = tk.Frame(self.additional_register_functions_frame)
-        self.update_inventory_yes_no = tk.Frame(self.update_inventory_frame)
         self.register_widgets_frame = tk.Frame(self.register_frame)
         self.register_add_item_prompt_frame = tk.Frame(self.root)
         self.browse_transactions_frame = tk.Frame(self.root)
         self.errors_frame = tk.Frame(self.root, width = 400, height = 300, borderwidth=20, relief="ridge", bg="black")
+        self.seasonal_id_entry_frame = tk.Frame(self.root, width=400, height=300, borderwidth=20, relief='ridge', bg="black")
 
         # Loop through frames, fit them to screen, and configure them so that widgets in column 1 are centered
         # Widgets in column 1 will determine the width of the rest of the widgets
-        for frame in (self.register_frame, self.admin_frame, 
-			        self.add_item_frame, self.update_inventory_frame, 
-			        self.additional_register_functions_frame, 
-			        self.add_item_listbox_frame, self.register_add_item_prompt_frame,
-                    self.browse_transactions_frame):
+        for frame in (self.register_frame, self.admin_frame, self.add_item_frame, 
+            self.additional_register_functions_frame, self.add_item_listbox_frame,
+            self.register_add_item_prompt_frame, self.browse_transactions_frame,
+            self.seasonal_id_entry_frame):
             frame.grid(row=0, column=0, sticky='nsew')
             frame.grid_columnconfigure(0, weight=1)
             frame.grid_columnconfigure(1, weight=0)
@@ -40,9 +36,7 @@ class WidgetManager:
         """These frames only need 2 columns of widgets, so
         configure them as such."""
         for frame in (
-            self.update_buttons_frame, self.reenter_frame,
-            self.add_item_yes_no, self.additional_register_functions_yes_no,
-            self.register_widgets_frame):
+            self.reenter_frame, self.add_item_yes_no, self.register_widgets_frame):
             frame.grid_columnconfigure(1, weight=1)
             frame.grid_columnconfigure(0, weight=1)
 
@@ -63,7 +57,7 @@ class WidgetManager:
         self.new_frame.columnconfigure(1, weight=1)
 
         self.register_label = tk.Label(
-            self.new_frame, font=("Arial", 20), text="Mode: Register", fg="#68FF00", bg="black"
+            self.new_frame, font=("Arial", 30), text="Mode: Register", fg="#68FF00", bg="black"
         )
         self.register_label.grid(column=0, row=0, sticky='sw', pady=5)
         #Entry box where numbers user is typing are being displayed 
@@ -94,7 +88,7 @@ class WidgetManager:
         self.new_frame.grid(column = 1, row = 0, sticky='nsew')
         self.sale_items_listbox = tk.Listbox(
             self.register_widgets_frame, width=34, bg="black",
-            height=8, font=("Courier New", 38), fg="white"
+            height=8, font=("Courier New", 37), fg="white"
         )
         self.sale_items_listbox.grid(column = 1, row = 0, sticky='nsw')
         self.sale_items_listbox.bind("<FocusIn>", controller.return_invisible_entry_focus)
@@ -252,64 +246,6 @@ class WidgetManager:
             command = lambda: self.reenter_button_pressed("category"))
         self.add_category_button.grid(row=2, column=1, sticky='nsew')
 
-        # ==================================
-        # Widgets for Update Inventory Frame
-        # ==================================
-
-        self.update_inventory_label=tk.Label(
-            self.update_inventory_frame, text="What would you\nlike to update?",
-            font=("Arial", 50))
-        self.update_inventory_label.grid(column=1, row=0, sticky='nsew')
-
-        self.update_inventory_entry=tk.Entry(
-            self.update_inventory_frame,
-            font=("Arial", 75), width=18)
-        self.update_inventory_entry.bind("<Return>", controller.get_update_barcode)
-
-        self.update_buttons_frame.grid(column = 1, row=1, sticky='nsew')
-
-        self.update_yes_button = tk.Button(
-            self.update_inventory_yes_no, text="Yes", font=("Arial", 150),
-            command= lambda: controller.state_manager.yes_no_var.set("yes"))
-
-        self.update_no_button = tk.Button(
-            self.update_inventory_yes_no, text="No", font=("Arial", 150),
-            command=lambda: controller.state_manager.yes_no_var.set("no"))
-
-
-        self.update_yes_button.grid(column=0, row=0, sticky='nsew', padx=10)
-        self.update_no_button.grid(column=1, row=0, sticky='nsew', padx=10)
-
-        self.update_name_button = tk.Button(
-            self.update_buttons_frame, text="Name", font=("Arial", 75),
-            command = lambda: controller.update_inventory("Name", None))
-        self.update_name_button.grid(row=0, column=0, sticky='nsew')
-
-        self.update_price_button = tk.Button(
-            self.update_buttons_frame, text="Price", font=("Arial", 75),
-            command = lambda: controller.update_inventory("Price", None))
-        self.update_price_button.grid(row=0, column=1, sticky='nsew')
-
-        self.update_barcode_button = tk.Button(
-            self.update_buttons_frame, text="Barcode", font=("Arial", 75),
-            command = lambda: controller.update_inventory("Barcode", None))
-        self.update_barcode_button.grid(row=1, column=0, sticky='nsew')
-
-        self.update_taxable_button = tk.Button(
-            self.update_buttons_frame, text="Taxable", font=("Arial", 75),
-            command = lambda: controller.update_inventory("Taxable", None))
-        self.update_taxable_button.grid(row=1, column=1, sticky='nsew')
-
-        self.update_quantity_button = tk.Button(
-            self.update_buttons_frame, text="Quantity", font=("Arial", 75),
-            command = lambda: controller.update_inventory("Quantity", None))
-        self.update_quantity_button.grid(row=2, column=0, sticky='nsew')
-
-        self.update_category_button = tk.Button(
-            self.update_buttons_frame, text="Category", font=("Arial", 75),
-            command = lambda: controller.update_inventory("Category", None))
-        self.update_category_button.grid(row=2, column=1, sticky='nsew')
-
         # ==========================================
         # Widgets for Additional Register Functions 
         # ==========================================
@@ -325,10 +261,12 @@ class WidgetManager:
 
         self.void_button = tk.Button(
             self.register_functions_buttons_frame, text="Void Trans",
-            font=("Arial", 58), command = lambda: controller.void_transaction())
+            font=("Arial", 58), command = lambda: controller.void_transaction(),
+            bg="black", fg="white")
         
         self.print_receipt_button = tk.Button(
-            self.register_functions_buttons_frame, text="Print Receipt", font=("Arial", 58))
+            self.register_functions_buttons_frame, text="Print Receipt", font=("Arial", 58),
+            bg="white", fg="black")
 
         self.make_return_button = tk.Button(
             self.register_functions_buttons_frame, text="Make Return",
@@ -358,41 +296,20 @@ class WidgetManager:
             self.register_functions_buttons_frame, text="Back",
             font=("Arial", 58), command = lambda: self.controller.enter_register_frame())
         
+        self.seasonal_button = tk.Button(
+            self.register_functions_buttons_frame, text="Seasonal Sale",
+            font=("Arial", 58), command = lambda: self.setup_seasonal_sale())
+        
         
         self.place_register_functions_buttons()
-        
-        self.continue_button = tk.Button(
-            self.additional_register_functions_frame, text="Continue", font=("Arial", 50),
-            command= lambda: controller.state_manager.reference_number_var.set("continue"))
-
-        self.additional_register_functions_entry = tk.Entry(
-            self.additional_register_functions_frame,
-            font=("Arial", 50), justify="right")
-        self.additional_register_functions_entry.bind(
-            "<Return>", lambda event: self.controller.state_manager.reference_number_var.set(self.additional_register_functions_entry.get()))
-
-        self.additional_register_functions_text = tk.Text(
-            self.additional_register_functions_frame, width=30, height=3, font=("Arial", 40))
-
-
-        self.additional_register_functions_yes_button = tk.Button(
-            self.additional_register_functions_yes_no, text="Yes", font=("Arial", 150),
-            command= lambda: controller.state_manager.yes_no_var.set("yes"))
-        self.additional_register_functions_no_button = tk.Button(
-            self.additional_register_functions_yes_no, text="No", font=("Arial", 150),
-            command=lambda: controller.state_manager.yes_no_var.set("no"))
-
-
-        self.additional_register_functions_yes_button.grid(column=0, row=0, sticky='nsew', padx=10)
-        self.additional_register_functions_yes_button.grid(column=1, row=0, sticky='nsew', padx=10)
 
         # ===========================================
         # Widgets for browsing / voiding transactions
         # ===========================================
 
         self.browse_label = tk.Label(
-            self.browse_transactions_frame, text="Browsing Transactions", font=("Arial", 50))
-        self.browse_label.grid(column = 1, row = 0, sticky='ew')
+            self.browse_transactions_frame, text="Browsing Transactions", font=("Arial", 40))
+        self.browse_label.grid(column = 1, row = 0, sticky='ew', pady=10)
 
         self.browse_prev_button = tk.Button(
             self.browse_transactions_frame, text="<<", font=("Arial", 70),
@@ -407,9 +324,9 @@ class WidgetManager:
         self.browse_next_button.grid(column = 2, row = 1, sticky='nse')
 
         self.browse_text = tk.Text(
-            self.browse_transactions_frame, width=30, height=3, font=("Arial", 50)
+            self.browse_transactions_frame, width=18, height=3, font=("Arial", 40)
         )
-        self.browse_text.grid(column = 1, row = 1, sticky='ew')
+        self.browse_text.grid(column = 1, row = 1, sticky='ew', pady=10)
         self.browse_text.bind("<FocusIn>", self.controller.return_browse_entry_focus)
 
         self.browse_second_label = tk.Label(
@@ -421,12 +338,14 @@ class WidgetManager:
         self.browse_entry_frame.grid_columnconfigure(0, weight=1)
 
        
-        self.browse_entry = tk.Entry(self.browse_entry_frame, font=("Arial", 50), validate='key', vcmd=self.controller.vcmd)
+        self.browse_entry = tk.Entry(
+            self.browse_entry_frame, font=("Arial", 35),
+            width = 10, validate='key', vcmd=self.controller.vcmd)
         self.browse_entry.bind("<Return>", lambda event: self.controller.state_manager.browse_index.set(int(self.browse_entry.get())))
         self.browse_entry.grid(column = 0, row = 0, sticky='nsew')
 
 
-        self.browse_go_button = tk.Button(self.browse_entry_frame, font=("Arial", 50),
+        self.browse_go_button = tk.Button(self.browse_entry_frame, font=("Arial", 40),
             text = "-> GO", command = lambda: self.controller.state_manager.browse_index.set(int(self.browse_entry.get())))
         self.browse_go_button.grid(column = 1 , row = 0, sticky='nsew')
 
@@ -444,6 +363,27 @@ class WidgetManager:
             command = lambda: self.errors_frame.lower())
         self.error_ok_button.grid(column = 1, row = 2, sticky='ew')
 
+        # =============================
+        # Widgets for Seasonal ID Entry
+        # =============================
+
+        self.seasonal_id_label = tk.Label(
+            self.seasonal_id_entry_frame, font=("Arial", 50),
+            text="Please enter\nSeasonal's ID"
+        )
+        self.seasonal_id_label.grid(column = 1, row = 0, sticky='nsew')
+
+        self.seasonal_id_entry = tk.Entry(
+            self.seasonal_id_entry_frame, font=("Arial", 50),
+            validate='key', vcmd=self.controller.vcmd)
+        self.seasonal_id_entry.grid(column = 1, row = 1, sticky='nsew')
+
+        self.seasonal_id_button = tk.Button(
+            self.seasonal_id_entry_frame, font=("Arial", 50),
+            text="Confirm")
+
+        
+
     def enter_add_item_frame(self):
         self.add_item_label.grid(column=1, row=0, sticky='ew')
         self.add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
@@ -456,6 +396,13 @@ class WidgetManager:
         self.add_item_frame.tkraise()
         self.add_item_entry.focus_set()
 
+    def setup_seasonal_sale(self):
+        self.register_label.config(text="Mode: Seasonal Sale", fg="red")
+        self.unbind_invisible_entry_keys()
+        self.invisible_entry.bind("<KeyRelease-KP_Enter>", lambda event: self.controller.make_seasonal_sale())
+        self.register_frame.tkraise()
+        self.invisible_entry.focus_set()
+   
     def bind_invisible_entry_keys(self):
         for key in ("Home", "Up", "Prior", "Left","Begin", "Right", "End", "Down", "Next", "Insert"):
             self.invisible_entry.bind(f"<KeyRelease-KP_{key}>", self.controller.number_pressed)
@@ -486,18 +433,20 @@ class WidgetManager:
         self.browse_transactions_button.grid(column = 0, row = 3, sticky='nsew', pady=2) 
         self.quit_program_button.grid(column = 1, row = 3, sticky='nsew', pady=2)
         self.back_to_register_button.grid(column = 0, row = 4, sticky='nsew', pady=2)
+        self.seasonal_button.grid(column=1, row=4, sticky='nsew', pady=2)
 
     def setup_void_widgets(self):
-        self.browse_label.config(text="Browse to transaction to void\nor enter the Transaction ID")
-        self.browse_second_label.grid(column = 1, row = 2, sticky='ew')
-        self.browse_entry_frame.grid(column = 1, row = 3, sticky='ew')
-        self.browse_confirm_button.grid(column = 1, row = 4, sticky='sew')
+        self.browse_label.config(text="Browse or enter the Transaction ID")
+        self.browse_confirm_button.config(text = "Print")
+        #self.browse_second_label.grid(column = 1, row = 2, sticky='ew')
+        self.browse_entry_frame.grid(column = 1, row = 2, sticky='ew', pady=30)
+        self.browse_confirm_button.grid(column = 1, row = 3, sticky='sew')
         self.browse_entry.focus_set()
 
     def remove_void_widgets(self):
         self.browse_label.config(text="Browsing Transactions")
         self.browse_second_label.grid_forget()
-        self.browse_entry.grid_forget()
+        self.browse_entry_frame.grid_forget()
         self.browse_confirm_button.grid_forget()
 
     def update_entry(self, entry, text):
