@@ -7,7 +7,7 @@ class StateManager:
     def __init__(self, root_window):
         self.add_item_index = 0
         self.reentering = self.coming_from_register = self.updating_existing_item = False
-        self.reentering_quantity = False 
+        self.reentering_quantity = self.browsing_seasonals = False 
         self.yes_no_var = tk.StringVar(root_window)
         self.seasonal_id_var = tk.StringVar(root_window)
         self.return_var = tk.StringVar(root_window)

@@ -14,5 +14,7 @@ INSERT INTO Inventory VALUES(NULL, 'Test6', 1.23, 0, 'Test6', 100, 'Camping')
 INSERT INTO Inventory VALUES(NULL, 'Test7', 1.23, 1, 'Test7', 100, 'Camping')
 INSERT INTO Inventory VALUES(NULL, 'Test8', 1.23, 0, 'Test8', 100, 'Camping')
 INSERT INTO Inventory VALUES(NULL, 'Test9', 1.23, 1, 'Test9', 100, 'Camping')
-
+INSERT INTO seasonals VALUES(NULL, 'TwentyLetterLNameOOO', 'TwentyLetterFNameOOO', 'Long Site Name', 100.00)
+INSERT INTO seasonals VALUES(NULL, 'Smith', 'John', '1', 100.00)
+INSERT INTO seasonals VALUES(NULL, 'Doe', 'Jane', '2', 100.00)
 

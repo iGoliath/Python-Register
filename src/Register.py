@@ -1,14 +1,18 @@
 import tkinter as tk
+import sqlite3
 import inventory_functions as invf
 import widget_functions as wf
-from widget_manager import *
-from makeTransaction import *
-from enteritem import *
-from stateManager import *
+from widget_manager import WidgetManager
+from state_manager import StateManager
 from config import Config
 from datetime import datetime
 from escpos.printer import Usb
 import pygame
+import time
+import threading
+import os
+import subprocess
+import sys
 
 
 class Register:
@@ -22,6 +26,37 @@ class Register:
 		self.config = Config()
 		self.printer = Usb(0x0fe6, 0x811e, 0) #File("/dev/usb/lp0")
 
+
+	def perform_backup(self):
+		time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+		source_db = sqlite3.connect('/tmp/RegisterDatabase')
+		dest_db = sqlite3.connect(f'/path/to/backups')
+		source_db.backup(dest_db)
+		source_db.close()
+		dest_db.close()
+
+	def backup_scheduler(self):
+		while True:
+			time.sleep(self.config.backup_interval)
+			self.perform_backup()
+
+	def remove_old_backups(self, days = 30):
+		cutoff = time.time() - (days * 86400)
+		for filename in os.listdir('/media/tbc/3CC9-2F54/'):
+			filepath = os.path.join('/media/tbc/3CC9-2F54/', filename)
+			if os.path.getmtime(filepath) < cutoff and not os.path.isdir(filepath):
+				os.remove(filepath)
+
+	def check_time_synced(self):
+
+		try:
+			results = subprocess.run(
+				['timedatectl', 'status'], capture_output=True, text=True
+			)
+			return 'System clock synchronized: yes' in results.stdout
+		except Exception:
+			return False
+
 	def only_numbers(self, P):
 		"""Check if potential key is a number or space, return false if not"""
 		if P.isdigit() or P == "":
@@ -34,12 +69,7 @@ class Register:
 		pygame.mixer.music.load("short-beep.mp3")
 		pygame.mixer.music.play()
 		self.state_manager.new_transaction()
-		self.ui.invisible_entry.delete(0, tk.END)
-		self.ui.sale_items_listbox.delete(0, tk.END)
-		self.ui.update_entry(self.ui.total_entry, "$0.00")
-		self.ui.update_entry(self.ui.usr_entry, "$0.00")
-		self.ui.register_frame.tkraise()
-		self.ui.invisible_entry.focus_force()
+		self.ui.enter_register_frame()
 		return "break"
 	
 	def enter_add_item_frame(self, entered_barcode=None):
@@ -55,29 +85,62 @@ class Register:
 		else:
 			self.ui.add_item_label.config(text="Please enter item's barcode: ")
 
-	def enter_browse_transactions_frame(self, voiding = None):
+	def enter_browse_transactions_frame(self, *args):
 		'''Setup necessary information for browse transaction frame. If voiding,
 		set up those widgets as well.'''
-		self.state_manager.cursor.execute(
-			'''SELECT * FROM SALES WHERE sale_id = (SELECT MAX(sale_id) FROM SALES)''')
-		results = self.state_manager.cursor.fetchone()
-		if not results:
-			return False
-		else:
-			results = list(results)
-		self.state_manager.browse_index.set(results[0])
-		self.print_transaction_info(self.ui.browse_text, results)
-		if voiding:
-			self.ui.setup_void_widgets()
-		self.ui.browse_transactions_frame.tkraise()
-		return True
+		if args[1] == 0:
+			self.state_manager.cursor.execute(
+				'''SELECT * FROM sales WHERE sale_id = (SELECT MAX(sale_id) FROM SALES)''')
+			results = self.state_manager.cursor.fetchone()
+			if not results:
+				return False
+			else:
+				self.state_manager.browse_index.set(results[0])
+				self.print_transaction_info(self.ui.browse_text, results)
+				self.ui.browse_label.config(text="Browsing Transactions")
+				if args[0] == 1:
+					self.ui.setup_void_widgets()
+				self.ui.browse_transactions_frame.tkraise()
+				return True
+		elif args[1] == 1:
+			self.state_manager.browsing_seasonals = True
+			self.state_manager.cursor.execute(
+				'''SELECT * FROM seasonals WHERE seasonal_id = (SELECT MAX(seasonal_id) FROM seasonals)''')
+			results = self.state_manager.cursor.fetchone()
+			if not results:
+				self.ui.browse_text.delete("1.0", "end")
+				self.ui.browse_text.insert("end",  "No Seasonals Yet...")
+			else:
+				self.state_manager.browse_index.set(results[0])
+				self.print_seasonal_info(results)
+
+			self.ui.setup_browse_seasonals()
+				
+			
+		
+	def print_seasonal_info(self, seasonal_info):
+		self.ui.browse_text.delete("1.0", "end")
+		#self.ui.browse_text.insert("end", f"ID: {seasonal_info[0]}  |  Site: {seasonal_info[3]}\n")
+		self.ui.browse_text.insert("end", "ID: ", "bold")
+		self.ui.browse_text.insert("end", seasonal_info[0])
+		self.ui.browse_text.insert("end", " | Site: ", "bold")
+		self.ui.browse_text.insert("end", f"{seasonal_info[3]}\n")
+		self.ui.browse_text.insert("end", "Name: ", "bold")
+		self.ui.browse_text.insert("end", f"{seasonal_info[1]}\n{seasonal_info[2]}\n")
+		self.ui.browse_text.insert("end", "Balance: ", "bold")
+		self.ui.browse_text.insert("end", f"{seasonal_info[4]:.2f}")
 
 	def browse_transactions(self, *args):
 		'''Called when state_manager.browse_index is written to. Move info to current index.'''
 		self.ui.browse_entry.delete(0, tk.END)
-		self.state_manager.cursor.execute(
-			'''SELECT * FROM sales WHERE sale_id = ?''', (self.state_manager.browse_index.get(), )
-		)
+		if not self.state_manager.browsing_seasonals:
+			self.state_manager.cursor.execute(
+				'''SELECT * FROM sales WHERE sale_id = ?''', (self.state_manager.browse_index.get(), )
+			)
+		else:
+			self.state_manager.cursor.execute(
+				'''SELECT * FROM seasonals WHERE seasonal_id = ?''', (self.state_manager.browse_index.get(), )
+			)
 		results = self.state_manager.cursor.fetchone()
 		if not results:
 			if self.state_manager.browse_index.get() == 0:
@@ -86,7 +149,12 @@ class Register:
 			else:
 				self.state_manager.browse_index.set(self.state_manager.browse_index.get() - 1)
 				return
-		self.print_transaction_info(self.ui.browse_text, list(results))
+		
+		if not self.state_manager.browsing_seasonals:
+			self.print_transaction_info(self.ui.browse_text, list(results))
+		else:
+			self.print_seasonal_info(results)
+
 
 
 	def process_sale(self, event=None, entered_barcode=None):
@@ -124,7 +192,7 @@ class Register:
 		
 	def void_transaction(self):
 
-		if not self.enter_browse_transactions_frame(1):
+		if not self.enter_browse_transactions_frame(1, 0):
 			self.ui.error_description_label.config(text="No transactions to void!")
 			self.ui.errors_frame.tkraise()
 			return
@@ -162,12 +230,12 @@ class Register:
 			"""Print item info for transaction into a text widget. (Currently formatted for
 			3 height)."""
 			text_widget.delete("1.0", "end")
-			text_widget.insert("end", "Transaction ID: " + str(transaction_info[0]) + " |\t")
-			text_widget.insert("end", "Total: $" + f"{transaction_info[4]:.2f}" + "\n")
-			text_widget.insert("end", "Items Sold: " + str(transaction_info[5]) + " |\t")
-			text_widget.insert("end", "Cash Used: $" + f"{transaction_info[8]:.2f}" + "\n")
-			text_widget.insert("end", "CC Used: $" + f"{transaction_info[9]:.2f}" + " |\t")
-			text_widget.insert("end", "Time: " + transaction_info[7])
+			text_widget.insert("end", f"Transaction ID: {str(transaction_info[0])} |\t")
+			text_widget.insert("end", f"Total: ${transaction_info[4]:.2f}\n")
+			text_widget.insert("end", f"Items Sold: {str(transaction_info[5])} |\t")
+			text_widget.insert("end", f"Cash Used: ${transaction_info[8]:.2f}\n")
+			text_widget.insert("end", f"CC Used: ${transaction_info[9]:.2f} |\t")
+			text_widget.insert("end", f"Time: {transaction_info[7]}")
 
 
 
@@ -359,14 +427,14 @@ class Register:
 
 	def complete_sale(self, event=None):
 		"""Complete transaction, open cash drawer, print receipt, and reset register environment."""
-		#self.printer.cashdraw(pin=2)
+		self.printer.cashdraw(pin=2)
 		self.state_manager.trans.complete_transaction()
 		self.state_manager.cursor.execute('''SELECT * FROM SALES WHERE sale_id = (SELECT MAX(sale_id) FROM SALES)''')
 		results = self.state_manager.cursor.fetchall()
 		sale_info = results[0]
 		self.state_manager.cursor.execute('''SELECT * FROM SALEITEMS WHERE sale_id = ?''', (sale_info[0], ))
 		sale_items_list = self.state_manager.cursor.fetchall()
-		#self.print_receipt("sale", sale_info[0], sale_items_list, sale_info, self.state_manager.trans.cash_tendered, self.state_manager.trans.cc_tendered)
+		self.print_receipt("sale", sale_info[0], sale_items_list, sale_info, self.state_manager.trans.cash_tendered, self.state_manager.trans.cc_tendered)
 		self.ui.sale_items_listbox.delete(0, tk.END)
 		self.state_manager.new_transaction()
 		
@@ -405,28 +473,45 @@ class Register:
 
 	def no_sale(self, event=None):
 		
-		self.ui.invisible_entry.delete(0, tk.END)
 		self.printer.cashdraw(pin=2)
+		self.ui.invisible_entry.delete(0, tk.END)
 		self.printer.textln(("-" * 22) + " NS " + ("-" * 22))
 		self.printer.textln(datetime.today().strftime('%Y-%m-%d') + (" " * 33) + datetime.now().strftime("%H:%M"))
 		self.printer.ln(2)
+		self.printer.cut()
 		self.state_manager.cursor.execute(
 			"UPDATE no_sale SET times_pressed = times_pressed + 1 WHERE date = ?",
 			(datetime.today().strftime('%Y-%m-%d'),))
 		self.state_manager.conn.commit()
 		return "break"
 		
+	def menu_back(self):
+		self.state_manager.browsing_seasonals = False
+		self.ui.main_menu_frame.tkraise()
+
 	def make_seasonal_sale(self):
-
-		root.wait_variable(self.state_manager.seasonal_id_var)
-		self.state_manager.trans.complete_transaction()
-
-
-
-
-
-																					
-
+			
+		if self.state_manager.trans.total == 0:
+			self.ui.error_description_label.config(text="No Items Entered!")
+			self.ui.errors_frame.tkraise()
+			return
+			
+		self.ui.seasonal_id_entry_frame.tkraise()
+		self.ui.seasonal_id_entry.focus_set()
+		while True:
+			root.wait_variable(self.state_manager.seasonal_id_var)
+			self.state_manager.cursor.execute("SELECT EXISTS(SELECT 1 FROM seasonals WHERE seasonal_id = ?) LIMIT 1", (self.state_manager.seasonal_id_var.get(), ))
+			results = self.state_manager.cursor.fetchone()[0]
+			if results:
+				break
+			else:
+				self.ui.error_description_label.config(text = "Invalid Seasonal ID\nPlease try Again")
+				self.ui.errors_frame.tkraise()
+		self.ui.seasonal_id_entry_frame.lower()
+		self.state_manager.trans.complete_transaction(self.state_manager.seasonal_id_var.get())
+		self.ui.bind_invisible_entry_keys()
+		self.enter_register_frame()
+	
 	def go_back(self):
 		"""Changes index on back button press and resets environment accordingly."""
 		if self.state_manager.add_item_index != 0:
@@ -491,14 +576,6 @@ class Register:
 				self.state_manager.reentering_quantity = True
 				self.state_manager.reentering = False
 				self.ui.add_item_label.config(text="Please enter the Quantity:")
-
-		
-	def quit_button_handler(self, event=None):
-		"""Raises frame according to where quit button is pressed."""
-		if not self.state_manager.coming_from_register:
-			self.ui.admin_frame.tkraise()
-		elif self.state_manager.coming_from_register:
-			self.ui.register_frame.tkraise()
 
 
 	def on_add_item_enter(self, event=None, entered_barcode=None):
@@ -615,8 +692,8 @@ class Register:
 	def process_return(self, event = None):
 		"""Put register into 'return mode'. User can ring up items like a 
 		normal sale, but items will be returned instead."""
-		self.ui.register_label.config(text="Mode: Return", fg="red")
 		self.enter_register_frame()
+		self.ui.register_label.config(text="Mode: Return", fg="red")
 		self.state_manager.trans.ret_or_void = True
 		self.ui.unbind_invisible_entry_keys()
 		self.ui.invisible_entry.bind("<KeyRelease-KP_Enter>", lambda event: self.state_manager.return_var.set("cash"))
@@ -647,7 +724,6 @@ class Register:
 		item_results = list(self.state_manager.cursor.fetchall())
 		self.print_receipt("return", row[0], item_results, row)
 		self.ui.bind_invisible_entry_keys()
-		self.ui.register_label.config(text="Mode: Register", fg="#68FF00")
 		self.enter_register_frame()
 
 
@@ -683,6 +759,7 @@ class Register:
 
 
 if __name__ == "__main__":
+
 	#Declaration of root window
 	root = tk.Tk()
 	root.title("TBC REGISTER")
@@ -696,8 +773,30 @@ if __name__ == "__main__":
 		"INSERT INTO no_sale (date, times_pressed) VALUES (?, ?) ON CONFLICT (date)" \
 		"DO NOTHING", (datetime.today().strftime('%Y-%m-%d'), 0))
 	register.state_manager.conn.commit()
+
+	backup_thread = threading.Thread(
+		target = register.backup_scheduler,
+		daemon=True
+	)
+	backup_thread.start()
+
+	register.remove_old_backups(register.config.backup_removal_cutoff)
+
 	pygame.mixer.init()
 	register.enter_register_frame()
+
+	'''if register.config.manual_time_last_boot:
+		results = subprocess.run(
+			['ping', '-c', '1', '-W', '10', '8.8.8.8'], capture_output=True, text=True)
+		if results.returncode == 0:
+			subprocess.run(['sudo', 'timedatectl', 'set-ntp', 'true'])
+		else:
+			register.ui.error_description_label.config(
+				text="Internet connection could not be reached.\nPlease check your network connection."
+			)
+			register.ui.errors_frame.tkraise()
+	elif not register.check_time_synced():
+		register.ui.datetime_frame.tkraise()'''
 
 	root.after(500, lambda: root.attributes("-fullscreen", True))
 

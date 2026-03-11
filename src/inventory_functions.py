@@ -1,4 +1,4 @@
-from stateManager import StateManager
+from state_manager import StateManager
 import tkinter as tk
 import sqlite3
 

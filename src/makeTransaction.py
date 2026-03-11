@@ -32,7 +32,7 @@ class Transaction:
 					(item[4], item[3]))
 		
 		if seasonal_id is not None:
-			self.db_cursor.execute('''INSERT INTO seasonals VALUES (NULL, ?, ?)''', (seasonal_id, max_sale_id))
+			self.db_cursor.execute('''INSERT INTO seasonal_sales VALUES (NULL, ?, ?)''', (seasonal_id, max_sale_id))
 
 		self.db_conn.commit()
 		
