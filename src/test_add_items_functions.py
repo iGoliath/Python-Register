@@ -14,7 +14,7 @@ def register_instance():
     yield register
     root.destroy()
 
-conn = sqlite3.connect("/tmp/RegisterDatabase")
+conn = sqlite3.connect("_Sqlite.sqlite")
 c = conn.cursor()
 
 def test_enter_item(register_instance):

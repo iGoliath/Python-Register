@@ -6,7 +6,7 @@ database_path = "/tmp/RegisterDatabase"
 if os.path.exists(database_path):
     os.remove(database_path)
 
-conn = sqlite3.connect('/tmp/RegisterDatabase')
+conn = sqlite3.connect(database_path)
 cursor = conn.cursor()
 
 with open('database_commands.txt', 'r') as fp:

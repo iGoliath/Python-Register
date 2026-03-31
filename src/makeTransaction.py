@@ -11,10 +11,10 @@ class Transaction:
 		self.items_sold = self.cash_used = self.cc_used = 0
 		self.cash_tendered = self.cc_tendered = 0
 		self.items_list = []
-		self.ret_or_void = False
+		self.returning = False
 		
 		
-	def complete_transaction(self, seasonal_id = None):
+	def complete_transaction(self, coupon_info = None):
 		global date
 		self.db_cursor.execute("INSERT INTO SALES VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			(self.nontax, self.pretax, self.tax, self.total, self.items_sold, date,
@@ -24,15 +24,19 @@ class Transaction:
 		for item in self.items_list:
 			self.db_cursor.execute("INSERT OR IGNORE INTO SALEITEMS VALUES(?, ?, ?, ?, ?, ?)",
 				(max_sale_id, item[0], item[1], item[2], item[3], item[4]))
-			if not self.ret_or_void:
+			if not self.returning:
 				self.db_cursor.execute("UPDATE INVENTORY SET Quantity = Quantity - ? WHERE barcode = ?",
 					(item[4], item[3]))
 			else:
 				self.db_cursor.execute("UPDATE INVENTORY SET Quantity = Quantity + ? WHERE barcode = ?",
 					(item[4], item[3]))
 		
-		if seasonal_id is not None:
-			self.db_cursor.execute('''INSERT INTO seasonal_sales VALUES (NULL, ?, ?)''', (seasonal_id, max_sale_id))
+		#if seasonal_id is not None:
+			#self.db_cursor.execute('''INSERT INTO seasonal_sales VALUES (NULL, ?, ?)''', (seasonal_id, max_sale_id))
+
+		if coupon_info:
+			self.db_cursor.execute("INSERT INTO coupons VALUES(NULL, ?, ?, ?)", (max_sale_id, coupon_info[0], coupon_info[1]))
+
 
 		self.db_conn.commit()
 		

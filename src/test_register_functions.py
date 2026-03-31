@@ -15,7 +15,7 @@ def register_instance():
     yield register
     root.destroy()
 
-conn = sqlite3.connect("/tmp/RegisterDatabase")
+conn = sqlite3.connect('/tmp/RegisterDatabase')
 c = conn.cursor()
 
 def test_basic_sale_cash(register_instance):
@@ -92,7 +92,7 @@ def test_cc_invalid(register_instance):
     register_instance.ui.invisible_entry.insert(tk.END, "124+")
     register_instance.on_cc()
 
-    result = register_instance.ui.total_entry.get()
+    result = register_instance.ui.user_entry.get()
     assert result == "$0.00ERR: CC"
 
 def test_quantity_decrement_single(register_instance):
@@ -150,7 +150,6 @@ def test_quantity_decrement_double(register_instance):
     c.execute('SELECT Quantity FROM inventory where Barcode = ?', ("Test1", ))
     results = c.fetchall()
     row = results[0]
-
     item_two_final_quantity = row[0]
 
     assert item_one_final_quantity == (item_one_starting_quantity - 2)
