@@ -18,6 +18,11 @@ class WidgetManager:
         self.add_item_listbox_back_quit_frame = tk.Frame(self.add_item_listbox_frame)
         self.add_item_frame = tk.Frame(self.root)
         self.add_barcode_frame = tk.Frame(self.root)
+        self.add_name_frame = tk.Frame(self.root)
+        self.add_price_frame = tk.Frame(self.root)
+        self.add_tax_frame = tk.Frame(self.root)
+        self.add_category_frame = tk.Frame(self.root)
+        self.add_quantity_frame = tk.Frame(self.root)
         self.register_frame = tk.Frame(self.root, bg='black')
         self.register_info_frame = tk.Frame(self.register_frame, bg="black")
         self.main_menu_frame = tk.Frame(self.root)
@@ -42,17 +47,23 @@ class WidgetManager:
         self.register_lookup_items_frame = tk.Frame(self.root)
         self.register_lookup_items_buttons_frame = tk.Frame(self.register_lookup_items_frame)
 
+        
+        self._init_add_barcode_frame()
+        self._init_add_name_frame()
+        self._init_add_price_frame()
+        self._init_add_tax_frame()
+        self._init_add_category_frame()
+        self._init_add_quantity_frame()
 
-        def _init_add_barcode_frame(self):
-            tk.Label(self.add_barcode_frame, text="Please enter item's name:", 
-            font=("Arial", 50))
-            self.add_name_entry = tk.Entry(self.add_barcode_frame)
+
         # Loop through frames, fit them to screen, and configure them so that widgets in column 1 are centered
         # Widgets in column 1 will determine the width of the rest of the widgets
         for frame in (self.register_frame, self.add_item_frame, self.main_menu_frame,
             self.add_item_listbox_frame,self.register_add_item_prompt_frame,
             self.browse_transactions_frame, self.edit_seasonal_frame, self.datetime_frame,
-            self.coupon_frame, self.register_lookup_items_frame, self.add_name_frame):
+            self.coupon_frame, self.register_lookup_items_frame, self.add_barcode_frame,
+            self.add_name_frame, self.add_price_frame, self.add_tax_frame, self.add_category_frame,
+            self.add_quantity_frame):
             frame.grid(row=0, column=0, sticky='nsew')
             frame.columnconfigure(0, weight=1)
             frame.columnconfigure(1, weight=0)
@@ -104,6 +115,7 @@ class WidgetManager:
         self.seasonal_buttons_frame.columnconfigure(1, weight = 1, uniform="equal")
         self.seasonal_buttons_frame.columnconfigure(2, weight = 1, uniform="equal")
 
+        
 
         # ===============================
         # Widgets for Register Mode frame
@@ -239,8 +251,7 @@ class WidgetManager:
         self.add_item_invisible_entry.place(x=-100, y=-100, height=0, width=0)
         self.add_item_invisible_entry.bind("<Return>", controller.on_add_item_enter)
         self.add_item_invisible_entry.bind("<KeyRelease-KP_Enter>", controller.on_add_item_enter)
-        for key in ("Left", "Right", "Up", "Down"):
-            self.add_item_invisible_entry.bind(f"<{key}>", wf.disable_arrow_keys)
+        
 
 
         self.item_info_confirmation = tk.Text(
@@ -280,7 +291,7 @@ class WidgetManager:
 
         self.add_item_scrollbar_next = tk.Button(
             self.add_item_listbox_frame, text="Next", font=("Arial", 50),
-              command=lambda: controller.on_add_item_scrollbar_next())
+              command=lambda: controller.on_add_category_listbox_next())
         self.add_item_scrollbar_next.grid(row=2, column=1, sticky='nsew')
 
         self.add_item_scrollbar_back = tk.Button(
@@ -696,6 +707,213 @@ class WidgetManager:
         
         self.datetime_confirm_button.grid(column = 1, row = 3, sticky='nsew')
 
+    def _init_add_barcode_frame(self):
+        tk.Label(self.add_barcode_frame, text="Please enter item's barcode:", 
+        font=("Arial", 50), width=25).grid(column = 1, row = 0, sticky='ew')
+        self.add_barcode_entry = tk.Entry(
+            self.add_barcode_frame, font=("Arial", 50), justify="right")
+        self.add_barcode_entry.grid(column = 1, row = 1, sticky='ew', pady=15)
+        self.add_barcode_entry.bind("<Return>", lambda event: self.controller.on_add_item_enter())
+        tk.Button(
+            self.add_barcode_frame, text="Next", font=("Arial", 50),
+            command = lambda: self.controller.on_add_item_enter()).grid(
+                column = 1, row = 2, sticky='ew')
+        back_quit_frame = tk.Frame(self.add_barcode_frame)
+        back_quit_frame.columnconfigure(0, weight=1)
+        back_quit_frame.columnconfigure(1, weight=1)
+        back_quit_frame.grid(column = 1, row = 3, sticky='ew', pady=(15, 0))
+        tk.Button(
+            back_quit_frame, text="Back", font=("Arial", 50),
+            command = lambda: self.controller.go_back()).grid(
+                column = 0, row = 0, sticky='ew', padx=(0, 15)
+            )
+        tk.Button(
+            back_quit_frame, text="Quit", font=("Arial", 50),
+            command = lambda: self.main_menu_frame.tkraise()).grid(
+                column = 1, row = 0, sticky='ew'
+            )
+
+    def _init_add_name_frame(self):
+        tk.Label(self.add_name_frame, text="Please enter item's name:", 
+        font=("Arial", 50), width=25).grid(column = 1, row = 0, sticky='ew')
+        self.add_name_entry = tk.Entry(
+            self.add_name_frame, font=("Arial", 50), justify="right")
+        self.add_name_entry.grid(column = 1, row = 1, sticky='ew', pady=15)
+        self.add_name_entry.bind("<Return>", lambda event: self.controller.on_add_item_enter())
+        tk.Button(
+            self.add_name_frame, text="Next", font=("Arial", 50),
+            command = lambda: self.controller.on_add_item_enter()).grid(
+                column = 1, row = 2, sticky='ew')
+        back_quit_frame = tk.Frame(self.add_name_frame)
+        back_quit_frame.columnconfigure(0, weight=1)
+        back_quit_frame.columnconfigure(1, weight=1)
+        back_quit_frame.grid(column = 1, row = 3, sticky='ew', pady=(15, 0))
+        tk.Button(
+            back_quit_frame, text="Back", font=("Arial", 50),
+            command = lambda: self.controller.go_back()).grid(
+                column = 0, row = 0, sticky='ew', padx=(0, 15)
+            )
+        tk.Button(
+            back_quit_frame, text="Quit", font=("Arial", 50),
+            command = lambda: self.main_menu_frame.tkraise()).grid(
+                column = 1, row = 0, sticky='ew'
+            )
+
+    def return_price_invisible_entry_focus(self):
+        self.add_price_invisible_entry.focus_set()
+        return "break"
+    
+    def _init_add_price_frame(self):
+        tk.Label(self.add_price_frame, text="Please enter item's price:", 
+        font=("Arial", 50), width=25).grid(column = 1, row = 0, sticky='ew')
+        self.add_price_entry = tk.Entry(
+            self.add_price_frame, font=("Arial", 50), justify="right")
+        self.add_price_entry.grid(column = 1, row = 1, sticky='ew', pady=15)
+
+        self.add_price_invisible_entry = tk.Entry(
+            self.add_price_frame, validate='key', vcmd=self.controller.vcmd,
+            textvariable=self.controller.state_manager.add_price_var)
+        self.add_price_invisible_entry.place(x=-100, y=-100)
+        self.add_price_invisible_entry.bind("<Return>", lambda event: self.controller.on_add_item_enter())
+        for key in ("Left", "Right", "Up", "Down"):
+            self.add_price_invisible_entry.bind(f"<{key}>", wf.disable_arrow_keys)
+        self.add_price_entry.bind("<FocusIn>", lambda e: self.return_price_invisible_entry_focus())
+        tk.Button(
+            self.add_price_frame, text="Next", font=("Arial", 50),
+            command = lambda: self.controller.on_add_item_enter()).grid(
+                column = 1, row = 2, sticky='ew')
+        back_quit_frame = tk.Frame(self.add_price_frame)
+        back_quit_frame.columnconfigure(0, weight=1)
+        back_quit_frame.columnconfigure(1, weight=1)
+        back_quit_frame.grid(column = 1, row = 3, sticky='ew', pady=(15, 0))
+        tk.Button(
+            back_quit_frame, text="Back", font=("Arial", 50),
+            command = lambda: self.controller.go_back()).grid(
+                column = 0, row = 0, sticky='ew', padx=(0, 15)
+            )
+        tk.Button(
+            back_quit_frame, text="Quit", font=("Arial", 50),
+            command = lambda: self.main_menu_frame.tkraise()).grid(
+                column = 1, row = 0, sticky='ew'
+            )
+
+    def _init_add_tax_frame(self):
+        tk.Label(self.add_tax_frame, text="Is the item taxable?:", 
+        font=("Arial", 50), width=25).grid(column = 1, row = 0, sticky='ew')
+
+        yes_no_frame = tk.Frame(self.add_tax_frame)
+        yes_no_frame.columnconfigure(0, weight=1)
+        yes_no_frame.columnconfigure(1, weight=1)
+        yes_no_frame.grid(column = 1, row = 1, sticky='ew')
+        
+        tk.Button(
+            yes_no_frame, text="Yes", font=("Arial", 100),
+            command= lambda: self.controller.on_yes_no("yes")).grid(
+                column = 0, row = 0, sticky='ew'
+            )
+        tk.Button(
+            yes_no_frame, text="No", font=("Ariak", 100),
+            command= lambda: self.controller.on_yes_no("no")).grid(
+                column = 1, row = 0, sticky='ew'
+            )
+
+        self.add_tax_entry = tk.Entry(self.add_tax_frame)
+
+        back_quit_frame = tk.Frame(self.add_tax_frame)
+        back_quit_frame.columnconfigure(0, weight=1)
+        back_quit_frame.columnconfigure(1, weight=1)
+        back_quit_frame.grid(column = 1, row = 3, sticky='ew', pady=(15, 0))
+        tk.Button(
+            back_quit_frame, text="Back", font=("Arial", 50),
+            command = lambda: self.controller.go_back()).grid(
+                column = 0, row = 0, sticky='ew', padx=(0, 15)
+            )
+        tk.Button(
+            back_quit_frame, text="Quit", font=("Arial", 50),
+            command = lambda: self.main_menu_frame.tkraise()).grid(
+                column = 1, row = 0, sticky='ew'
+            )
+
+    def _init_add_category_frame(self):
+        tk.Label(self.add_category_frame, text="Please enter item's category:", 
+        font=("Arial", 50), width=25).grid(column = 1, row = 0, sticky='ew')
+        self.add_category_entry = tk.Entry(self.add_category_frame)
+
+        self.add_category_listbox = tk.Listbox(
+            self.add_category_frame, width=25,
+            height=4, font=("Arial", 50))
+        add_category_scrollbar = tk.Scrollbar(
+            self.add_category_frame,
+            orient=tk.VERTICAL, width=40
+        )
+
+        self.add_category_listbox.grid(column = 1, row = 1, sticky='nw')
+        add_category_scrollbar.grid(column = 1, row = 1, sticky='nse')
+
+        self.add_category_listbox.config(yscrollcommand= add_category_scrollbar.set)
+        add_category_scrollbar.config(command = self.add_category_listbox.yview)
+
+        for values in (
+        "Camping", "Gifts", "Fishing", "General Merch",
+        "RV", "Summer Fun", "Toys & Hobby", "Candy & Snacks", "Misc.",
+        "Souvenirs"):
+            self.add_category_listbox.insert(tk.END, values)
+
+        tk.Button(
+            self.add_category_frame, text="Next", font=("Arial", 50),
+            command = lambda: self.controller.on_add_category_listbox_next()).grid(
+                column = 1, row = 2, sticky='ew')
+        back_quit_frame = tk.Frame(self.add_category_frame)
+        back_quit_frame.columnconfigure(0, weight=1)
+        back_quit_frame.columnconfigure(1, weight=1)
+        back_quit_frame.grid(column = 1, row = 3, sticky='ew', pady=(15, 0))
+        tk.Button(
+            back_quit_frame, text="Back", font=("Arial", 50),
+            command = lambda: self.controller.go_back()).grid(
+                column = 0, row = 0, sticky='ew', padx=(0, 15)
+            )
+        tk.Button(
+            back_quit_frame, text="Quit", font=("Arial", 50),
+            command = lambda: self.main_menu_frame.tkraise()).grid(
+                column = 1, row = 0, sticky='ew'
+            )
+
+    def _init_add_quantity_frame(self):
+        tk.Label(self.add_quantity_frame, text="Please enter item's quantity:", 
+        font=("Arial", 50), width=25).grid(column = 1, row = 0, sticky='ew')
+
+        self.add_quantity_entry = tk.Entry(
+            self.add_quantity_frame, font=("Arial", 50), justify="right",
+            validate='key', vcmd=self.controller.vcmd)
+        self.add_quantity_entry.grid(column = 1, row = 1, sticky='ew', pady=15)
+        self.add_quantity_entry.bind("<Return>", lambda e: self.controller.on_add_item_enter())
+
+        for key in ("Left", "Right", "Up", "Down"):
+            self.add_quantity_entry.bind(f"<{key}>", wf.disable_arrow_keys)
+
+        tk.Button(
+            self.add_quantity_frame, text="Next", font=("Arial", 50),
+            command = lambda: self.controller.on_add_item_enter()).grid(
+                column = 1, row = 2, sticky='ew')
+        back_quit_frame = tk.Frame(self.add_quantity_frame)
+        back_quit_frame.columnconfigure(0, weight=1)
+        back_quit_frame.columnconfigure(1, weight=1)
+        back_quit_frame.grid(column = 1, row = 3, sticky='ew', pady=(15, 0))
+        tk.Button(
+            back_quit_frame, text="Back", font=("Arial", 50),
+            command = lambda: self.controller.go_back()).grid(
+                column = 0, row = 0, sticky='ew', padx=(0, 15)
+            )
+        tk.Button(
+            back_quit_frame, text="Quit", font=("Arial", 50),
+            command = lambda: self.main_menu_frame.tkraise()).grid(
+                column = 1, row = 0, sticky='ew'
+            )
+
+    
+
+   
+
 
     def enter_add_item_frame(self):
         self.add_item_label.grid(column=1, row=0, sticky='ew')
@@ -708,8 +926,8 @@ class WidgetManager:
         self.add_item_yes_no.grid_forget()
         self.item_info_confirmation.grid_forget()
         self.reenter_frame.grid_forget()
-        self.add_item_frame.tkraise()
-        self.add_item_entry.focus_set()
+        self.add_barcode_frame.tkraise()
+        self.add_barcode_entry.focus_set()
 
     def enter_register_frame(self):
         self.invisible_entry.delete(0, tk.END)
@@ -745,7 +963,7 @@ class WidgetManager:
 
     def bind_invisible_entry_keys(self):
         for key in ("Home", "Up", "Prior", "Left","Begin", "Right", "End", "Down", "Next", "Insert"):
-            self.invisible_entry.bind(f"<KeyRelease-KP_{key}>", self.controller.number_pressed)
+            self.invisible_entry.bind(f"<KeyRelease-KP_{key}>", lambda e: self.controller.number_pressed())
         self.invisible_entry.bind("<KeyRelease-BackSpace>", self.controller.clear)
         self.invisible_entry.bind("<KeyRelease-KP_Enter>", lambda event: self.controller.on_cash())
         self.invisible_entry.bind("<KeyRelease-KP_Add>", lambda event: self.controller.on_cc())

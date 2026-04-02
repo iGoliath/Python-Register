@@ -79,7 +79,7 @@ def enter_item_category(state_manager: StateManager, ui: WidgetManager) -> bool:
     """Once user selects a category from listbox, set variable, and 
     clean up widgets.""" 
 
-    state_manager.add_item_object.category = ui.add_item_listbox.get(ui.add_item_listbox.curselection())
+    state_manager.add_item_object.category = ui.add_category_listbox.get(ui.add_category_listbox.curselection())
 
     if not state_manager.reentering:
         state_manager.add_item_index+=1

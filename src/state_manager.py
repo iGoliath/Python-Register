@@ -12,7 +12,7 @@ class StateManager:
         self.yes_no_var = tk.StringVar(root_window)
         self.seasonal_id_var = tk.StringVar(root_window)
         self.return_var = tk.StringVar(root_window)
-        self.add_item_var = tk.StringVar(root_window)
+        self.add_price_var = tk.StringVar(root_window)
         self.void_var = tk.StringVar(root_window)
         self.item_lookup_var = tk.StringVar(root_window)
         self.browse_index = tk.IntVar(root_window)

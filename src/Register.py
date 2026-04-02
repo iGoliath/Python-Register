@@ -24,7 +24,17 @@ class Register:
 		self.vcmd = (root.register(self.only_numbers), '%P')
 		self.ui = WidgetManager(root, self)
 		self.config = Config()
-		self.printer = Usb(0x0fe6, 0x811e, 0) #File("/dev/usb/lp0")
+		self.state_manager.add_price_var.trace('w', self.on_price_entry_update)
+
+		#self.printer = Usb(0x0fe6, 0x811e, 0) #File("/dev/usb/lp0")
+
+		self.entries = [
+			self.ui.add_barcode_entry, self.ui.add_name_entry, self.ui.add_price_entry,
+			self.ui.add_tax_entry, self.ui.add_category_entry, self.ui.add_quantity_entry]
+
+	def on_price_entry_update(self, *args):
+		self.number_pressed(self.ui.add_price_invisible_entry, self.ui.add_price_entry)
+		return "break"
 
 	def on_item_lookup(self, *args):
 
@@ -452,7 +462,7 @@ class Register:
 		self.ui.sale_items_listbox.delete(0, tk.END)
 		self.state_manager.new_transaction()
 		
-	def number_pressed(self, event=None, input_widget=None, output_widget=None):
+	def number_pressed(self, input_widget=None, output_widget=None):
 		"""Output formatted dollar amount when user inputs numbers"""
 		pygame.mixer.music.load("short-beep.mp3")
 		pygame.mixer.music.play()
@@ -532,33 +542,23 @@ class Register:
 			self.state_manager.add_item_index -= 1
 		match self.state_manager.add_item_index:
 			case 0:
-				self.ui.add_item_label.config(text="Please enter item's barcode:")
+				self.ui.add_barcode_frame.tkraise()
+				self.ui.add_barcode_entry.focus_set()
 			case 1:
-				self.ui.add_item_label.config(text="Please enter item's name:")
-				self.ui.add_item_entry.unbind("<FocusIn>", self.state_manager.binding_manager)
-				self.ui.add_item_entry.delete(0, tk.END)
-				self.ui.add_item_entry.focus_set()
+				self.ui.add_name_frame.tkraise()
+				self.ui.add_name_entry.focus_set()
 			case 2:
-				self.state_manager.binding_manager = self.ui.add_item_entry.bind("<FocusIn>", self.return_add_item_invisible_entry_focus)
-				self.ui.add_item_label.config(text="Please enter item's price:")
-				self.ui.add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
-				self.ui.add_item_button.grid(column=1, row=2, sticky='ew')
-				self.ui.add_item_yes_no.grid_forget()
+				self.ui.add_price_frame.tkraise()
 				self.ui.update_entry(self.ui.add_item_entry, "$0.00")
+				self.ui.add_price_invisible_entry.delete(0, tk.END)
+				self.ui.add_price_entry.focus_set()
 			case 3:
-				self.ui.add_item_frame.tkraise()
-				self.ui.add_item_entry.grid_forget()
-				self.ui.add_item_button.grid_forget()
-				self.ui.add_item_entry.config(validate='none')
-				self.ui.add_item_yes_no.grid(column=1, row=2, sticky='nsew')
-				self.ui.add_item_label.config(text="Is the item taxable?")
+				self.ui.add_tax_frame.tkraise()
 			case 4:
-				self.ui.add_item_label.config(text="Please enter the category:")
-				self.ui.add_item_entry.config(validate='none')
-				self.ui.add_item_listbox_frame.tkraise()
+				self.ui.add_category_frame.tkraise()
 			case 5:
-				self.ui.add_item_label.config(text="Please enter the quantity:")
-			
+				self.ui.add_quantity_frame.tkraise()
+
 	def reenter_button_pressed(self, which_button):
 		"""Reset to add item interface according to button user presses."""
 		self.ui.reenter_frame.grid_forget()
@@ -608,42 +608,47 @@ class Register:
 		if entered_barcode is not None:
 			item_info_entered = entered_barcode
 		else: 
-			item_info_entered = self.ui.add_item_entry.get().strip()
-			self.ui.add_item_entry.delete(0, tk.END)
+			item_info_entered = self.entries[self.state_manager.add_item_index].get().strip()
+			self.entries[self.state_manager.add_item_index].delete(0, tk.END)
 
-		if self.state_manager.add_item_index != 5:
+		'''if self.state_manager.add_item_index != 5:
 			if item_info_entered == '' or self.check_zero_integer(item_info_entered):
 				return
 			elif item_info_entered == "$0.00":
 				self.ui.add_item_entry.insert(tk.END, "$0.00")
-				return
+				return'''
 		
 		match self.state_manager.add_item_index:
 			case 0:
 				if invf.check_item_exists(self.state_manager, item_info_entered):
 					self.on_add_item_enter()
-				self.ui.setup_name_step()
+
+				self.ui.add_name_frame.tkraise()
+				self.ui.add_name_entry.focus_set()
 			case 1:
 				if invf.enter_item_name(self.state_manager, item_info_entered):
 					self.on_add_item_enter()
-				self.ui.setup_price_step()
+
+				self.ui.add_price_frame.tkraise()	
+				self.ui.update_entry(self.ui.add_price_entry, "$0.00")
+				self.ui.add_price_invisible_entry.focus_set()
 			case 2:
-				self.ui.add_item_invisible_entry.delete(0, tk.END)
-				self.ui.add_item_entry.unbind("<FocusIn>", self.state_manager.binding_manager)
+				self.ui.add_price_invisible_entry.delete(0, tk.END)
 				if invf.enter_item_price(self.state_manager, item_info_entered):
-					self.ui.remove_validate_bindings()
 					self.on_add_item_enter()
-				self.ui.setup_taxable_step()
+				self.ui.add_tax_frame.tkraise()
 			case 3:
 				if invf.enter_item_taxable(item_info_entered, self.state_manager):
 					self.on_add_item_enter()	
-				self.ui.setup_category_step()	
+				self.ui.add_category_frame.tkraise()	
 			case 4:
 				if invf.enter_item_category(self.state_manager, self.ui):
 					self.on_add_item_enter()
-				self.ui.setup_quantity_step()
+				self.ui.add_quantity_frame.tkraise()
+				self.ui.add_quantity_entry.focus_set()
 			case 5:
 				self.ui.add_item_entry.config(validate='none')
+				self.ui.add_item_frame.tkraise()
 				return_value = invf.enter_item_confirmation(
 					self.state_manager, item_info_entered, root, self.ui)
 				if return_value == True:
@@ -658,15 +663,13 @@ class Register:
 				self.ui.errors_frame.tkraise()
 
 		
-
-		
-	def on_add_item_scrollbar_next(self, event=None):
+	def on_add_category_listbox_next(self, event=None):
 		"""Places entry in listbox user selected for on_add_item_enter() to pick up."""
-		selected_index = self.ui.add_item_listbox.curselection()
+		selected_index = self.ui.add_category_listbox.curselection()
 		if selected_index == ():
 			return
-		selected_item = self.ui.add_item_listbox.get(selected_index)
-		self.ui.update_entry(self.ui.add_item_entry, selected_item)
+		selected_item = self.ui.add_category_listbox.get(selected_index)
+		self.ui.update_entry(self.ui.add_category_entry, selected_item)
 		self.on_add_item_enter()
 
 	def run_x(self, event=None):
@@ -777,7 +780,7 @@ class Register:
 	def on_yes_no(self, answer):
 		"""Handles certain pressed of yes/no buttons."""
 		if self.state_manager.add_item_index == 3:
-			self.ui.update_entry(self.ui.add_item_entry, answer)
+			self.ui.update_entry(self.ui.add_tax_entry, answer)
 			self.on_add_item_enter()
 		elif self.state_manager.add_item_index == 5:
 			self.state_manager.yes_no_var.set(answer)
