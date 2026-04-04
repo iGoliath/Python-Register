@@ -108,12 +108,6 @@ def enter_item_confirmation(
     
 
     ui.add_item_label.config(text="Confirm item info is correct: ")
-    ui.add_item_entry.grid_forget()
-    ui.add_item_button.grid_forget()
-    ui.item_info_confirmation.grid(column=1, row=1, sticky='ew', 
-                                     padx=5)
-    ui.add_item_yes_no.grid(column=1, row=2, sticky='nsew')
-    ui.add_item_back_button.grid_forget()
     print_confirmation_info(state_manager, ui.item_info_confirmation)
     root.wait_variable(state_manager.yes_no_var)
     yes_no_answer = state_manager.yes_no_var.get()
@@ -129,10 +123,6 @@ def enter_item_confirmation(
             yes_not_register(state_manager, ui)
             return False
     elif yes_no_answer == 'no':
-        ui.add_item_label.config(text="What would you like to change?")
-        ui.reenter_frame.grid(column = 1, row=1, sticky='nsew')
-        ui.add_item_yes_no.grid_forget()
-        ui.item_info_confirmation.grid_forget()
         return None
 
 
@@ -147,10 +137,6 @@ def yes_register(
                 "coming from register")
     finally:
         state_manager.add_item_index = 0
-        ui.add_item_yes_no.grid_forget()
-        ui.item_info_confirmation.grid_forget()
-        ui.add_item_entry.grid(row=1, column=1, sticky='ew', 
-                                    pady=15)
         
 def yes_existing(
         state_manager: StateManager, ui: WidgetManager) -> None:
@@ -163,9 +149,6 @@ def yes_existing(
         print(f"{e} when updating an existing item")
     finally:
         state_manager.add_item_index = 0
-        ui.add_item_yes_no.grid_forget()
-        ui.item_info_confirmation.grid_forget()
-        ui.add_item_entry.grid(row = 1, column = 1, sticky = 'ew', pady = 15)
 
 def yes_not_register(
         state_manager: StateManager, ui: WidgetManager) -> None:
@@ -180,9 +163,6 @@ def yes_not_register(
         #Return user to step 1
     finally:
         ui.item_info_confirmation.delete("1.0", "end")
-        ui.item_info_confirmation.grid_forget()
-        ui.add_item_label.config(text="Commit successful!\nEnter another item?")
-
 
 def print_confirmation_info(state_manager: StateManager, item_info_confirmation: tk.Text) -> None:
 

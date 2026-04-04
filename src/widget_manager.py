@@ -23,11 +23,12 @@ class WidgetManager:
         self.add_tax_frame = tk.Frame(self.root)
         self.add_category_frame = tk.Frame(self.root)
         self.add_quantity_frame = tk.Frame(self.root)
+        self.add_item_confirmation_frame = tk.Frame(self.root)
         self.register_frame = tk.Frame(self.root, bg='black')
         self.register_info_frame = tk.Frame(self.register_frame, bg="black")
         self.main_menu_frame = tk.Frame(self.root)
         self.menu_buttons_frame = tk.Frame(self.main_menu_frame)
-        self.reenter_frame = tk.Frame(self.add_item_frame)
+        self.reenter_frame = tk.Frame(self.root)
         self.add_item_yes_no = tk.Frame(self.add_item_frame)
         self.add_item_back_quit_frame = tk.Frame(self.add_item_frame)
         self.register_add_item_prompt_frame = tk.Frame(self.root)
@@ -82,6 +83,7 @@ class WidgetManager:
             frame.columnconfigure(0, weight=1)
 
 
+        self.reenter_frame.grid(column = 0, row = 0, sticky='nsew')
         self.register_menu_frame.grid(column = 0, row = 0, sticky='nsew')
         self.admin_menu_frame.grid(column = 0, row = 0, sticky='nsew')
 
@@ -206,7 +208,6 @@ class WidgetManager:
             self.coupon_frame, font=("Arial", 50)
         )
         self.coupon_reason_entry.grid(column = 1, row = 3, sticky='ew', pady=10)
-
         
         self.coupon_back_button = tk.Button(
             self.coupon_buttons_frame, text="Back",
@@ -226,38 +227,27 @@ class WidgetManager:
         # ==========================
 
         self.add_item_label = tk.Label(
-            self.add_item_frame, text="Please enter the item's barcode:",
+            self.add_item_frame, text="Please confirm item's info:",
               font=("Arial", 50), width=27)
 
-        self.add_item_button = tk.Button(
-            self.add_item_frame, text="Next", font=("Arial", 50),
-              command=lambda: controller.on_add_item_enter())
-
-        self.add_item_back_button = tk.Button(
-            self.add_item_back_quit_frame, text="Back", font=("Arial", 50),
-              command=lambda: controller.go_back())
+        self.add_item_label.grid(column = 1, row = 0, sticky='ew')
 
         self.add_item_quit_button = tk.Button(
             self.add_item_back_quit_frame, text="Quit", font=("Arial", 50),
               command = lambda: self.main_menu_frame.tkraise())
 
-        self.add_item_entry = tk.Entry(
-            self.add_item_frame, font=("Arial", 50),
-            width=15, justify="right")
-        self.add_item_entry.bind("<Return>", controller.on_add_item_enter)
-
-        self.add_item_invisible_entry = tk.Entry(
-            self.add_item_frame, font=("Arial", 50), width=15, justify="right")
-        self.add_item_invisible_entry.place(x=-100, y=-100, height=0, width=0)
-        self.add_item_invisible_entry.bind("<Return>", controller.on_add_item_enter)
-        self.add_item_invisible_entry.bind("<KeyRelease-KP_Enter>", controller.on_add_item_enter)
-        
-
+        self.add_item_quit_button.grid(column = 0, row = 0, sticky='ew')
 
         self.item_info_confirmation = tk.Text(
             self.add_item_frame, font=("Arial", 40),
             width=6, height=4)
         self.item_info_confirmation.tag_configure("justify_right", justify = "right")
+
+        self.item_info_confirmation.grid(column = 1, row = 1, sticky='ew')
+
+        self.add_item_yes_no.grid(column = 1, row = 2, sticky='ew')
+
+        self.add_item_back_quit_frame.grid(column = 1, row = 4, sticky='ew')
 
         self.yes_button = tk.Button(
             self.add_item_yes_no, text="Yes", font=("Arial", 100),
@@ -344,7 +334,7 @@ class WidgetManager:
 
         self.add_category_button = tk.Button(
             self.reenter_frame, text="Category", font=("Arial", 75),
-            command = lambda: self.reenter_button_pressed("category"))
+            command = lambda: controller.reenter_button_pressed("category"))
         self.add_category_button.grid(row=2, column=1, sticky='nsew')
 
         # ==========================
@@ -916,16 +906,6 @@ class WidgetManager:
 
 
     def enter_add_item_frame(self):
-        self.add_item_label.grid(column=1, row=0, sticky='ew')
-        self.add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
-        self.add_item_entry.config(validate='none')
-        self.add_item_button.grid(column=1, row=2, sticky='ew')
-        self.add_item_back_button.grid(column=0, row=0, sticky='ew')
-        self.add_item_quit_button.grid(column=1, row=0, sticky='ew')
-        self.add_item_back_quit_frame.grid(column = 1, row = 4, sticky='ew', pady=(15, 0))
-        self.add_item_yes_no.grid_forget()
-        self.item_info_confirmation.grid_forget()
-        self.reenter_frame.grid_forget()
         self.add_barcode_frame.tkraise()
         self.add_barcode_entry.focus_set()
 
@@ -1031,49 +1011,4 @@ class WidgetManager:
         
         subprocess.run(['sudo', 'date', '-s', time_string])
         self.quit_program()
-
-    def remove_validate_bindings(self):
-        self.add_item_entry.config(validate="none")
-        self.add_item_entry.unbind("<FocusIn>", self.controller.state_manager.binding_manager)
-
-    def setup_barcode_step(self):
-        self.add_item_entry.config(validate="none")
-        self.add_item_label.config(text="Please enter item's barcode:")
-
-    def setup_name_step(self):
-        self.add_item_entry.config(validate="none")
-        self.add_item_label.config(text="Please enter item's name:")
-
-    def setup_price_step(self):
-        self.add_item_entry.insert(tk.END, "$0.00")
-        self.add_item_invisible_entry.config(validate='key', vcmd=self.controller.vcmd)
-        self.controller.state_manager.add_item_var.trace('w', self.controller.on_add_item_entry_update)
-        self.add_item_invisible_entry.config(textvariable=self.controller.state_manager.add_item_var)
-        self.controller.state_manager.binding_manager = self.add_item_entry.bind("<FocusIn>", self.controller.return_add_item_invisible_entry_focus)
-        self.add_item_invisible_entry.focus_set()
-
-    def setup_taxable_step(self):
-        self.add_item_label.config(text="Is the item taxable?")
-        self.add_item_entry.grid_forget()
-        self.add_item_button.grid_forget()
-        self.add_item_yes_no.grid(column = 1, row = 2, sticky='nsew')
-
-    def setup_category_step(self):
-        self.add_item_yes_no.grid_forget()
-        self.add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
-        self.add_item_button.grid(column=1, row=2, sticky='ew')
-        self.add_item_label.config(text="Please enter the category:")
-        #self.add_item_listbox_frame.tkraise()
-
-    def setup_quantity_step(self):
-        self.add_item_frame.tkraise()
-        self.add_item_entry.config(validate='key', vcmd=self.controller.vcmd)
-        self.add_item_label.config(text="Please enter the Quantity")
-        self.add_item_entry.focus_set()
-
-
-
-
-
-    
 

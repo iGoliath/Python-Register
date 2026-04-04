@@ -537,6 +537,7 @@ class Register:
 		self.enter_register_frame()
 	
 	def go_back(self):
+
 		"""Changes index on back button press and resets environment accordingly."""
 		if self.state_manager.add_item_index != 0:
 			self.state_manager.add_item_index -= 1
@@ -549,7 +550,7 @@ class Register:
 				self.ui.add_name_entry.focus_set()
 			case 2:
 				self.ui.add_price_frame.tkraise()
-				self.ui.update_entry(self.ui.add_item_entry, "$0.00")
+				#self.ui.update_entry(self.ui.add_price_entry, "$0.00")
 				self.ui.add_price_invisible_entry.delete(0, tk.END)
 				self.ui.add_price_entry.focus_set()
 			case 3:
@@ -561,37 +562,35 @@ class Register:
 
 	def reenter_button_pressed(self, which_button):
 		"""Reset to add item interface according to button user presses."""
-		self.ui.reenter_frame.grid_forget()
-		self.ui.add_item_entry.grid(column=1, row=1, sticky='ew', pady=15)
-		self.ui.add_item_button.grid(column=1, row=2, sticky='ew')
 		
 		self.state_manager.reentering = True
 
 		match which_button:
 			case "barcode":
-				self.add_item_entry.config(validate="none")
 				self.state_manager.add_item_index=0
-				self.ui.add_item_label.config(text="Please enter item's barcode:")
+				self.ui.add_barcode_frame.tkraise()
+				self.ui.add_barcode_entry.focus_set()
 			case "name":
 				self.state_manager.add_item_index=1
-				self.ui.add_item_label.config(text="Please enter the item's name:")
+				self.ui.add_name_frame.tkraise()
+				self.ui.add_name_entry.focus_set()
 			case "price":
 				self.state_manager.add_item_index=2
-				self.ui.add_item_label.config(text="Please enter the item's price:")
+				self.ui.add_price_frame.tkraise()
+				self.ui.update_entry(self.ui.add_price_entry, "$0.00")
+				self.ui.add_price_entry.focus_set()
 			case "taxable":
 				self.state_manager.add_item_index=3
-				self.ui.add_item_label.config(text="Is the item taxable?")
-				self.ui.add_item_entry.grid_forget()
-				self.ui.add_item_button.grid_forget()
-				self.ui.add_item_yes_no.grid(column=1, row=2, sticky='nsew')
+				self.ui.add_tax_frame.tkraise()
 			case "category":
 				self.state_manager.add_item_index=4
-				self.ui.add_item_listbox_frame.tkraise()
+				self.ui.add_category_frame.tkraise()
 			case "quantity":
 				self.state_manager.add_item_index=5
 				self.state_manager.reentering_quantity = True
 				self.state_manager.reentering = False
-				self.ui.setup_quantity_step()
+				self.ui.add_quantity_frame.tkraise()
+				self.ui.add_quantity_entry.focus_set()
 
 
 	def check_zero_integer(self, input: str) -> bool:
@@ -611,43 +610,50 @@ class Register:
 			item_info_entered = self.entries[self.state_manager.add_item_index].get().strip()
 			self.entries[self.state_manager.add_item_index].delete(0, tk.END)
 
-		'''if self.state_manager.add_item_index != 5:
-			if item_info_entered == '' or self.check_zero_integer(item_info_entered):
-				return
-			elif item_info_entered == "$0.00":
-				self.ui.add_item_entry.insert(tk.END, "$0.00")
-				return'''
+		
+		if item_info_entered == '' or self.check_zero_integer(item_info_entered):
+			return
+		elif item_info_entered == "$0.00":
+			self.ui.add_price_entry.insert(tk.END, "$0.00")
+			self.ui.add_price_invisible_entry.delete(0, tk.END)
+			return
 		
 		match self.state_manager.add_item_index:
 			case 0:
-				if invf.check_item_exists(self.state_manager, item_info_entered):
+				if not self.state_manager.reentering:
+					if invf.check_item_exists(self.state_manager, item_info_entered):
+						self.on_add_item_enter()
+					else:
+						self.ui.add_name_frame.tkraise()
+						self.ui.add_name_entry.focus_set()
+				else:
+					invf.enter_item_barcode(self.state_manager, item_info_entered)
 					self.on_add_item_enter()
-
-				self.ui.add_name_frame.tkraise()
-				self.ui.add_name_entry.focus_set()
 			case 1:
 				if invf.enter_item_name(self.state_manager, item_info_entered):
 					self.on_add_item_enter()
-
-				self.ui.add_price_frame.tkraise()	
-				self.ui.update_entry(self.ui.add_price_entry, "$0.00")
-				self.ui.add_price_invisible_entry.focus_set()
+				else:
+					self.ui.add_price_frame.tkraise()	
+					self.ui.update_entry(self.ui.add_price_entry, "$0.00")
+					self.ui.add_price_invisible_entry.focus_set()
 			case 2:
 				self.ui.add_price_invisible_entry.delete(0, tk.END)
 				if invf.enter_item_price(self.state_manager, item_info_entered):
 					self.on_add_item_enter()
-				self.ui.add_tax_frame.tkraise()
+				else:
+					self.ui.add_tax_frame.tkraise()
 			case 3:
 				if invf.enter_item_taxable(item_info_entered, self.state_manager):
 					self.on_add_item_enter()	
-				self.ui.add_category_frame.tkraise()	
+				else:
+					self.ui.add_category_frame.tkraise()	
 			case 4:
 				if invf.enter_item_category(self.state_manager, self.ui):
 					self.on_add_item_enter()
-				self.ui.add_quantity_frame.tkraise()
-				self.ui.add_quantity_entry.focus_set()
+				else:
+					self.ui.add_quantity_frame.tkraise()
+					self.ui.add_quantity_entry.focus_set()
 			case 5:
-				self.ui.add_item_entry.config(validate='none')
 				self.ui.add_item_frame.tkraise()
 				return_value = invf.enter_item_confirmation(
 					self.state_manager, item_info_entered, root, self.ui)
@@ -658,6 +664,8 @@ class Register:
 					self.ui.invisible_entry.focus_set()
 				elif return_value == False:
 					self.enter_add_item_frame()
+				elif return_value == None:
+					self.ui.reenter_frame.tkraise()
 			case _:
 				self.ui.error_description_label.config("Add item index out of bounds!\nPlease try again.")
 				self.ui.errors_frame.tkraise()
@@ -772,10 +780,6 @@ class Register:
 		and returns 'break' to stop propagating event."""
 		self.ui.browse_entry.focus_set()
 		return "break"
-
-	def on_add_item_entry_update(self, *args):
-		"""Handler for when user is inputting numbers during add item process."""
-		self.number_pressed(None, self.ui.add_item_invisible_entry, self.ui.add_item_entry)
 
 	def on_yes_no(self, answer):
 		"""Handles certain pressed of yes/no buttons."""
