@@ -4,7 +4,7 @@ class Config:
 
     def __init__(self):
 
-        with open('config.json', 'r') as fp:
+        with open('/home/tbc/Desktop/src2/config.json', 'r') as fp:
             data = json.load(fp)
         
         self.printing_width = data['printing_width']

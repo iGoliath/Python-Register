@@ -6,8 +6,8 @@ from widget_manager import WidgetManager
 from state_manager import StateManager
 from config import Config
 from datetime import datetime
-#from escpos.printer import Usb
-#import #pygame
+from escpos.printer import Usb
+import pygame
 import time
 import threading
 import os
@@ -26,7 +26,7 @@ class Register:
 		self.config = Config()
 		self.state_manager.add_price_var.trace('w', self.on_price_entry_update)
 
-		#self.printer = Usb(0x0fe6, 0x811e, 0) #File("/dev/usb/lp0")
+		self.printer = Usb(0x0fe6, 0x811e, 0) #File("/dev/usb/lp0")
 
 		self.entries = [
 			self.ui.add_barcode_entry, self.ui.add_name_entry, self.ui.add_price_entry,
@@ -101,8 +101,8 @@ class Register:
          
 	def enter_register_frame(self, event = None):
 		"""Reset register environment to defaults, and raise the register frame."""
-		#pygame.mixer.music.load("short-beep.mp3")
-		#pygame.mixer.music.play()
+		pygame.mixer.music.load("/home/tbc/Desktop/src2/short-beep.mp3")
+		pygame.mixer.music.play()
 		self.state_manager.new_transaction()
 		self.ui.enter_register_frame()
 		return "break"
@@ -357,8 +357,8 @@ class Register:
 			self.clear()
 			return "break"
 		
-		#pygame.mixer.music.load("short-beep.mp3")
-		#pygame.mixer.music.play()
+		pygame.mixer.music.load("/home/tbc/Desktop/src2/short-beep.mp3")
+		pygame.mixer.music.play()
 
 		entered_amount = self.ui.invisible_entry.get().strip()
 		self.ui.invisible_entry.delete(0, tk.END)
@@ -413,8 +413,8 @@ class Register:
 			self.clear()
 			return "break"
 		
-		#pygame.mixer.music.load("short-beep.mp3")
-		#pygame.mixer.music.play()
+		pygame.mixer.music.load("/home/tbc/Desktop/src2/short-beep.mp3")
+		pygame.mixer.music.play()
 
 		entered_amount = self.ui.invisible_entry.get().strip()
 		entered_amount = entered_amount[:-1]
@@ -481,8 +481,8 @@ class Register:
 		
 	def number_pressed(self, input_widget=None, output_widget=None):
 		"""Output formatted dollar amount when user inputs numbers"""
-		#pygame.mixer.music.load("short-beep.mp3")
-		#pygame.mixer.music.play()
+		pygame.mixer.music.load("/home/tbc/Desktop/src2/short-beep.mp3")
+		pygame.mixer.music.play()
 
 		if input_widget is None:
 			input_widget = self.ui.invisible_entry
@@ -506,8 +506,8 @@ class Register:
 
 	def clear(self, event=None):
 		"""Clear number user entered in register."""
-		#pygame.mixer.music.load("short-beep.mp3")
-		#pygame.mixer.music.play()
+		pygame.mixer.music.load("/home/tbc/Desktop/src2/short-beep.mp3")
+		pygame.mixer.music.play()
 		self.ui.invisible_entry.delete(0, tk.END)
 		self.ui.update_entry(self.ui.user_entry, "$0.00")
 			
@@ -773,7 +773,7 @@ class Register:
 		spaces = 42 - 14 - len(f"{gross_total:.2f}")
 		self.printer.textln(f"Gross Total: {' ' * spaces}${gross_total:.2f}\n")
 
-		self.state_manager.cursor.execute('''SELECT SUM("Total") FROM Sales WHERE TOTAL < 0''')
+		self.state_manager.cursor.execute('''SELECT SUM("Total") FROM Sales WHERE TOTAL < 0 AND Date = ?''', (datetime.today(), ))
 		results = self.state_manager.cursor.fetchone()[0]
 		total_returns = (results * -1) if results is not None else 0
 		spaces = 42 - 16 - len(f"{total_returns:.2f}")
@@ -884,7 +884,7 @@ if __name__ == "__main__":
 
 	#register.remove_old_backups(register.config.backup_removal_cutoff)
 
-	#pygame.mixer.init()
+	pygame.mixer.init()
 	register.enter_register_frame()
 
 	'''if register.config.manual_time_last_boot:

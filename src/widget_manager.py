@@ -371,7 +371,7 @@ class WidgetManager:
         self.print_receipt_button.grid(column = 1, row = 0, sticky='nsew', pady=2)
         self.make_return_button.grid(column = 0, row = 1, sticky='nsew', pady=2)
         self.back_to_register_button.grid(column = 1, row = 1, sticky='nsew', pady=2)
-        self.seasonal_button.grid(column = 0, row = 2, sticky='nsew', pady=2)
+        #self.seasonal_button.grid(column = 0, row = 2, sticky='nsew', pady=2)
         self.coupon_button.grid(column = 1, row = 2, sticky='nsew', pady=2)
         self.lookup_item_button.grid(column = 0, row = 3, sticky='nsew', pady=2)
 
@@ -410,7 +410,7 @@ class WidgetManager:
         self.fullscreen_button.grid(column = 0, row = 1, sticky='nsew', pady=2)
         self.browse_transactions_button.grid(column = 1, row = 1, sticky='nsew', pady=2)
         self.quit_program_button.grid(column = 0, row = 2, sticky='nsew', pady=2)
-        self.manage_seasonals_button.grid(column = 1, row = 2, sticky='nsew', pady=2)
+        #self.manage_seasonals_button.grid(column = 1, row = 2, sticky='nsew', pady=2)
         self.admin_menu_back_button.grid(column = 0, row = 3, sticky='nsew', pady=2)
         
         # ==============================
@@ -821,7 +821,7 @@ class WidgetManager:
         for values in (
         "Camping", "Gifts", "Fishing", "General Merch",
         "RV", "Summer Fun", "Toys & Hobby", "Candy & Snacks", "Misc.",
-        "Foodstuffs", "Souvenirs"):
+        "Foodstuffs", "TBC Merch", "Souvenirs"):
             self.add_category_listbox.insert(tk.END, values)
 
         tk.Button(
