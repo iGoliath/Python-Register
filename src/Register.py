@@ -6,8 +6,8 @@ from widget_manager import WidgetManager
 from state_manager import StateManager
 from config import Config
 from datetime import datetime
-from escpos.printer import Usb
-import pygame
+#from escpos.printer import Usb
+#import #pygame
 import time
 import threading
 import os
@@ -30,7 +30,8 @@ class Register:
 
 		self.entries = [
 			self.ui.add_barcode_entry, self.ui.add_name_entry, self.ui.add_price_entry,
-			self.ui.add_tax_entry, self.ui.add_category_entry, self.ui.add_quantity_entry]
+			self.ui.add_tax_entry, self.ui.add_category_entry,
+			self.ui.add_subcategory_entry, self.ui.add_vendor_entry, self.ui.add_quantity_entry]
 
 	def on_price_entry_update(self, *args):
 		self.number_pressed(self.ui.add_price_invisible_entry, self.ui.add_price_entry)
@@ -39,17 +40,31 @@ class Register:
 	def on_item_lookup(self, *args):
 
 		pattern = f'%{self.ui.lookup_items_entry.get()}%'
-		self.state_manager.cursor.execute("SELECT * FROM Inventory WHERE Name LIKE ?", (pattern, ))
+		self.state_manager.cursor.execute("SELECT Name FROM Inventory WHERE Name LIKE ?", (pattern, ))
 		self.ui.lookup_items_listbox.delete(0, tk.END)
 		results = self.state_manager.cursor.fetchall()
 
 		for item in results:
-			self.ui.lookup_items_listbox.insert(tk.END, f'{item[1]}\n')
+			self.ui.lookup_items_listbox.insert(tk.END, f'{item[0]}\n')
 
+
+	def confirm_lookup_items(self):
+		index = self.ui.lookup_items_listbox.curselection()
+		name = self.ui.lookup_items_listbox.get(index).strip()
+		quantity = int(self.ui.lookup_items_quantity_spinbox.get())
+		self.state_manager.cursor.execute('''SELECT Barcode FROM Inventory WHERE Name = ?''', (name, ))
+		barcode = self.state_manager.cursor.fetchall()[0][0]
+		
+		for i in range(0, quantity):
+			self.process_sale(barcode)
+			print("adding")
+		print(self.state_manager.trans.total)
+		self.ui.register_frame.tkraise()
+		self.ui.invisible_entry.focus_set()
 
 	def perform_backup(self):
 		time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-		source_db = sqlite3.connect("/tmp/RegisterDatabase")
+		source_db = sqlite3.connect("/home/tbc/Desktop/src2/RegisterDatabase")
 		dest_db = sqlite3.connect(f'/media/tbc/3CC9-2F54/RegisterDatabaseBackup_{time}.db')
 		source_db.backup(dest_db)
 		source_db.close()
@@ -86,8 +101,8 @@ class Register:
          
 	def enter_register_frame(self, event = None):
 		"""Reset register environment to defaults, and raise the register frame."""
-		pygame.mixer.music.load("short-beep.mp3")
-		pygame.mixer.music.play()
+		#pygame.mixer.music.load("short-beep.mp3")
+		#pygame.mixer.music.play()
 		self.state_manager.new_transaction()
 		self.ui.enter_register_frame()
 		return "break"
@@ -180,7 +195,7 @@ class Register:
 
 
 
-	def process_sale(self, event=None, entered_barcode=None):
+	def process_sale(self, entered_barcode=None):
 		"""Check for existing barcode. If so, add item to running list of sold items
 		and display info to cashier. Else, prompt user to enter the item."""
 		if entered_barcode is not None:
@@ -189,6 +204,8 @@ class Register:
 			barcode = self.ui.invisible_entry.get()
 			if barcode == "":
 				return "break"
+			if (len(barcode.lstrip('0')) != (len(barcode))):
+				invf.update_barcode(self.state_manager, barcode)
 			self.ui.invisible_entry.delete(0, tk.END)
 			total, item_name, item_price, taxable  = self.state_manager.trans.sell_item(barcode)
 		if total == "item_not_found":
@@ -340,8 +357,8 @@ class Register:
 			self.clear()
 			return "break"
 		
-		pygame.mixer.music.load("short-beep.mp3")
-		pygame.mixer.music.play()
+		#pygame.mixer.music.load("short-beep.mp3")
+		#pygame.mixer.music.play()
 
 		entered_amount = self.ui.invisible_entry.get().strip()
 		self.ui.invisible_entry.delete(0, tk.END)
@@ -396,8 +413,8 @@ class Register:
 			self.clear()
 			return "break"
 		
-		pygame.mixer.music.load("short-beep.mp3")
-		pygame.mixer.music.play()
+		#pygame.mixer.music.load("short-beep.mp3")
+		#pygame.mixer.music.play()
 
 		entered_amount = self.ui.invisible_entry.get().strip()
 		entered_amount = entered_amount[:-1]
@@ -448,7 +465,7 @@ class Register:
 
 	def complete_sale(self, event=None):
 		"""Complete transaction, open cash drawer, print receipt, and reset register environment."""
-		#self.printer.cashdraw(pin=2)
+		self.printer.cashdraw(pin=2)
 		if self.state_manager.used_coupon:
 			self.state_manager.trans.complete_transaction([self.state_manager.coupon, self.state_manager.coupon_reason])
 		else:
@@ -458,14 +475,14 @@ class Register:
 		sale_info = results[0]
 		self.state_manager.cursor.execute('''SELECT * FROM SALEITEMS WHERE sale_id = ?''', (sale_info[0], ))
 		sale_items_list = self.state_manager.cursor.fetchall()
-		#self.print_receipt("sale", sale_info[0], sale_items_list, sale_info, self.state_manager.trans.cash_tendered, self.state_manager.trans.cc_tendered)
+		self.print_receipt("sale", sale_info[0], sale_items_list, sale_info, self.state_manager.trans.cash_tendered, self.state_manager.trans.cc_tendered)
 		self.ui.sale_items_listbox.delete(0, tk.END)
 		self.state_manager.new_transaction()
 		
 	def number_pressed(self, input_widget=None, output_widget=None):
 		"""Output formatted dollar amount when user inputs numbers"""
-		pygame.mixer.music.load("short-beep.mp3")
-		pygame.mixer.music.play()
+		#pygame.mixer.music.load("short-beep.mp3")
+		#pygame.mixer.music.play()
 
 		if input_widget is None:
 			input_widget = self.ui.invisible_entry
@@ -489,8 +506,8 @@ class Register:
 
 	def clear(self, event=None):
 		"""Clear number user entered in register."""
-		pygame.mixer.music.load("short-beep.mp3")
-		pygame.mixer.music.play()
+		#pygame.mixer.music.load("short-beep.mp3")
+		#pygame.mixer.music.play()
 		self.ui.invisible_entry.delete(0, tk.END)
 		self.ui.update_entry(self.ui.user_entry, "$0.00")
 			
@@ -550,7 +567,6 @@ class Register:
 				self.ui.add_name_entry.focus_set()
 			case 2:
 				self.ui.add_price_frame.tkraise()
-				#self.ui.update_entry(self.ui.add_price_entry, "$0.00")
 				self.ui.add_price_invisible_entry.delete(0, tk.END)
 				self.ui.add_price_entry.focus_set()
 			case 3:
@@ -558,6 +574,11 @@ class Register:
 			case 4:
 				self.ui.add_category_frame.tkraise()
 			case 5:
+				self.ui.populate_subcategory_listbox(self.state_manager.add_item_object.category)
+				self.ui.add_subcategory_frame.tkraise()
+			case 6:
+				self.ui.add_vendor_frame.tkraise()
+			case 7:
 				self.ui.add_quantity_frame.tkraise()
 
 	def reenter_button_pressed(self, which_button):
@@ -585,13 +606,25 @@ class Register:
 			case "category":
 				self.state_manager.add_item_index=4
 				self.ui.add_category_frame.tkraise()
+			case "subcategory":
+				self.state_manager.add_item_index = 5
+				self.ui.populate_subcategory_listbox(self.state_manager.add_item_object.category)
+				self.ui.add_subcategory_frame.tkraise()
+			case "vendor":
+				self.state_manager.add_item_index = 6
+				self.ui.add_vendor_frame.tkraise()
 			case "quantity":
-				self.state_manager.add_item_index=5
+				self.state_manager.add_item_index=7
 				self.state_manager.reentering_quantity = True
 				self.state_manager.reentering = False
 				self.ui.add_quantity_frame.tkraise()
 				self.ui.add_quantity_entry.focus_set()
 
+	def skip_vendor_step(self):
+		self.state_manager.add_item_object.vendor="N/A"
+		self.state_manager.add_item_index += 1
+		self.ui.add_quantity_frame.tkraise()
+		self.ui.add_quantity_entry.focus_set()
 
 	def check_zero_integer(self, input: str) -> bool:
 
@@ -610,13 +643,12 @@ class Register:
 			item_info_entered = self.entries[self.state_manager.add_item_index].get().strip()
 			self.entries[self.state_manager.add_item_index].delete(0, tk.END)
 
-		
-		if item_info_entered == '' or self.check_zero_integer(item_info_entered):
+		'''if item_info_entered == '' or self.check_zero_integer(item_info_entered):
 			return
 		elif item_info_entered == "$0.00":
 			self.ui.add_price_entry.insert(tk.END, "$0.00")
 			self.ui.add_price_invisible_entry.delete(0, tk.END)
-			return
+			return'''
 		
 		match self.state_manager.add_item_index:
 			case 0:
@@ -651,9 +683,20 @@ class Register:
 				if invf.enter_item_category(self.state_manager, self.ui):
 					self.on_add_item_enter()
 				else:
+					self.ui.populate_subcategory_listbox(self.state_manager.add_item_object.category)
+					self.ui.add_subcategory_frame.tkraise()
+			case 5:
+				if invf.enter_item_subcategory(self.state_manager, self.ui):
+					self.on_add_item_enter()
+				else:
+					self.ui.add_vendor_frame.tkraise()
+			case 6:
+				if invf.enter_item_vendor(self.state_manager, self.ui):
+					self.on_add_item_enter()
+				else:
 					self.ui.add_quantity_frame.tkraise()
 					self.ui.add_quantity_entry.focus_set()
-			case 5:
+			case self.state_manager.ADD_ITEM_LAST_STEP:
 				self.ui.add_item_frame.tkraise()
 				return_value = invf.enter_item_confirmation(
 					self.state_manager, item_info_entered, root, self.ui)
@@ -678,6 +721,24 @@ class Register:
 			return
 		selected_item = self.ui.add_category_listbox.get(selected_index)
 		self.ui.update_entry(self.ui.add_category_entry, selected_item)
+		self.on_add_item_enter()
+
+	def on_add_subcategory_listbox_next(self, event=None):
+		"""Places entry in listbox user selected for on_add_item_enter() to pick up."""
+		selected_index = self.ui.add_subcategory_listbox.curselection()
+		if selected_index == ():
+			return
+		selected_item = self.ui.add_subcategory_listbox.get(selected_index)
+		self.ui.update_entry(self.ui.add_subcategory_entry, selected_item)
+		self.on_add_item_enter()
+
+	def on_add_vendor_listbox_next(self, event=None):
+		"""Places entry in listbox user selected for on_add_item_enter() to pick up."""
+		selected_index = self.ui.add_vendor_listbox.curselection()
+		if selected_index == ():
+			return
+		selected_item = self.ui.add_vendor_listbox.get(selected_index)
+		self.ui.update_entry(self.ui.add_vendor_entry, selected_item)
 		self.on_add_item_enter()
 
 	def run_x(self, event=None):
@@ -786,7 +847,7 @@ class Register:
 		if self.state_manager.add_item_index == 3:
 			self.ui.update_entry(self.ui.add_tax_entry, answer)
 			self.on_add_item_enter()
-		elif self.state_manager.add_item_index == 5:
+		elif self.state_manager.add_item_index == self.state_manager.ADD_ITEM_LAST_STEP:
 			self.state_manager.yes_no_var.set(answer)
 
 	def apply_coupon(self):
@@ -823,7 +884,7 @@ if __name__ == "__main__":
 
 	#register.remove_old_backups(register.config.backup_removal_cutoff)
 
-	pygame.mixer.init()
+	#pygame.mixer.init()
 	register.enter_register_frame()
 
 	'''if register.config.manual_time_last_boot:

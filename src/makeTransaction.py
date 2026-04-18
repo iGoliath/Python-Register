@@ -46,7 +46,7 @@ class Transaction:
 
 	def sell_item(self, entered_barcode):
 	
-		self.db_cursor.execute('''SELECT "Name", "Price", "Taxable" FROM INVENTORY WHERE BARCODE = ?''',
+		self.db_cursor.execute('''SELECT "Name", "Price", "Taxable" FROM Inventory WHERE Barcode = ?''',
 			(entered_barcode,))
 		results = self.db_cursor.fetchone()
 		if not results:

@@ -17,11 +17,12 @@ class StateManager:
         self.item_lookup_var = tk.StringVar(root_window)
         self.browse_index = tk.IntVar(root_window)
         self.binding_manager = None
-        self.conn = sqlite3.connect("/tmp/RegisterDatabase")
+        self.conn = sqlite3.connect("RegisterDatabase")
         self.conn.execute("PRAGMA foreign_keys = ON")
         self.cursor = self.conn.cursor()
         self.trans = Transaction(self.conn, self.cursor)
         self.add_item_object = AddToInventory(self.conn, self.cursor)
+        self.ADD_ITEM_LAST_STEP = 7
         
 
     def new_transaction(self):

@@ -3,10 +3,17 @@ from widget_manager import *
 import tkinter as tk
 import sqlite3
 
+def update_barcode(state_manager: StateManager, barcode: str) -> None:
+    state_manager.cursor.execute('''INSERT INTO updated_barcodes SELECT item_id, barcode, ? FROM Inventory WHERE Barcode = ?''', (barcode, barcode.lstrip('0')))
+    state_manager.cursor.execute('''UPDATE Inventory SET Barcode = ? WHERE Barcode = ?''', (barcode, barcode.lstrip('0')))
+    state_manager.conn.commit()
 def check_item_exists(state_manager: StateManager, barcode: str) -> bool:
     """This function is the pre-requisite to adding an item. We want to
     make sure that the item does not already exist."""
 
+    if (len(barcode.lstrip('0')) != (len(barcode))):
+        update_barcode(state_manager, barcode)
+    
     state_manager.cursor.execute("SELECT * FROM INVENTORY WHERE BARCODE=?", (barcode,))
     results = state_manager.cursor.fetchall()
     if results:
@@ -18,7 +25,9 @@ def check_item_exists(state_manager: StateManager, barcode: str) -> bool:
         state_manager.add_item_object.old_barcode = found_item_info[4]
         state_manager.add_item_object.quantity = found_item_info[5]
         state_manager.add_item_object.category = found_item_info[6]
-        state_manager.add_item_index = 5
+        state_manager.add_item_object.subcategory = found_item_info[7]
+        state_manager.add_item_object.vendor = found_item_info[8]
+        state_manager.add_item_index = state_manager.ADD_ITEM_LAST_STEP
         state_manager.updating_existing_item = True
         return True
     elif not results:
@@ -33,7 +42,7 @@ def enter_item_barcode(state_manager: StateManager, barcode: str) -> bool:
     if not state_manager.reentering:
         state_manager.add_item_index += 1
     elif state_manager.reentering:
-        state_manager.add_item_index = 5
+        state_manager.add_item_index = state_manager.ADD_ITEM_LAST_STEP
         return True
 
 def enter_item_name(state_manager: StateManager, name: str) -> bool:
@@ -44,7 +53,7 @@ def enter_item_name(state_manager: StateManager, name: str) -> bool:
     if not state_manager.reentering:
         state_manager.add_item_index += 1
     elif state_manager.reentering:
-        state_manager.add_item_index = 5
+        state_manager.add_item_index = state_manager.ADD_ITEM_LAST_STEP
         return True
 
 def enter_item_price(
@@ -56,7 +65,7 @@ def enter_item_price(
     if not state_manager.reentering:
         state_manager.add_item_index += 1
     elif state_manager.reentering:
-        state_manager.add_item_index = 5
+        state_manager.add_item_index = state_manager.ADD_ITEM_LAST_STEP
         return True
 
 def enter_item_taxable(
@@ -72,7 +81,7 @@ def enter_item_taxable(
         state_manager.add_item_index+=1
         return False
     elif state_manager.reentering:
-        state_manager.add_item_index=5
+        state_manager.add_item_index = state_manager.ADD_ITEM_LAST_STEP
         return True
 
 def enter_item_category(state_manager: StateManager, ui: WidgetManager) -> bool:
@@ -82,11 +91,30 @@ def enter_item_category(state_manager: StateManager, ui: WidgetManager) -> bool:
     state_manager.add_item_object.category = ui.add_category_listbox.get(ui.add_category_listbox.curselection())
 
     if not state_manager.reentering:
-        state_manager.add_item_index+=1
+        state_manager.add_item_index += 1
     elif state_manager.reentering:
-        state_manager.add_item_index=5
+        state_manager.add_item_index = state_manager.ADD_ITEM_LAST_STEP
         return True
 
+def enter_item_subcategory(state_manager: StateManager, ui: WidgetManager) -> bool:
+
+    state_manager.add_item_object.subcategory = ui.add_subcategory_listbox.get(ui.add_subcategory_listbox.curselection())
+
+    if not state_manager.reentering:
+        state_manager.add_item_index += 1
+    elif state_manager.reentering:
+        state_manager.add_item_index = state_manager.ADD_ITEM_LAST_STEP
+        return True
+
+def enter_item_vendor(state_manager: StateManager, ui: WidgetManager) -> bool:
+
+    state_manager.add_item_object.vendor = ui.add_vendor_listbox.get(ui.add_vendor_listbox.curselection())
+
+    if not state_manager.reentering:
+        state_manager.add_item_index += 1
+    elif state_manager.reentering:
+        state_manager.add_item_index = state_manager.ADD_ITEM_LAST_STEP
+        return True
 
 def enter_item_confirmation(
         state_manager: StateManager, quantity: int, root: tk.Tk,
@@ -177,8 +205,10 @@ def print_confirmation_info(state_manager: StateManager, item_info_confirmation:
     else:
         item_info_confirmation.insert(tk.END, " | Tax? : No", "justify_right")
     item_info_confirmation.insert(tk.END, "\nCat.: " + state_manager.add_item_object.category)
-    item_info_confirmation.insert(tk.END, " | Qty: " + str(state_manager.add_item_object.quantity), "justify_right")
+    item_info_confirmation.insert(tk.END, f"\nSub Cat.: {state_manager.add_item_object.subcategory}")
     item_info_confirmation.insert(tk.END, "\nBarcode: " + str(state_manager.add_item_object.barcode))
+    item_info_confirmation.insert(tk.END, " | Qty: " + str(state_manager.add_item_object.quantity), "justify_right")
+    item_info_confirmation.insert(tk.END, f"\nVendor: {state_manager.add_item_object.vendor}")
     
     
 
