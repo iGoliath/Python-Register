@@ -418,7 +418,7 @@ class WidgetManager:
         # ==============================
 
         self.lookup_items_label = tk.Label(
-            self.register_lookup_items_frame, text="Boo", font=("Arial", 50))
+            self.register_lookup_items_frame, text="Item Lookup", font=("Arial", 50))
 
         self.lookup_items_text = tk.Text(
             self.register_lookup_items_frame, font=("Courier New", 40), height=4,
@@ -426,7 +426,7 @@ class WidgetManager:
 
         self.lookup_items_listbox = tk.Listbox(
             self.register_lookup_items_frame, font=("Courier New", 40),
-            height = 5, bg="black", fg="white", width=20
+            height = 4, bg="black", fg="white", width=23
         )
         self.lookup_items_scrollbar = tk.Scrollbar(
             self.register_lookup_items_frame, bg="white",
@@ -448,7 +448,7 @@ class WidgetManager:
 
         self.lookup_items_back_button = tk.Button(
             self.register_lookup_items_buttons_frame, text="Back", font=("Arial", 50),
-            command = lambda: self.register_frame.tkraise())
+            command = lambda: self.return_to_register())
 
         self.lookup_items_confirm_button = tk.Button(
             self.register_lookup_items_buttons_frame, text="Confirm", font=("Arial", 50),
@@ -668,8 +668,16 @@ class WidgetManager:
         
         self.datetime_confirm_button.grid(column = 1, row = 3, sticky='nsew')
 
+    def return_to_register(self):
+        self.register_frame.tkraise()
+        self.invisible_entry.focus_set()
+
     def enter_register_lookup_items_frame(self):
         self.register_lookup_items_frame.tkraise()
+        self.lookup_items_quantity_spinbox.delete(0, "end")
+        self.lookup_items_quantity_spinbox.insert(0, 1)
+        self.lookup_items_listbox.delete(0, tk.END)
+        self.lookup_items_entry.delete(0, tk.END)
         self.lookup_items_entry.focus_set()
 
     def _init_add_barcode_frame(self):

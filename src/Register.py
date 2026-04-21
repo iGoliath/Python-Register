@@ -56,9 +56,7 @@ class Register:
 		barcode = self.state_manager.cursor.fetchall()[0][0]
 		
 		for i in range(0, quantity):
-			self.process_sale(barcode)
-			print("adding")
-		print(self.state_manager.trans.total)
+			self.process_sale(None, barcode)
 		self.ui.register_frame.tkraise()
 		self.ui.invisible_entry.focus_set()
 
@@ -195,7 +193,9 @@ class Register:
 
 
 
-	def process_sale(self, entered_barcode=None):
+	def process_sale(self, event = None, entered_barcode=None):
+		print(f"Event: {event}")
+		print(f"Entered barcode : {entered_barcode}")
 		"""Check for existing barcode. If so, add item to running list of sold items
 		and display info to cashier. Else, prompt user to enter the item."""
 		if entered_barcode is not None:
@@ -754,7 +754,7 @@ class Register:
 		gross_total = 0
 
 		for category in ("Cash Used", "CC Used", "Non-Tax", "Pre-Tax", "Tax"):
-			self.state_manager.cursor.execute('''SELECT SUM("%s") FROM SALES WHERE Date = ? AND Voided != 1''' % (category), (datetime.today().strftime('%Y-%m-%d'), ))
+			self.state_manager.cursor.execute('''SELECT SUM("%s") FROM SALES WHERE Date >= ? AND Date <= ? AND Voided != 1''' % (category), (self.config.tally_begin_date, datetime.today().strftime('%Y-%m-%d'), ))
 			results = self.state_manager.cursor.fetchone()[0]
 			sum_in_question = results if results is not None else 0
 			if category in ("Non-Tax", "Pre-Tax", "Tax"):
