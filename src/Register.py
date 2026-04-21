@@ -99,7 +99,7 @@ class Register:
          
 	def enter_register_frame(self, event = None):
 		"""Reset register environment to defaults, and raise the register frame."""
-		pygame.mixer.music.load("/home/tbc/Desktop/Python-Register/src/short-beep.mp3")
+		pygame.mixer.music.load("/home/tbc/Desktop/Pullable/Python-Register/src/short-beep.mp3")
 		pygame.mixer.music.play()
 		self.state_manager.new_transaction()
 		self.ui.enter_register_frame()
@@ -357,7 +357,7 @@ class Register:
 			self.clear()
 			return "break"
 		
-		pygame.mixer.music.load("/home/tbc/Desktop/Python-Register/src/short-beep.mp3")
+		pygame.mixer.music.load("/home/tbc/Desktop/Pullable/Python-Register/src/short-beep.mp3")
 		pygame.mixer.music.play()
 
 		entered_amount = self.ui.invisible_entry.get().strip()
@@ -413,7 +413,7 @@ class Register:
 			self.clear()
 			return "break"
 		
-		pygame.mixer.music.load("/home/tbc/Desktop/Python-Register/src/short-beep.mp3")
+		pygame.mixer.music.load("/home/tbc/Desktop/Pullable/Python-Register/src/short-beep.mp3")
 		pygame.mixer.music.play()
 
 		entered_amount = self.ui.invisible_entry.get().strip()
@@ -481,7 +481,7 @@ class Register:
 		
 	def number_pressed(self, input_widget=None, output_widget=None):
 		"""Output formatted dollar amount when user inputs numbers"""
-		pygame.mixer.music.load("/home/tbc/Desktop/Python-Register/src/short-beep.mp3")
+		pygame.mixer.music.load("/home/tbc/Desktop/Pullable/Python-Register/src/short-beep.mp3")
 		pygame.mixer.music.play()
 
 		if input_widget is None:
@@ -506,7 +506,7 @@ class Register:
 
 	def clear(self, event=None):
 		"""Clear number user entered in register."""
-		pygame.mixer.music.load("/home/tbc/Desktop/Python-Register/src/short-beep.mp3")
+		pygame.mixer.music.load("/home/tbc/Desktop/Pullable/Python-Register/src/short-beep.mp3")
 		pygame.mixer.music.play()
 		self.ui.invisible_entry.delete(0, tk.END)
 		self.ui.update_entry(self.ui.user_entry, "$0.00")
