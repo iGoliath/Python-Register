@@ -1,7 +1,7 @@
 import sqlite3
 import os
 
-database_path = "/home/tbc/Desktop/src2/RegisterDatabase"
+database_path = "/home/tbc/Desktop/RegisterDatabase"
 
 if os.path.exists(database_path):
     os.remove(database_path)
