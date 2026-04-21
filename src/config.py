@@ -12,4 +12,4 @@ class Config:
         self.tax_amount = data['tax_amount']
         self.backup_removal_cutoff = data['backup_removal_cutoff']
         self.manual_time_last_boot = data['manual_time_last_boot']
-        self.tally_begin_date = date['tally_begin_date']
+        self.tally_begin_date = data['tally_begin_date']
