@@ -131,6 +131,7 @@ def enter_item_confirmation(
     elif state_manager.reentering:
         state_manager.reentering = False
     elif state_manager.reentering_quantity:
+        ui.add_quantity_label.config(text="Please enter item's quantity:")
         state_manager.add_item_object.quantity = quantity
         state_manager.reentering_quantity = False
     

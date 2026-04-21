@@ -84,6 +84,9 @@ class WidgetManager:
 
 
         self.reenter_frame.grid(column = 0, row = 0, sticky='nsew')
+        self.reenter_frame.columnconfigure(0, uniform="equal")
+        self.reenter_frame.columnconfigure(1, uniform="equal")
+
         self.register_menu_frame.grid(column = 0, row = 0, sticky='nsew')
         self.admin_menu_frame.grid(column = 0, row = 0, sticky='nsew')
 
@@ -261,7 +264,7 @@ class WidgetManager:
 
         self.no_button = tk.Button(
             self.add_item_yes_no, text="No", font=("Arial", 100),
-            command=lambda: controller.on_yes_no("no"))
+            command=lambda: self.reenter_frame.tkraise())
 
         self.yes_button.grid(column=0, row=0, sticky='nsew', padx=10)
         self.no_button.grid(column=1, row=0, sticky='nsew', padx=10)
@@ -269,44 +272,54 @@ class WidgetManager:
         # Buttons for options when user wants to correct one of their inputs
 
         self.add_name_button = tk.Button(
-            self.reenter_frame, text="Name", font=("Arial", 75),
+            self.reenter_frame, text="Name", font=("Arial", 50),
             command = lambda: controller.reenter_button_pressed("name"))
         self.add_name_button.grid(row=0, column=0, sticky='nsew')
 
         self.add_price_button = tk.Button(
-            self.reenter_frame, text="Price", font=("Arial", 75),
+            self.reenter_frame, text="Price", font=("Arial", 50),
             command = lambda: controller.reenter_button_pressed("price"))
         self.add_price_button.grid(row=0, column=1, sticky='nsew')
 
         self.add_barcode_button = tk.Button(
-            self.reenter_frame, text="Barcode", font=("Arial", 75),
+            self.reenter_frame, text="Barcode", font=("Arial", 50),
             command = lambda: controller.reenter_button_pressed("barcode"))
         self.add_barcode_button.grid(row=1, column=0, sticky='nsew')
 
         self.add_taxable_button = tk.Button(
-            self.reenter_frame, text="Taxable", font=("Arial", 75),
+            self.reenter_frame, text="Taxable", font=("Arial", 50),
             command = lambda: controller.reenter_button_pressed("taxable"))
         self.add_taxable_button.grid(row=1, column=1, sticky='nsew')
 
         self.add_quantity_button = tk.Button(
-            self.reenter_frame, text="Quantity", font=("Arial", 75),
+            self.reenter_frame, text="Quantity", font=("Arial", 50),
             command = lambda: controller.reenter_button_pressed("quantity"))
         self.add_quantity_button.grid(row=2, column=0, sticky='nsew')
 
         self.add_category_button = tk.Button(
-            self.reenter_frame, text="Category", font=("Arial", 75),
+            self.reenter_frame, text="Category", font=("Arial", 50),
             command = lambda: controller.reenter_button_pressed("category"))
         self.add_category_button.grid(row=2, column=1, sticky='nsew')
 
         self.add_subcategory_button = tk.Button(
-            self.reenter_frame, text="Subcategory", font=("Arial", 75),
+            self.reenter_frame, text="Subcategory", font=("Arial", 50),
             command = lambda: controller.reenter_button_pressed("subcategory"))
         self.add_subcategory_button.grid(row = 3, column = 0, sticky='nsew')
 
         self.add_vendor_button = tk.Button(
-            self.reenter_frame, text="Vendor", font=("Arial", 75),
+            self.reenter_frame, text="Vendor", font=("Arial", 50),
             command = lambda: controller.reenter_button_pressed("vendor"))
         self.add_vendor_button.grid(row = 3, column = 1, sticky='nsew')
+
+        tk.Button(
+            self.reenter_frame, text="Back", font=("Arial", 50),
+            command = lambda: self.add_item_frame.tkraise()
+            ).grid(row = 4, column = 0, sticky='nsew', pady=20)
+        
+        tk.Button(
+            self.reenter_frame, text="Quit", font=("Arial", 50),
+            command = lambda: self.main_menu_frame.tkraise()
+            ).grid(row = 4, column = 1, sticky='nsew', pady=20)
 
         # ==========================
         # Widgets for Menu Functions
@@ -941,8 +954,9 @@ class WidgetManager:
         
 
     def _init_add_quantity_frame(self):
-        tk.Label(self.add_quantity_frame, text="Please enter item's quantity:", 
-        font=("Arial", 50), width=25).grid(column = 1, row = 0, sticky='ew')
+        self.add_quantity_label = tk.Label(self.add_quantity_frame, text="Please enter item's quantity:", 
+        font=("Arial", 50), width=25)
+        self.add_quantity_label.grid(column = 1, row = 0, sticky='ew')
 
         self.add_quantity_entry = tk.Entry(
             self.add_quantity_frame, font=("Arial", 50), justify="right",

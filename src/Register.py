@@ -73,12 +73,13 @@ class Register:
 			time.sleep(self.config.backup_interval)
 			self.perform_backup()
 
-	def remove_old_backups(self, days = 30):
+	def remove_old_backups(self, days):
 		cutoff = time.time() - (days * 86400)
 		for filename in os.listdir('/media/tbc/3CC9-2F54/'):
 			filepath = os.path.join('/media/tbc/3CC9-2F54/', filename)
 			if os.path.getmtime(filepath) < cutoff and not os.path.isdir(filepath):
 				os.remove(filepath)
+				
 
 	def check_time_synced(self):
 
@@ -194,8 +195,6 @@ class Register:
 
 
 	def process_sale(self, event = None, entered_barcode=None):
-		print(f"Event: {event}")
-		print(f"Entered barcode : {entered_barcode}")
 		"""Check for existing barcode. If so, add item to running list of sold items
 		and display info to cashier. Else, prompt user to enter the item."""
 		if entered_barcode is not None:
@@ -614,6 +613,7 @@ class Register:
 				self.state_manager.add_item_index = 6
 				self.ui.add_vendor_frame.tkraise()
 			case "quantity":
+				self.ui.add_quantity_label.config(text=f"Current quantity is: {self.state_manager.add_item_object.quantity}\nNew quantity will be: ")
 				self.state_manager.add_item_index=7
 				self.state_manager.reentering_quantity = True
 				self.state_manager.reentering = False
@@ -882,7 +882,8 @@ if __name__ == "__main__":
 	)
 	backup_thread.start()
 
-	#register.remove_old_backups(register.config.backup_removal_cutoff)
+	register.remove_old_backups(register.config.backup_removal_cutoff)
+	print(f"backup_removal_cutoff: {register.config.backup_removal_cutoff}")
 
 	pygame.mixer.init()
 	register.enter_register_frame()

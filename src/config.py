@@ -1,10 +1,14 @@
 import json
+from pathlib import Path
 
 class Config:
 
     def __init__(self):
 
-        with open('/home/tbc/Desktop/Pullable/Python-Register/src/config.json', 'r') as fp:
+        current_dir = Path(__file__).parent
+        file_path = current_dir / "config.json"
+
+        with open(file_path, 'r') as fp:
             data = json.load(fp)
         
         self.printing_width = data['printing_width']

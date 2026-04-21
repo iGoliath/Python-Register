@@ -1,8 +1,8 @@
 {
     "printing_width": 42,
-    "backup_interval": 600,
+    "backup_interval": 2700,
     "tax_amount": 0.06625,
-    "backup_removal_cutoff": 30,
+    "backup_removal_cutoff": 14,
     "manual_time_last_boot": true,
     "tally_begin_date": "2026-04-17"
 }
