@@ -808,7 +808,7 @@ class Register:
 			spaces = 29 - len(category.split()[0]) - len(rounded)
 			self.printer.textln(f"{category.split()[0]} Collected: {' ' * spaces}${rounded}\n")
 		
-		self.state_manager.cursor.execute('''SELECT SUM("Price") FROM saleitems JOIN sales ON saleitems.sale_id = sales.sale_id WHERE saleitems."Barcode" IN ('20LB PROPANE', '30LB PROPANE', 40LB Propane', 100LB Propane', 'Gallon Propane') AND sales."Date" >= AND sales."Date" <= ?''', (self.config.tally_begin_date, datetime.today().strftime('%Y-%m-%d'), ))
+		self.state_manager.cursor.execute('''SELECT SUM("Price") FROM saleitems JOIN sales ON saleitems.sale_id = sales.sale_id WHERE saleitems."Barcode" IN ('20LB PROPANE', '30LB PROPANE', '40LB Propane', '100LB Propane', 'GALLON PROPANE') AND sales."Date" >= AND sales."Date" <= ?''', (self.config.tally_begin_date, datetime.today().strftime('%Y-%m-%d'), ))
 		results = self.state_manager.cursor.fetchone()[0]
 		propane_sold = results if results is not None else 0
 		spaces = 42 - 15 - len(f"{propane_sold:.2f}")
