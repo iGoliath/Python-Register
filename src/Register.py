@@ -13,6 +13,7 @@ import threading
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 class Register:
 
@@ -25,6 +26,7 @@ class Register:
 		self.ui = WidgetManager(root, self)
 		self.config = Config()
 		self.state_manager.add_price_var.trace('w', self.on_price_entry_update)
+		self.current_dir = Path(__file__).parent
 
 		self.printer = Usb(0x0fe6, 0x811e, 0) #File("/dev/usb/lp0")
 
@@ -100,7 +102,7 @@ class Register:
          
 	def enter_register_frame(self, event = None):
 		"""Reset register environment to defaults, and raise the register frame."""
-		pygame.mixer.music.load("/home/tbc/Desktop/Pullable/Python-Register/src/short-beep.mp3")
+		pygame.mixer.music.load(self.current_dir / "short-beep.mp3")
 		pygame.mixer.music.play()
 		self.state_manager.new_transaction()
 		self.ui.enter_register_frame()
@@ -160,12 +162,13 @@ class Register:
 		#self.ui.browse_text.insert("end", f"ID: {seasonal_info[0]}  |  Site: {seasonal_info[3]}\n")
 		self.ui.browse_text.insert("end", "ID: ", "bold")
 		self.ui.browse_text.insert("end", seasonal_info[0])
-		self.ui.browse_text.insert("end", " | Site: ", "bold")
-		self.ui.browse_text.insert("end", f"{seasonal_info[3]}\n")
+		self.ui.browse_text.insert("end", "|Site: ", "bold")
+		self.ui.browse_text.insert("end", f"{seasonal_info[3]}")
+		self.ui.browse_text.insert("end", "|Balance: ", "bold")
+		self.ui.browse_text.insert("end", f"{seasonal_info[4]:.2f}\n")
 		self.ui.browse_text.insert("end", "Name: ", "bold")
 		self.ui.browse_text.insert("end", f"{seasonal_info[1]}\n{seasonal_info[2]}\n")
-		self.ui.browse_text.insert("end", "Balance: ", "bold")
-		self.ui.browse_text.insert("end", f"{seasonal_info[4]:.2f}")
+		
 
 	def browse_transactions(self, *args):
 		'''Called when state_manager.browse_index is written to. Move info to current index.'''
@@ -356,7 +359,7 @@ class Register:
 			self.clear()
 			return "break"
 		
-		pygame.mixer.music.load("/home/tbc/Desktop/Pullable/Python-Register/src/short-beep.mp3")
+		pygame.mixer.music.load(self.current_dir / "short-beep.mp3")
 		pygame.mixer.music.play()
 
 		entered_amount = self.ui.invisible_entry.get().strip()
@@ -411,8 +414,8 @@ class Register:
 			self.ui.errors_frame.tkraise()
 			self.clear()
 			return "break"
-		
-		pygame.mixer.music.load("/home/tbc/Desktop/Pullable/Python-Register/src/short-beep.mp3")
+	
+		pygame.mixer.music.load(self.current_dir / "short-beep.mp3")
 		pygame.mixer.music.play()
 
 		entered_amount = self.ui.invisible_entry.get().strip()
@@ -464,7 +467,8 @@ class Register:
 
 	def complete_sale(self, event=None):
 		"""Complete transaction, open cash drawer, print receipt, and reset register environment."""
-		self.printer.cashdraw(pin=2)
+		if self.state_manager.trans.cash_used != 0:
+			self.printer.cashdraw(pin=2)
 		if self.state_manager.used_coupon:
 			self.state_manager.trans.complete_transaction([self.state_manager.coupon, self.state_manager.coupon_reason])
 		else:
@@ -480,7 +484,7 @@ class Register:
 		
 	def number_pressed(self, input_widget=None, output_widget=None):
 		"""Output formatted dollar amount when user inputs numbers"""
-		pygame.mixer.music.load("/home/tbc/Desktop/Pullable/Python-Register/src/short-beep.mp3")
+		pygame.mixer.music.load(self.current_dir / "short-beep.mp3")
 		pygame.mixer.music.play()
 
 		if input_widget is None:
@@ -505,10 +509,51 @@ class Register:
 
 	def clear(self, event=None):
 		"""Clear number user entered in register."""
-		pygame.mixer.music.load("/home/tbc/Desktop/Pullable/Python-Register/src/short-beep.mp3")
+		pygame.mixer.music.load(self.current_dir / "short-beep.mp3")
 		pygame.mixer.music.play()
 		self.ui.invisible_entry.delete(0, tk.END)
 		self.ui.update_entry(self.ui.user_entry, "$0.00")
+
+	def cancel_sale(self, event=None):
+		self.ui.invisible_entry.delete(0, tk.END)
+		if self.state_manager.trans.cash_used != 0 or self.state_manager.trans.cc_used != 0:
+			return
+		selected_index = self.ui.sale_items_listbox.curselection()
+		if selected_index == ():
+			self.enter_register_frame()
+		else:
+			index = 0
+			item_name = self.ui.sale_items_listbox.get(selected_index).split(' ')[0]
+			print(f"item name: {item_name}")
+			print(self.state_manager.trans.items_list[0])
+			for item in self.state_manager.trans.items_list:
+				if item[0] == item_name:
+					break
+				else:
+					index += 1
+			print(f"Index: {index}")
+			if (self.state_manager.trans.items_list[index][2] == 1):
+				self.state_manager.trans.pretax -= self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4]
+				self.state_manager.trans.tax -= round(abs(self.config.tax_amount * (self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4])), 2)
+				self.state_manager.trans.total -= round(abs((1 + self.config.tax_amount) * (self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4])), 2)
+				self.state_manager.trans.items_sold -= self.state_manager.trans.items_list[index][4]
+			else:
+				self.state_manager.trans.nontax -= self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4]
+				self.state_manager.trans.total -= self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4]
+				self.state_manager.trans.items_sold -= self.state_manager.trans.items_list[index][4]
+			del self.state_manager.trans.items_list[index]
+			print(self.state_manager.trans.total)
+			self.ui.update_entry(self.ui.balance_entry, f"${abs(self.state_manager.trans.total):.2f}")
+			self.ui.sale_items_listbox.delete(0, tk.END)
+			for item in self.state_manager.trans.items_list:
+				if len(item[0]) > 13:
+					sale_info = f"{item[0][:13]}... ({str(item[-1])}) ${str(item[1])} {'TX' if item[2] == 1 else 'NT'}"
+				else:
+					sale_info = f"{item[0]} ({str(item[-1])}) ${str(item[1])} {'TX' if item[2] == 1 else 'NT'}"
+				self.ui.sale_items_listbox.insert(tk.END, sale_info)
+			self.ui.sale_items_listbox.yview_moveto(1.0)
+
+		
 			
 
 	def no_sale(self, event=None):
@@ -763,7 +808,7 @@ class Register:
 			spaces = 29 - len(category.split()[0]) - len(rounded)
 			self.printer.textln(f"{category.split()[0]} Collected: {' ' * spaces}${rounded}\n")
 		
-		self.state_manager.cursor.execute('''SELECT SUM("Price") FROM saleitems JOIN sales ON saleitems.sale_id = sales.sale_id WHERE saleitems."Barcode" IN ('propane', 'also propane') AND sales."Date" = ?''', (datetime.today().strftime('%Y-%m-%d'), ))
+		self.state_manager.cursor.execute('''SELECT SUM("Price") FROM saleitems JOIN sales ON saleitems.sale_id = sales.sale_id WHERE saleitems."Barcode" IN ('20LB PROPANE', '30LB PROPANE', 40LB Propane', 100LB Propane', 'Gallon Propane') AND sales."Date" >= AND sales."Date" <= ?''', (self.config.tally_begin_date, datetime.today().strftime('%Y-%m-%d'), ))
 		results = self.state_manager.cursor.fetchone()[0]
 		propane_sold = results if results is not None else 0
 		spaces = 42 - 15 - len(f"{propane_sold:.2f}")
@@ -795,6 +840,7 @@ class Register:
 		self.ui.unbind_invisible_entry_keys()
 		self.ui.invisible_entry.bind("<KeyRelease-KP_Enter>", lambda event: self.state_manager.return_var.set("cash"))
 		self.ui.invisible_entry.bind("<KeyRelease-KP_Add>", lambda event: self.state_manager.return_var.set("cc"))
+		self.ui.invisible_entry.bind("<KeyRelease-Escape>", lambda event: self.enter_register_frame())
 		while True:
 			root.wait_variable(self.state_manager.return_var)
 			if self.state_manager.trans.total == 0:
@@ -883,7 +929,6 @@ if __name__ == "__main__":
 	backup_thread.start()
 
 	register.remove_old_backups(register.config.backup_removal_cutoff)
-	print(f"backup_removal_cutoff: {register.config.backup_removal_cutoff}")
 
 	pygame.mixer.init()
 	register.enter_register_frame()

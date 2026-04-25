@@ -59,7 +59,6 @@ class Transaction:
 		else:
 			self.nontax += results[1]
 		self.total = round(self.nontax + self.pretax + self.tax, 2)
-			
 		if not any(entered_barcode in sublist for sublist in self.items_list):
 			self.items_list.append([results[0], results[1], results[2], entered_barcode, 1])
 			quantity_sold = 1

@@ -349,7 +349,7 @@ class WidgetManager:
 
         self.main_menu_back_button = tk.Button(
             self.menu_buttons_frame, text="Back", font=("Arial", 60),
-            command = lambda: controller.enter_register_frame()
+            command = lambda: self.return_to_register()
         )
         self.main_menu_back_button.grid(column = 0, row = 2, sticky='nsew', pady=5)
 
@@ -384,7 +384,7 @@ class WidgetManager:
         self.print_receipt_button.grid(column = 1, row = 0, sticky='nsew', pady=2)
         self.make_return_button.grid(column = 0, row = 1, sticky='nsew', pady=2)
         self.back_to_register_button.grid(column = 1, row = 1, sticky='nsew', pady=2)
-        #self.seasonal_button.grid(column = 0, row = 2, sticky='nsew', pady=2)
+        self.seasonal_button.grid(column = 0, row = 2, sticky='nsew', pady=2)
         self.coupon_button.grid(column = 1, row = 2, sticky='nsew', pady=2)
         self.lookup_item_button.grid(column = 0, row = 3, sticky='nsew', pady=2)
 
@@ -423,7 +423,7 @@ class WidgetManager:
         self.fullscreen_button.grid(column = 0, row = 1, sticky='nsew', pady=2)
         self.browse_transactions_button.grid(column = 1, row = 1, sticky='nsew', pady=2)
         self.quit_program_button.grid(column = 0, row = 2, sticky='nsew', pady=2)
-        #self.manage_seasonals_button.grid(column = 1, row = 2, sticky='nsew', pady=2)
+        self.manage_seasonals_button.grid(column = 1, row = 2, sticky='nsew', pady=2)
         self.admin_menu_back_button.grid(column = 0, row = 3, sticky='nsew', pady=2)
         
         # ==============================
@@ -502,10 +502,10 @@ class WidgetManager:
         self.browse_next_button.grid(column = 2, row = 1, sticky='nse')
 
         self.browse_text = tk.Text(
-            self.browse_transactions_frame, width=28, height=4,
-            font=("Arial", 39)
+            self.browse_transactions_frame, width=28, height=3,
+            font=("Courier New", 37)
         )
-        self.browse_text.tag_configure("bold", font=("Arial", 40, "bold"))
+        self.browse_text.tag_configure("bold", font=("Courier New", 40, "bold"))
         self.browse_text.grid(column = 1, row = 1, sticky='ew', pady=10)
         self.browse_text.bind("<FocusIn>", self.controller.return_browse_entry_focus)
 
@@ -525,7 +525,18 @@ class WidgetManager:
             text = "-> GO", command = lambda: self.controller.state_manager.browse_index.set(int(self.browse_entry.get())))
         self.browse_go_button.grid(column = 1 , row = 0, sticky='nsew')
 
-        self.browse_confirm_button = tk.Button(self.browse_transactions_frame, text="Confirm",
+        browse_back_quit_frame = tk.Frame(self.browse_transactions_frame)
+        browse_back_quit_frame.columnconfigure(0, weight=1, uniform="equal")
+        browse_back_quit_frame.columnconfigure(1, weight=1, uniform="equal")
+        browse_back_quit_frame.grid(column=1, row = 3, sticky='nsew')
+
+        self.browse_back_button = tk.Button(
+            browse_back_quit_frame, text="Back",
+            font=("Arial", 50), command = lambda: controller.menu_back()
+        )
+        self.browse_back_button.grid(column=0, row=0, sticky='nsew')
+
+        self.browse_confirm_button = tk.Button(browse_back_quit_frame, text="Confirm",
             font=("Arial", 50), command = lambda: self.controller.state_manager.void_var.set("")
         )
 
@@ -548,17 +559,13 @@ class WidgetManager:
             command = lambda: self.edit_seasonal_frame.tkraise()
         )
 
-        self.seasonal_buttons_frame.grid(column = 1, row = 3, sticky='ew')
+        self.seasonal_buttons_frame.grid(column = 1, row = 4, sticky='ew')
 
         self.add_seasonal_button.grid(column = 0, row = 0, sticky='nsew')
         self.remove_seasonal_button.grid(column = 1, row = 0, sticky='nsew')
         self.edit_seasonal_button.grid(column = 2, row = 0, sticky='nsew')
 
-        self.browse_back_button = tk.Button(
-            self.browse_transactions_frame, text="Back",
-            font=("Arial", 35), command = lambda: controller.menu_back()
-        )
-        #self.browse_back_button.grid(column = 1, row = 4, sticky='nsew')
+        
 
         # =================================
         # Widgets for Editing Seasonal Info
@@ -1086,6 +1093,7 @@ class WidgetManager:
         
     def enter_add_item_frame(self):
         self.add_barcode_frame.tkraise()
+        self.add_quantity_label.config(text="Please enter item's quantity:")
         self.add_barcode_entry.focus_set()
 
     def enter_register_frame(self):
@@ -1095,6 +1103,7 @@ class WidgetManager:
         self.update_entry(self.balance_entry, "$0.00")
         self.register_label.config(text="Mode: Register", fg="#68FF00")
         self.register_frame.tkraise()
+        self.bind_invisible_entry_keys()
         self.invisible_entry.focus_force()
 
     def setup_seasonal_sale(self):
@@ -1127,8 +1136,9 @@ class WidgetManager:
         self.invisible_entry.bind("<KeyRelease-KP_Enter>", lambda event: self.controller.on_cash())
         self.invisible_entry.bind("<KeyRelease-KP_Add>", lambda event: self.controller.on_cc())
         self.invisible_entry.bind("<KeyRelease-KP_Multiply>", lambda event: self.enter_main_menu())
-        self.invisible_entry.bind("<KeyRelease-KP_Divide>", lambda event: self.controller.enter_register_frame())
+        self.invisible_entry.bind("<KeyRelease-KP_Divide>", lambda event: self.controller.cancel_sale())
         self.invisible_entry.bind("<KeyRelease-KP_Subtract>", self.controller.no_sale)
+        self.invisible_entry.unbind("<KeyRelease-Escape>")
 
     def unbind_invisible_entry_keys(self):
         for key in ("Home", "Up", "Prior", "Left","Begin", "Right", "End", "Down", "Next", "Insert"):
@@ -1141,10 +1151,10 @@ class WidgetManager:
         self.invisible_entry.unbind("<KeyRelease-KP_Subtract>")
 
     def setup_void_widgets(self):
-        self.browse_label.config(text="Browse or enter the Transaction ID")
+        self.browse_label.config(text="Browse or enter the Transaction ID\nPress 'Print' to confirm Void")
         self.browse_confirm_button.config(text = "Print")
         #self.browse_second_label.grid(column = 1, row = 2, sticky='ew')
-        self.browse_confirm_button.grid(column = 1, row = 3, sticky='sew')
+        self.browse_confirm_button.grid(column = 1, row = 0, sticky='sew')
         self.browse_entry.focus_set()
 
     def remove_void_widgets(self):
