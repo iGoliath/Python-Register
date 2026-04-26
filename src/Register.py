@@ -895,6 +895,7 @@ class Register:
 			self.on_add_item_enter()
 		elif self.state_manager.add_item_index == self.state_manager.ADD_ITEM_LAST_STEP:
 			self.state_manager.yes_no_var.set(answer)
+			self.ui.reenter_frame.tkraise()
 
 	def apply_coupon(self):
 		coupon_amount = float(self.ui.coupon_entry.get()[1:])

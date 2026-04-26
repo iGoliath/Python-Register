@@ -146,8 +146,8 @@ def enter_item_confirmation(
             yes_register(state_manager, ui)
             return True
         elif state_manager.updating_existing_item:
-           yes_existing(state_manager, ui)
-           return False
+            yes_existing(state_manager, ui)
+            return False
         elif not state_manager.coming_from_register:
             yes_not_register(state_manager, ui)
             return False

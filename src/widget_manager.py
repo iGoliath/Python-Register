@@ -264,7 +264,7 @@ class WidgetManager:
 
         self.no_button = tk.Button(
             self.add_item_yes_no, text="No", font=("Arial", 100),
-            command=lambda: self.reenter_frame.tkraise())
+            command=lambda: controller.on_yes_no("no"))
 
         self.yes_button.grid(column=0, row=0, sticky='nsew', padx=10)
         self.no_button.grid(column=1, row=0, sticky='nsew', padx=10)
