@@ -5,7 +5,7 @@ import widget_functions as wf
 from widget_manager import WidgetManager
 from state_manager import StateManager
 from config import Config
-from datetime import datetime
+from datetime import datetime, timedelta
 from escpos.printer import Usb
 import pygame
 import time
@@ -64,7 +64,7 @@ class Register:
 
 	def perform_backup(self):
 		time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-		source_db = sqlite3.connect("/home/tbc/Desktop/RegisterDatabase")
+		source_db = sqlite3.connect(self.current_dir / 'RegisterDatabase')
 		dest_db = sqlite3.connect(f'/media/tbc/3CC9-2F54/RegisterDatabaseBackup_{time}.db')
 		source_db.backup(dest_db)
 		source_db.close()
@@ -72,7 +72,7 @@ class Register:
 
 	def backup_scheduler(self):
 		while True:
-			time.sleep(self.config.backup_interval)
+			time.sleep(self.config.data['backup_interval'])
 			self.perform_backup()
 
 	def remove_old_backups(self, days):
@@ -313,14 +313,14 @@ class Register:
 
 		if cash_tend != 0 and cash_tend is not None:
 			rounded = f"{cash_tend:.2f}"
-			spaces = self.config.printing_width - 16 - len(rounded)
+			spaces = self.config.data['printing_width'] - 16 - len(rounded)
 			self.printer.textln(f"Cash Tendered: {' ' * spaces}${rounded}")
 		if cc_tend != 0 and cc_tend is not None:
 			rounded = f"{cc_tend:.2f}"
-			spaces = self.config.printing_width - 14 - len(rounded)
+			spaces = self.config.data['printing_width'] - 14 - len(rounded)
 			self.printer.textln(f"CC Tendered: {' ' * spaces}${rounded}")
 		change = f"{abs(sale_info[4] - (cash_tend if cash_tend is not None else 0) - (cc_tend if cc_tend is not None else 0)):.2f}"
-		spaces = self.config.printing_width - 13 - len(change)
+		spaces = self.config.data['printing_width'] - 13 - len(change)
 		self.printer.textln(f"Change Due: {' ' * spaces}${change}")
 		self.printer.ln(2)
 		self.printer.cut()
@@ -334,7 +334,7 @@ class Register:
 			self.printer.textln(f"Original Transaction ID: {' ' * spaces}{str(transaction_id)}")
 		elif receipt_type == "sale":
 			self.printer.textln(f"{'-' * 18} Sale {'-' * 18}")
-			spaces = self.config.printing_width - 16 - len(str(transaction_id))
+			spaces = self.config.data['printing_width'] - 16 - len(str(transaction_id))
 			self.printer.textln(f"Transaction ID: {' ' * spaces}{str(transaction_id)}")
 		elif receipt_type == "return":
 			self.printer.textln(f"{'-' * 17} Return {'-' * 17}")
@@ -346,8 +346,14 @@ class Register:
 			self.printer.textln(f"{'-' * 12} {datetime.today().strftime('%Y-%m-%d')} {datetime.now().strftime('%H:%M')} {'-' * 12}")
 			self.printer.textln("-" * 42)
 			self.printer.ln(2)
+		elif receipt_type == "z":
+			self.printer.textln(("-" * 42))
+			self.printer.textln(f"{'-' * 13} Monthly Report {'-' * 13}")
+			self.printer.textln(f"{'-' * 12} {datetime.today().strftime('%Y-%m-%d')} {datetime.now().strftime('%H:%M')} {'-' * 12}")
+			self.printer.textln("-" * 42)
+			self.printer.ln(2)
 
-		if receipt_type != "x":
+		if receipt_type != "x" and receipt_type != "z":
 			self.printer.textln(f"{datetime.today().strftime('%Y-%m-%d')}{' ' * 27}{datetime.now().strftime('%H:%M')}")
 			self.printer.ln(2)
 
@@ -524,18 +530,16 @@ class Register:
 		else:
 			index = 0
 			item_name = self.ui.sale_items_listbox.get(selected_index).split(' ')[0]
-			print(f"item name: {item_name}")
 			print(self.state_manager.trans.items_list[0])
 			for item in self.state_manager.trans.items_list:
 				if item[0] == item_name:
 					break
 				else:
 					index += 1
-			print(f"Index: {index}")
 			if (self.state_manager.trans.items_list[index][2] == 1):
 				self.state_manager.trans.pretax -= self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4]
-				self.state_manager.trans.tax -= round(abs(self.config.tax_amount * (self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4])), 2)
-				self.state_manager.trans.total -= round(abs((1 + self.config.tax_amount) * (self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4])), 2)
+				self.state_manager.trans.tax -= round(abs(self.config.data['tax_amount'] * (self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4])), 2)
+				self.state_manager.trans.total -= round(abs((1 + self.config.data['tax_amount']) * (self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4])), 2)
 				self.state_manager.trans.items_sold -= self.state_manager.trans.items_list[index][4]
 			else:
 				self.state_manager.trans.nontax -= self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4]
@@ -786,20 +790,17 @@ class Register:
 		self.ui.update_entry(self.ui.add_vendor_entry, selected_item)
 		self.on_add_item_enter()
 
-	def run_x(self, event=None):
+	def run_x(self, event=None, running_z = None):
 		"""Sum daily totals and print them to a receipt."""
-		self.state_manager.cursor.execute('''SELECT sale_id FROM sales where date = ?''', (datetime.today().strftime('%Y-%m-%d'), ))
-		results = self.state_manager.cursor.fetchall()
-		if not results:
-			self.ui.error_description_label.config(text="No transactions made yet!\nCannot process X")
-			self.ui.errors_frame.tkraise()
-			return "break"
 		
-		self.print_receipt_header("x", None)
+		if not running_z:
+			self.print_receipt_header("x", None)
+		else:
+			self.print_receipt_header("z", None)
 		gross_total = 0
 
 		for category in ("Cash Used", "CC Used", "Non-Tax", "Pre-Tax", "Tax"):
-			self.state_manager.cursor.execute('''SELECT SUM("%s") FROM SALES WHERE Date >= ? AND Date <= ? AND Voided != 1''' % (category), (self.config.tally_begin_date, datetime.today().strftime('%Y-%m-%d'), ))
+			self.state_manager.cursor.execute('''SELECT SUM("%s") FROM SALES WHERE Date >= ? AND Date <= ? AND Voided != 1''' % (category), (self.config.data['tally_begin_date'], datetime.today().strftime('%Y-%m-%d'), ))
 			results = self.state_manager.cursor.fetchone()[0]
 			sum_in_question = results if results is not None else 0
 			if category in ("Non-Tax", "Pre-Tax", "Tax"):
@@ -808,7 +809,7 @@ class Register:
 			spaces = 29 - len(category.split()[0]) - len(rounded)
 			self.printer.textln(f"{category.split()[0]} Collected: {' ' * spaces}${rounded}\n")
 		
-		self.state_manager.cursor.execute('''SELECT SUM("Price") FROM saleitems JOIN sales ON saleitems.sale_id = sales.sale_id WHERE saleitems."Barcode" IN ('20LB PROPANE', '30LB PROPANE', '40LB Propane', '100LB Propane', 'GALLON PROPANE') AND sales."Date" >= ? AND sales."Date" <= ?''', (self.config.tally_begin_date, datetime.today().strftime('%Y-%m-%d'), ))
+		self.state_manager.cursor.execute('''SELECT SUM("Price") FROM saleitems JOIN sales ON saleitems.sale_id = sales.sale_id WHERE saleitems."Barcode" IN ('20LB PROPANE', '30LB PROPANE', '40LB Propane', '100LB Propane', 'GALLON PROPANE') AND sales."Date" >= ? AND sales."Date" <= ?''', (self.config.data['tally_begin_date'], datetime.today().strftime('%Y-%m-%d'), ))
 		results = self.state_manager.cursor.fetchone()[0]
 		propane_sold = results if results is not None else 0
 		spaces = 42 - 15 - len(f"{propane_sold:.2f}")
@@ -818,7 +819,7 @@ class Register:
 		spaces = 42 - 14 - len(f"{gross_total:.2f}")
 		self.printer.textln(f"Gross Total: {' ' * spaces}${gross_total:.2f}\n")
 
-		self.state_manager.cursor.execute('''SELECT SUM("Total") FROM Sales WHERE TOTAL < 0 AND Date = ?''', (datetime.today(), ))
+		self.state_manager.cursor.execute('''SELECT SUM("Total") FROM Sales WHERE TOTAL < 0 AND Date = ?''', (datetime.today().strftime('%Y-%m-%d'), ))
 		results = self.state_manager.cursor.fetchone()[0]
 		total_returns = (results * -1) if results is not None else 0
 		spaces = 42 - 16 - len(f"{total_returns:.2f}")
@@ -830,6 +831,28 @@ class Register:
 		spaces = 28 - len((str(times_pressed)))
 		self.printer.textln("# Times No Sale: " + (" " * spaces) + str(times_pressed[0]))
 		self.printer.cut()
+
+	def run_z(self, event=None):
+		tomorrow = (datetime.today() + timedelta(days=1)).strftime('%Y-%m-%d')
+		self.ui.error_label.config(text="NOTE:")
+		self.ui.error_description_label.config(text=f"You are about to run a 'Z'\nThis will reset the beginning date to:\n{tomorrow}")
+		self.ui.error_ok_button.grid_forget()
+		self.ui.errors_frame.tkraise()
+		root.wait_variable(self.state_manager.error_var)
+		answer = self.state_manager.error_var.get()
+		if answer == 'Back':
+			self.ui.errors_frame.lower()
+			self.ui.error_ok_button.grid(column = 1, row = 2, sticky='ew')
+			self.ui.error_back_confirm_frame.grid_forget()
+			return
+		self.ui.errors_frame.lower()
+		self.ui.error_ok_button.grid(column = 1, row = 2, sticky='ew')
+		self.ui.error_back_confirm_frame.grid_forget()
+		self.run_x(None, "Z")
+		self.config.data['tally_begin_date'] = tomorrow
+		self.config.write_out_config()
+
+
 
 	def process_return(self, event = None):
 		"""Put register into 'return mode'. User can ring up items like a 
@@ -929,12 +952,12 @@ if __name__ == "__main__":
 	)
 	backup_thread.start()
 
-	register.remove_old_backups(register.config.backup_removal_cutoff)
+	register.remove_old_backups(register.config.data['backup_removal_cutoff'])
 
 	pygame.mixer.init()
 	register.enter_register_frame()
 
-	'''if register.config.manual_time_last_boot:
+	'''if register.config.data['manual_time_last_boot']:
 		results = subprocess.run(
 			['ping', '-c', '1', '-W', '10', '8.8.8.8'], capture_output=True, text=True)
 		if results.returncode == 0:

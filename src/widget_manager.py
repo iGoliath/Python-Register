@@ -89,6 +89,8 @@ class WidgetManager:
 
         self.register_menu_frame.grid(column = 0, row = 0, sticky='nsew')
         self.admin_menu_frame.grid(column = 0, row = 0, sticky='nsew')
+        self.admin_menu_frame.columnconfigure(0, uniform="equal")
+        self.admin_menu_frame.columnconfigure(1, uniform="equal")
 
         self.errors_frame.place(relx=0.5, rely=0.5, anchor="center")
         self.errors_frame.columnconfigure(0, weight=1)
@@ -417,6 +419,11 @@ class WidgetManager:
             self.admin_menu_frame, text="Back", font=("Arial", 58),
             command = lambda: self.main_menu_frame.tkraise()
         )
+
+        self.run_z_button = tk.Button(
+            self.admin_menu_frame, text="Run Z", font=("Arial", 58),
+            command = lambda: self.controller.run_z()
+        )
         
         self.run_x_button.grid(column = 0, row = 0, sticky='nsew', pady=2)
         self.new_item_button.grid(column = 1, row = 0, sticky='nsew', pady=2)
@@ -425,6 +432,7 @@ class WidgetManager:
         self.quit_program_button.grid(column = 0, row = 2, sticky='nsew', pady=2)
         self.manage_seasonals_button.grid(column = 1, row = 2, sticky='nsew', pady=2)
         self.admin_menu_back_button.grid(column = 0, row = 3, sticky='nsew', pady=2)
+        self.run_z_button.grid(column = 1, row = 3, sticky='nsew', pady=2)
         
         # ==============================
         # Widgets For Lookup Items Frame
@@ -607,6 +615,23 @@ class WidgetManager:
         self.error_ok_button = tk.Button(self.errors_frame, text="Ok", font=("Arial", 50),
             command = lambda: self.errors_frame.lower())
         self.error_ok_button.grid(column = 1, row = 2, sticky='ew')
+
+        self.error_back_confirm_frame = tk.Frame(self.errors_frame)
+        self.error_back_confirm_frame.columnconfigure(0, weight=1, uniform="equal")
+        self.error_back_confirm_frame.columnconfigure(1, weight=1, uniform="equal")
+        self.error_back_confirm_frame.grid(column = 1, row = 2, sticky='ew')
+        self.error_back_button = tk.Button(
+            self.error_back_confirm_frame, text="Back", font=("Arial", 50),
+            command = lambda: self.controller.state_manager.error_var.set("Back")
+        )
+        self.error_back_button.grid(column = 0, row = 0, sticky='nsew')
+
+        self.error_confirm_button = tk.Button(
+            self.error_back_confirm_frame, text="Confirm", font=("Arial", 50),
+            command = lambda: self.controller.state_manager.error_var.set("Confirm")
+        )
+        
+        self.error_confirm_button.grid(column = 1 , row = 0, sticky='nsew')
         
         # =============================
         # Widgets for Manual Time Entry

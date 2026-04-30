@@ -2,6 +2,7 @@ from makeTransaction import *
 from enteritem import *
 import tkinter as tk
 import sqlite3
+from pathlib import Path
 
 class StateManager:
     def __init__(self, root_window):
@@ -16,8 +17,10 @@ class StateManager:
         self.void_var = tk.StringVar(root_window)
         self.item_lookup_var = tk.StringVar(root_window)
         self.browse_index = tk.IntVar(root_window)
+        self.error_var = tk.StringVar(root_window)
         self.binding_manager = None
-        self.conn = sqlite3.connect("/home/tbc/Desktop/RegisterDatabase")
+        self.current_dir = Path(__file__).parent
+        self.conn = sqlite3.connect(self.current_dir / 'RegisterDatabase')
         self.conn.execute("PRAGMA foreign_keys = ON")
         self.cursor = self.conn.cursor()
         self.trans = Transaction(self.conn, self.cursor)

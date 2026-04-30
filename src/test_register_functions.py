@@ -15,7 +15,7 @@ def register_instance():
     yield register
     root.destroy()
 
-conn = sqlite3.connect('/home/tbc/Desktop/RegisterDatabase')
+conn = sqlite3.connect('/tmp/RegisterDatabase')
 c = conn.cursor()
 
 def test_basic_sale_cash(register_instance):
