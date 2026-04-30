@@ -825,7 +825,7 @@ class Register:
 		spaces = 42 - 16 - len(f"{total_returns:.2f}")
 		self.printer.textln(f"Total Returns: {' ' * spaces}${total_returns:.2f}\n")
 
-		self.state_manager.cursor.execute('''SELECT times_pressed FROM no_sale WHERE Date >= ? AND Date <= ?''', (self.config.data['tally_begin_date'], datetime.today().strftime('%Y-%m-%d'), ))
+		self.state_manager.cursor.execute('''SELECT SUM(times_pressed) FROM no_sale WHERE Date >= ? AND Date <= ?''', (self.config.data['tally_begin_date'], datetime.today().strftime('%Y-%m-%d'), ))
 		results = self.state_manager.cursor.fetchall()
 		times_pressed = results[0]
 		spaces = 28 - len((str(times_pressed)))
