@@ -528,14 +528,7 @@ class Register:
 		if selected_index == ():
 			self.enter_register_frame()
 		else:
-			index = 0
-			item_name = self.ui.sale_items_listbox.get(selected_index).split(' ')[0]
-			print(self.state_manager.trans.items_list[0])
-			for item in self.state_manager.trans.items_list:
-				if item[0] == item_name:
-					break
-				else:
-					index += 1
+			index = selected_index[0]
 			if (self.state_manager.trans.items_list[index][2] == 1):
 				self.state_manager.trans.pretax -= self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4]
 				self.state_manager.trans.tax -= round(abs(self.config.data['tax_amount'] * (self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4])), 2)
@@ -546,7 +539,6 @@ class Register:
 				self.state_manager.trans.total -= self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4]
 				self.state_manager.trans.items_sold -= self.state_manager.trans.items_list[index][4]
 			del self.state_manager.trans.items_list[index]
-			print(self.state_manager.trans.total)
 			self.ui.update_entry(self.ui.balance_entry, f"${abs(self.state_manager.trans.total):.2f}")
 			self.ui.sale_items_listbox.delete(0, tk.END)
 			for item in self.state_manager.trans.items_list:
@@ -836,18 +828,16 @@ class Register:
 		tomorrow = (datetime.today() + timedelta(days=1)).strftime('%Y-%m-%d')
 		self.ui.error_label.config(text="NOTE:")
 		self.ui.error_description_label.config(text=f"You are about to run a 'Z'\nThis will reset the beginning date to:\n{tomorrow}")
-		self.ui.error_ok_button.grid_forget()
+		self.ui.setup_errors_back_confirm()
 		self.ui.errors_frame.tkraise()
 		root.wait_variable(self.state_manager.error_var)
 		answer = self.state_manager.error_var.get()
 		if answer == 'Back':
 			self.ui.errors_frame.lower()
-			self.ui.error_ok_button.grid(column = 1, row = 2, sticky='ew')
-			self.ui.error_back_confirm_frame.grid_forget()
+			self.ui.setup_errors_ok()
 			return
 		self.ui.errors_frame.lower()
-		self.ui.error_ok_button.grid(column = 1, row = 2, sticky='ew')
-		self.ui.error_back_confirm_frame.grid_forget()
+		self.setup_errors_ok()
 		self.run_x(None, "Z")
 		self.config.data['tally_begin_date'] = tomorrow
 		self.config.write_out_config()

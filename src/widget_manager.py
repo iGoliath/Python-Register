@@ -447,14 +447,14 @@ class WidgetManager:
 
         self.lookup_items_listbox = tk.Listbox(
             self.register_lookup_items_frame, font=("Courier New", 40),
-            height = 4, bg="black", fg="white", width=23
+            height = 4, bg="black", fg="white", width=31
         )
         self.lookup_items_scrollbar = tk.Scrollbar(
             self.register_lookup_items_frame, bg="white",
             orient = tk.VERTICAL, width=40
         )
         self.lookup_items_entry = tk.Entry(
-            self.register_lookup_items_frame, font=("Arial", 50), textvariable=self.controller.state_manager.item_lookup_var
+            self.register_lookup_items_frame, width = 28, font=("Arial", 48), textvariable=self.controller.state_manager.item_lookup_var
         )
 
         self.lookup_items_go_button = tk.Button(
@@ -619,7 +619,6 @@ class WidgetManager:
         self.error_back_confirm_frame = tk.Frame(self.errors_frame)
         self.error_back_confirm_frame.columnconfigure(0, weight=1, uniform="equal")
         self.error_back_confirm_frame.columnconfigure(1, weight=1, uniform="equal")
-        self.error_back_confirm_frame.grid(column = 1, row = 2, sticky='ew')
         self.error_back_button = tk.Button(
             self.error_back_confirm_frame, text="Back", font=("Arial", 50),
             command = lambda: self.controller.state_manager.error_var.set("Back")
@@ -1225,4 +1224,14 @@ class WidgetManager:
         
         subprocess.run(['sudo', 'date', '-s', time_string])
         self.quit_program()
+
+    def setup_errors_ok(self):
+        self.error_label.config(text="ERROR:")
+        self.error_ok_button.grid(column = 1, row = 2, sticky='nsew')
+        self.error_back_confirm_frame.grid_forget()
+
+    def setup_errors_back_confirm(self):
+        self.error_label.config(text="NOTE:")
+        self.error_ok_button.grid_forget()
+        self.error_back_confirm_frame.grid(column = 1, row = 2, sticky='ew')
 
