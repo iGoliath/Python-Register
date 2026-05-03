@@ -7,6 +7,7 @@ from pathlib import Path
 class StateManager:
     def __init__(self, root_window):
         self.add_item_index = self.coupon = 0
+        self.sale_items_listbox_index = -1
         self.coupon_reason = ''
         self.reentering = self.coming_from_register = self.updating_existing_item = False
         self.reentering_quantity = self.browsing_seasonals = self.used_coupon = False 

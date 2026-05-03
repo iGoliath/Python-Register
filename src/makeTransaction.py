@@ -2,6 +2,7 @@ import sqlite3
 from datetime import datetime
 
 date = datetime.today().strftime('%Y-%m-%d')
+date_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
 class Transaction:
 	def __init__(self, db_conn, db_cursor):
@@ -39,6 +40,19 @@ class Transaction:
 
 
 		self.db_conn.commit()
+
+	def complete_as_decrement(self):
+		global datetime
+		self.db_cursor.execute('''INSERT INTO inventory_decrements VALUES (NULL, ?)''', (date_time, ))
+		self.db_cursor.execute('''SELECT MAX(decrement_id) FROM inventory_decrements''')
+		max_decrement_id = (self.db_cursor.fetchall()[0])[0]
+		for item in self.items_list:
+			self.db_cursor.execute("INSERT OR IGNORE INTO inventory_decrements_items VALUES (?, ?, ?)",
+				(max_decrement_id, item[5], item[4]))
+			self.db_cursor.execute("UPDATE Inventory SET Quantity = Quantity - ? WHERE barcode = ?",
+					(item[4], item[3]))
+		self.db_conn.commit()
+
 		
 	def update_seasonal_info(self, seasonal_id):
 
@@ -46,7 +60,7 @@ class Transaction:
 
 	def sell_item(self, entered_barcode):
 	
-		self.db_cursor.execute('''SELECT "Name", "Price", "Taxable" FROM Inventory WHERE Barcode = ?''',
+		self.db_cursor.execute('''SELECT "Name", "Price", "Taxable", item_id FROM Inventory WHERE Barcode = ?''',
 			(entered_barcode,))
 		results = self.db_cursor.fetchone()
 		if not results:
@@ -60,13 +74,13 @@ class Transaction:
 			self.nontax += results[1]
 		self.total = round(self.nontax + self.pretax + self.tax, 2)
 		if not any(entered_barcode in sublist for sublist in self.items_list):
-			self.items_list.append([results[0], results[1], results[2], entered_barcode, 1])
+			self.items_list.append([results[0], results[1], results[2], entered_barcode, 1, results[3]])
 			quantity_sold = 1
 		else:
 			for sublist in self.items_list:
 				if entered_barcode in sublist:
-					sublist[-1] += 1
-					quantity_sold = sublist[-1]
+					sublist[-2] += 1
+					quantity_sold = sublist[-2]
 					break
 
 		self.items_sold += 1	

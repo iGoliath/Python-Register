@@ -118,22 +118,23 @@ def enter_item_vendor(state_manager: StateManager, ui: WidgetManager) -> bool:
 
 def enter_item_confirmation(
         state_manager: StateManager, quantity: int, root: tk.Tk,
-        ui: WidgetManager) -> bool:
+        ui: WidgetManager, skipping_ahead = False) -> bool:
     """Last step of the 'add item' process. """
-    if state_manager.updating_existing_item:
-        if state_manager.reentering:
+    if not skipping_ahead:
+        if state_manager.updating_existing_item:
+            if state_manager.reentering:
+                state_manager.reentering = False
+            elif state_manager.reentering_quantity:
+                state_manager.add_item_object.quantity = quantity
+                state_manager.reentering_quantity = False
+        elif not state_manager.reentering:
+            state_manager.add_item_object.quantity = quantity
+        elif state_manager.reentering:
             state_manager.reentering = False
         elif state_manager.reentering_quantity:
+            ui.add_quantity_label.config(text="Please enter item's quantity:")
             state_manager.add_item_object.quantity = quantity
             state_manager.reentering_quantity = False
-    elif not state_manager.reentering:
-        state_manager.add_item_object.quantity = quantity
-    elif state_manager.reentering:
-        state_manager.reentering = False
-    elif state_manager.reentering_quantity:
-        ui.add_quantity_label.config(text="Please enter item's quantity:")
-        state_manager.add_item_object.quantity = quantity
-        state_manager.reentering_quantity = False
     
 
     ui.add_item_label.config(text="Confirm item info is correct: ")
@@ -206,7 +207,10 @@ def print_confirmation_info(state_manager: StateManager, item_info_confirmation:
     else:
         item_info_confirmation.insert(tk.END, " | Tax? : No", "justify_right")
     item_info_confirmation.insert(tk.END, "\nCat.: " + state_manager.add_item_object.category)
-    item_info_confirmation.insert(tk.END, f"\nSub Cat.: {state_manager.add_item_object.subcategory}")
+    if len(state_manager.add_item_object.subcategory) <= 30:
+        item_info_confirmation.insert(tk.END, f"\nSub Cat.: {state_manager.add_item_object.subcategory}")
+    else:
+        item_info_confirmation.insert(tk.END, f"\nSub Cat.: {state_manager.add_item_object.subcategory[0:30]}-\n{state_manager.add_item_object.subcategory[30:]}")
     item_info_confirmation.insert(tk.END, "\nBarcode: " + str(state_manager.add_item_object.barcode))
     item_info_confirmation.insert(tk.END, " | Qty: " + str(state_manager.add_item_object.quantity), "justify_right")
     item_info_confirmation.insert(tk.END, f"\nVendor: {state_manager.add_item_object.vendor}")

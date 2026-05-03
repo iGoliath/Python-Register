@@ -6,7 +6,7 @@ from widget_manager import WidgetManager
 from state_manager import StateManager
 from config import Config
 from datetime import datetime, timedelta
-from escpos.printer import Usb
+from escpos.printer import Usb, File
 import pygame
 import time
 import threading
@@ -28,7 +28,8 @@ class Register:
 		self.state_manager.add_price_var.trace('w', self.on_price_entry_update)
 		self.current_dir = Path(__file__).parent
 
-		self.printer = Usb(0x0fe6, 0x811e, 0) #File("/dev/usb/lp0")
+		self.printer = Usb(0x0fe6, 0x811e, 0) 
+		#self.printer = File("/tmp/output.bin")
 
 		self.entries = [
 			self.ui.add_barcode_entry, self.ui.add_name_entry, self.ui.add_price_entry,
@@ -195,6 +196,18 @@ class Register:
 		else:
 			self.print_seasonal_info(results)
 
+	def browse_print_receipt(self):
+		self.state_manager.cursor.execute('''SELECT * FROM sales WHERE sale_id = ?''', (self.state_manager.browse_index.get(), ))
+		transaction_info = list(self.state_manager.cursor.fetchall()[0])
+		self.state_manager.cursor.execute('''SELECT * FROM saleitems WHERE sale_id = ?''', (self.state_manager.browse_index.get(), ))
+		item_results = self.state_manager.cursor.fetchall()
+		if transaction_info[10] == 1:
+			self.print_receipt("void", item_results, transaction_info)
+		elif transaction_info[4] < 0:
+			self.print_receipt("return", item_results, transaction_info)
+		else:
+			self.print_receipt("sale", item_results, transaction_info)
+		self.ui.register_frame.tkraise()
 
 
 	def process_sale(self, event = None, entered_barcode=None):
@@ -225,9 +238,9 @@ class Register:
 		self.ui.sale_items_listbox.delete(0, tk.END)
 		for item in self.state_manager.trans.items_list:
 			if len(item[0]) > 13:
-				sale_info = f"{item[0][:13]}... ({str(item[-1])}) ${str(item[1])} {'TX' if item[2] == 1 else 'NT'}"
+				sale_info = f"{item[0][:13]}... ({str(item[-2])}) ${str(item[1])} {'TX' if item[2] == 1 else 'NT'}"
 			else:
-				sale_info = f"{item[0]} ({str(item[-1])}) ${str(item[1])} {'TX' if item[2] == 1 else 'NT'}"
+				sale_info = f"{item[0]} ({str(item[-2])}) ${str(item[1])} {'TX' if item[2] == 1 else 'NT'}"
 			
 			self.ui.sale_items_listbox.insert(tk.END, sale_info)
 		self.ui.sale_items_listbox.yview_moveto(1.0)
@@ -261,29 +274,31 @@ class Register:
 			self.ui.errors_frame.tkraise()
 		finally:
 			self.state_manager.conn.commit()
-			self.print_receipt("void", transaction_info[0], item_results, transaction_info)
+			self.print_receipt("void", item_results, transaction_info)
 			self.ui.remove_void_widgets()
 			self.enter_register_frame()
 
 	def print_transaction_info(
 			self, text_widget, transaction_info):
 			"""Print item info for transaction into a text widget. (Currently formatted for
-			3 height)."""
+			4 height)."""
 			text_widget.delete("1.0", "end")
 			text_widget.insert("end", f"Transaction ID: {str(transaction_info[0])} |\t")
 			text_widget.insert("end", f"Total: ${transaction_info[4]:.2f}\n")
 			text_widget.insert("end", f"Items Sold: {str(transaction_info[5])} |\t")
-			text_widget.insert("end", f"Cash Used: ${transaction_info[8]:.2f}\n")
-			text_widget.insert("end", f"CC Used: ${transaction_info[9]:.2f} |\t")
-			text_widget.insert("end", f"Time: {transaction_info[7]}")
+			text_widget.insert("end", f"Cash: ${transaction_info[8]:.2f}\n")
+			text_widget.insert("end", f"CC: ${transaction_info[9]:.2f} |\t")
+			text_widget.insert("end", f"Date: {transaction_info[6]}\n")
+			text_widget.insert("end", f"Time: {transaction_info[7]} | ")
+			text_widget.insert("end", "Voided?: Yes" if transaction_info[10] == 1 else "Voided?: No")
 
 
 
 	def print_receipt(
-			self, receipt_type, transaction_id,
+			self, receipt_type,
 			items, sale_info, cash_tend = None, cc_tend = None):
 		"""Print receipt based on what type of transaction occured."""
-		self.print_receipt_header(receipt_type, transaction_id)
+		self.print_receipt_header(receipt_type, sale_info[0])
 
 		if receipt_type == "return":
 			for i in (1, 2, 3, 4):
@@ -484,9 +499,13 @@ class Register:
 		sale_info = results[0]
 		self.state_manager.cursor.execute('''SELECT * FROM SALEITEMS WHERE sale_id = ?''', (sale_info[0], ))
 		sale_items_list = self.state_manager.cursor.fetchall()
-		self.print_receipt("sale", sale_info[0], sale_items_list, sale_info, self.state_manager.trans.cash_tendered, self.state_manager.trans.cc_tendered)
+		self.print_receipt("sale", sale_items_list, sale_info, self.state_manager.trans.cash_tendered, self.state_manager.trans.cc_tendered)
 		self.ui.sale_items_listbox.delete(0, tk.END)
 		self.state_manager.new_transaction()
+
+	def complete_decrement(self):
+		self.state_manager.trans.complete_as_decrement()
+		self.enter_register_frame()
 		
 	def number_pressed(self, input_widget=None, output_widget=None):
 		"""Output formatted dollar amount when user inputs numbers"""
@@ -543,14 +562,23 @@ class Register:
 			self.ui.sale_items_listbox.delete(0, tk.END)
 			for item in self.state_manager.trans.items_list:
 				if len(item[0]) > 13:
-					sale_info = f"{item[0][:13]}... ({str(item[-1])}) ${str(item[1])} {'TX' if item[2] == 1 else 'NT'}"
+					sale_info = f"{item[0][:13]}... ({str(item[-2])}) ${str(item[1])} {'TX' if item[2] == 1 else 'NT'}"
 				else:
-					sale_info = f"{item[0]} ({str(item[-1])}) ${str(item[1])} {'TX' if item[2] == 1 else 'NT'}"
+					sale_info = f"{item[0]} ({str(item[-2])}) ${str(item[1])} {'TX' if item[2] == 1 else 'NT'}"
 				self.ui.sale_items_listbox.insert(tk.END, sale_info)
 			self.ui.sale_items_listbox.yview_moveto(1.0)
 
 		
 			
+	def on_sale_items_listbox_select(self):
+		selected_index = self.ui.sale_items_listbox.curselection()
+		if self.state_manager.sale_items_listbox_index == -1:
+			self.state_manager.sale_items_listbox_index = selected_index
+		elif self.state_manager.sale_items_listbox_index == selected_index:
+			self.state_manager.sale_items_listbox_index = -1
+			self.ui.sale_items_listbox.selection_clear(0, tk.END)
+
+		print(self.state_manager.sale_items_listbox_index)
 
 	def no_sale(self, event=None):
 		
@@ -630,36 +658,50 @@ class Register:
 			case "barcode":
 				self.state_manager.add_item_index=0
 				self.ui.add_barcode_frame.tkraise()
+				self.ui.add_barcode_back_button.config(command = lambda: self.reenter_back_button())
 				self.ui.add_barcode_entry.focus_set()
 			case "name":
 				self.state_manager.add_item_index=1
 				self.ui.add_name_frame.tkraise()
+				self.ui.add_name_back_button.config(command = lambda: self.reenter_back_button())
 				self.ui.add_name_entry.focus_set()
 			case "price":
 				self.state_manager.add_item_index=2
 				self.ui.add_price_frame.tkraise()
 				self.ui.update_entry(self.ui.add_price_entry, "$0.00")
+				self.ui.add_price_back_button.config(command = lambda: self.reenter_back_button())
 				self.ui.add_price_entry.focus_set()
 			case "taxable":
 				self.state_manager.add_item_index=3
 				self.ui.add_tax_frame.tkraise()
+				self.ui.add_tax_back_button.config(command = lambda: self.reenter_back_button())
 			case "category":
 				self.state_manager.add_item_index=4
 				self.ui.add_category_frame.tkraise()
+				self.ui.add_category_back_button.config(command = lambda: self.reenter_back_button())
 			case "subcategory":
 				self.state_manager.add_item_index = 5
 				self.ui.populate_subcategory_listbox(self.state_manager.add_item_object.category)
 				self.ui.add_subcategory_frame.tkraise()
+				self.ui.add_subcategory_back_button.config(command = lambda: self.reenter_back_button())
 			case "vendor":
 				self.state_manager.add_item_index = 6
 				self.ui.add_vendor_frame.tkraise()
+				self.ui.add_vendor_back_button.config(command = lambda: self.reenter_back_button())
+				self.ui.add_vendor_skip_button.grid_forget()
 			case "quantity":
 				self.ui.add_quantity_label.config(text=f"Current quantity is: {self.state_manager.add_item_object.quantity}\nNew quantity will be: ")
 				self.state_manager.add_item_index=7
 				self.state_manager.reentering_quantity = True
 				self.state_manager.reentering = False
+				self.ui.add_quantity_back_button.config(command = lambda: self.reenter_back_button())
 				self.ui.add_quantity_frame.tkraise()
 				self.ui.add_quantity_entry.focus_set()
+
+	def reenter_back_button(self):
+		self.state_manager.add_item_index = self.state_manager.ADD_ITEM_LAST_STEP
+		self.ui.reenter_frame.tkraise()
+
 
 	def skip_vendor_step(self):
 		self.state_manager.add_item_object.vendor="N/A"
@@ -674,7 +716,7 @@ class Register:
 		except(ValueError, TypeError):
 			return False
 	
-	def on_add_item_enter(self, event=None, entered_barcode=None):
+	def on_add_item_enter(self, event=None, entered_barcode=None, skipping_ahead = False):
 		"""Handle user pressing enter or next in the context of adding an item.
 		Process is handled in a series of steps."""
 	
@@ -684,27 +726,28 @@ class Register:
 			item_info_entered = self.entries[self.state_manager.add_item_index].get().strip()
 			self.entries[self.state_manager.add_item_index].delete(0, tk.END)
 
-		'''if item_info_entered == '' or self.check_zero_integer(item_info_entered):
-			return
-		elif item_info_entered == "$0.00":
-			self.ui.add_price_entry.insert(tk.END, "$0.00")
-			self.ui.add_price_invisible_entry.delete(0, tk.END)
-			return'''
+		if not skipping_ahead:
+			if item_info_entered == '' or self.check_zero_integer(item_info_entered):
+				return
+			elif item_info_entered == "$0.00":
+				self.ui.add_price_entry.insert(tk.END, "$0.00")
+				self.ui.add_price_invisible_entry.delete(0, tk.END)
+				return
 		
 		match self.state_manager.add_item_index:
 			case 0:
 				if not self.state_manager.reentering:
 					if invf.check_item_exists(self.state_manager, item_info_entered):
-						self.on_add_item_enter()
+						self.on_add_item_enter(None, None, True)
 					else:
 						self.ui.add_name_frame.tkraise()
 						self.ui.add_name_entry.focus_set()
 				else:
 					invf.enter_item_barcode(self.state_manager, item_info_entered)
-					self.on_add_item_enter()
+					self.on_add_item_enter(None, None, True)
 			case 1:
 				if invf.enter_item_name(self.state_manager, item_info_entered):
-					self.on_add_item_enter()
+					self.on_add_item_enter(None, None, True)
 				else:
 					self.ui.add_price_frame.tkraise()	
 					self.ui.update_entry(self.ui.add_price_entry, "$0.00")
@@ -712,35 +755,40 @@ class Register:
 			case 2:
 				self.ui.add_price_invisible_entry.delete(0, tk.END)
 				if invf.enter_item_price(self.state_manager, item_info_entered):
-					self.on_add_item_enter()
+					self.on_add_item_enter(None, None, True)
 				else:
 					self.ui.add_tax_frame.tkraise()
 			case 3:
 				if invf.enter_item_taxable(item_info_entered, self.state_manager):
-					self.on_add_item_enter()	
+					self.on_add_item_enter(None, None, True)	
 				else:
 					self.ui.add_category_frame.tkraise()	
 			case 4:
 				if invf.enter_item_category(self.state_manager, self.ui):
-					self.on_add_item_enter()
+					self.on_add_item_enter(None, None, True)
 				else:
 					self.ui.populate_subcategory_listbox(self.state_manager.add_item_object.category)
 					self.ui.add_subcategory_frame.tkraise()
 			case 5:
 				if invf.enter_item_subcategory(self.state_manager, self.ui):
-					self.on_add_item_enter()
+					self.on_add_item_enter(None, None, True)
 				else:
 					self.ui.add_vendor_frame.tkraise()
 			case 6:
 				if invf.enter_item_vendor(self.state_manager, self.ui):
-					self.on_add_item_enter()
+					self.on_add_item_enter(None, None, True)
 				else:
 					self.ui.add_quantity_frame.tkraise()
 					self.ui.add_quantity_entry.focus_set()
 			case self.state_manager.ADD_ITEM_LAST_STEP:
 				self.ui.add_item_frame.tkraise()
-				return_value = invf.enter_item_confirmation(
-					self.state_manager, item_info_entered, root, self.ui)
+				if not skipping_ahead:
+					return_value = invf.enter_item_confirmation(
+						self.state_manager, item_info_entered, root, self.ui)
+				else:
+					return_value = invf.enter_item_confirmation(
+						self.state_manager, item_info_entered, root, self.ui, True
+					)
 				if return_value == True:
 					self.process_sale(None, self.state_manager.add_item_object.barcode)
 					self.state_manager.coming_from_register = False
@@ -837,11 +885,10 @@ class Register:
 			self.ui.setup_errors_ok()
 			return
 		self.ui.errors_frame.lower()
-		self.setup_errors_ok()
+		self.ui.setup_errors_ok()
 		self.run_x(None, "Z")
 		self.config.data['tally_begin_date'] = tomorrow
 		self.config.write_out_config()
-
 
 
 	def process_return(self, event = None):
@@ -878,7 +925,7 @@ class Register:
 		row = list(results[0])
 		self.state_manager.cursor.execute('''SELECT * FROM SALEITEMS WHERE sale_id = ?''', (row[0], ))
 		item_results = list(self.state_manager.cursor.fetchall())
-		self.print_receipt("return", row[0], item_results, row)
+		self.print_receipt("return", item_results, row)
 		self.ui.bind_invisible_entry_keys()
 		self.enter_register_frame()
 
@@ -907,8 +954,17 @@ class Register:
 			self.ui.update_entry(self.ui.add_tax_entry, answer)
 			self.on_add_item_enter()
 		elif self.state_manager.add_item_index == self.state_manager.ADD_ITEM_LAST_STEP:
-			self.state_manager.yes_no_var.set(answer)
-			self.ui.reenter_frame.tkraise()
+			if answer == 'no':
+				self.state_manager.yes_no_var.set(answer)
+				self.ui.reenter_frame.tkraise()
+			else:
+				self.state_manager.yes_no_var.set(answer)
+			
+	def enter_add_item_frame_again(self):
+			invf.enter_item_confirmation(
+				self.state_manager, item_info_entered, root, self.ui
+			)
+
 
 	def apply_coupon(self):
 		coupon_amount = float(self.ui.coupon_entry.get()[1:])

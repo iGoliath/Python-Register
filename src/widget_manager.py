@@ -161,6 +161,7 @@ class WidgetManager:
         )
         self.sale_items_listbox.grid(column = 1, row = 2, sticky='nsw')
         self.sale_items_listbox.bind("<FocusIn>", controller.return_invisible_entry_focus)
+        self.sale_items_listbox.bind("<<ListboxSelect>>", lambda event: controller.on_sale_items_listbox_select())
         self.sale_items_scrollbar = tk.Scrollbar(
             self.register_frame, bg="white",
             orient=tk.VERTICAL, width=40
@@ -241,8 +242,8 @@ class WidgetManager:
         self.add_item_quit_button.grid(column = 0, row = 0, sticky='ew')
 
         self.item_info_confirmation = tk.Text(
-            self.add_item_frame, font=("Arial", 40),
-            width=6, height=4)
+            self.add_item_frame, font=("Ubuntu Mono", 35),
+            width=6, height=5)
         self.item_info_confirmation.tag_configure("justify_right", justify = "right")
 
         self.item_info_confirmation.grid(column = 1, row = 1, sticky='ew')
@@ -261,11 +262,11 @@ class WidgetManager:
         self.add_item_back_quit_frame.grid(column = 1, row = 4, sticky='ew')
 
         self.yes_button = tk.Button(
-            self.add_item_yes_no, text="Yes", font=("Arial", 100),
+            self.add_item_yes_no, text="Yes", font=("Arial", 60),
             command= lambda: controller.on_yes_no("yes"))
 
         self.no_button = tk.Button(
-            self.add_item_yes_no, text="No", font=("Arial", 100),
+            self.add_item_yes_no, text="No", font=("Arial", 60),
             command=lambda: controller.on_yes_no("no"))
 
         self.yes_button.grid(column=0, row=0, sticky='nsew', padx=10)
@@ -315,7 +316,7 @@ class WidgetManager:
 
         tk.Button(
             self.reenter_frame, text="Back", font=("Arial", 50),
-            command = lambda: self.add_item_frame.tkraise()
+            command = lambda: self.controller.on_add_item_enter(None, None, True)
             ).grid(row = 4, column = 0, sticky='nsew', pady=20)
         
         tk.Button(
@@ -411,7 +412,7 @@ class WidgetManager:
             font=("Arial", 58), command = lambda: self.quit_program())
         
         self.manage_seasonals_button = tk.Button(
-            self.admin_menu_frame, text="Manage\nSeasonals", font=("Arial", 58),
+            self.admin_menu_frame, text="Manage Seasonals", font=("Arial", 58),
             command = lambda: controller.enter_browse_transactions_frame(0, 1)
         )
 
@@ -510,8 +511,8 @@ class WidgetManager:
         self.browse_next_button.grid(column = 2, row = 1, sticky='nse')
 
         self.browse_text = tk.Text(
-            self.browse_transactions_frame, width=28, height=3,
-            font=("Courier New", 37)
+            self.browse_transactions_frame, width=28, height=4,
+            font=("Bebas Neue", 37)
         )
         self.browse_text.tag_configure("bold", font=("Courier New", 40, "bold"))
         self.browse_text.grid(column = 1, row = 1, sticky='ew', pady=10)
@@ -544,9 +545,14 @@ class WidgetManager:
         )
         self.browse_back_button.grid(column=0, row=0, sticky='nsew')
 
-        self.browse_confirm_button = tk.Button(browse_back_quit_frame, text="Confirm",
-            font=("Arial", 50), command = lambda: self.controller.state_manager.void_var.set("")
+        self.browse_print_button = tk.Button(browse_back_quit_frame, text="Print",
+            font=("Arial", 50), command = lambda: self.controller.browse_print_receipt()
         )
+
+        self.browse_print_button.grid(column = 1, row = 0, sticky='nsew')
+
+        self.browse_void_print_button = tk.Button(browse_back_quit_frame, text="Print",
+            font=("Arial", 50), command = lambda: self.controller.state_manager.void_var.set(""))
 
 
         # ================================================
@@ -567,7 +573,7 @@ class WidgetManager:
             command = lambda: self.edit_seasonal_frame.tkraise()
         )
 
-        self.seasonal_buttons_frame.grid(column = 1, row = 4, sticky='ew')
+        #self.seasonal_buttons_frame.grid(column = 1, row = 4, sticky='ew')
 
         self.add_seasonal_button.grid(column = 0, row = 0, sticky='nsew')
         self.remove_seasonal_button.grid(column = 1, row = 0, sticky='nsew')
@@ -739,9 +745,10 @@ class WidgetManager:
         back_quit_frame.columnconfigure(0, weight=1)
         back_quit_frame.columnconfigure(1, weight=1)
         back_quit_frame.grid(column = 1, row = 3, sticky='ew', pady=(15, 0))
-        tk.Button(
+        self.add_barcode_back_button = tk.Button(
             back_quit_frame, text="Back", font=("Arial", 50),
-            command = lambda: self.controller.go_back()).grid(
+            command = lambda: self.controller.go_back())
+        self.add_barcode_back_button.grid(
                 column = 0, row = 0, sticky='ew', padx=(0, 15)
             )
         tk.Button(
@@ -765,9 +772,10 @@ class WidgetManager:
         back_quit_frame.columnconfigure(0, weight=1)
         back_quit_frame.columnconfigure(1, weight=1)
         back_quit_frame.grid(column = 1, row = 3, sticky='ew', pady=(15, 0))
-        tk.Button(
+        self.add_name_back_button = tk.Button(
             back_quit_frame, text="Back", font=("Arial", 50),
-            command = lambda: self.controller.go_back()).grid(
+            command = lambda: self.controller.go_back())
+        self.add_name_back_button.grid(
                 column = 0, row = 0, sticky='ew', padx=(0, 15)
             )
         tk.Button(
@@ -803,9 +811,10 @@ class WidgetManager:
         back_quit_frame.columnconfigure(0, weight=1)
         back_quit_frame.columnconfigure(1, weight=1)
         back_quit_frame.grid(column = 1, row = 3, sticky='ew', pady=(15, 0))
-        tk.Button(
+        self.add_price_back_button = tk.Button(
             back_quit_frame, text="Back", font=("Arial", 50),
-            command = lambda: self.controller.go_back()).grid(
+            command = lambda: self.controller.go_back())
+        self.add_price_back_button.grid(
                 column = 0, row = 0, sticky='ew', padx=(0, 15)
             )
         tk.Button(
@@ -840,9 +849,10 @@ class WidgetManager:
         back_quit_frame.columnconfigure(0, weight=1)
         back_quit_frame.columnconfigure(1, weight=1)
         back_quit_frame.grid(column = 1, row = 3, sticky='ew', pady=(15, 0))
-        tk.Button(
+        self.add_tax_back_button = tk.Button(
             back_quit_frame, text="Back", font=("Arial", 50),
-            command = lambda: self.controller.go_back()).grid(
+            command = lambda: self.controller.go_back())
+        self.add_tax_back_button.grid(
                 column = 0, row = 0, sticky='ew', padx=(0, 15)
             )
         tk.Button(
@@ -857,8 +867,8 @@ class WidgetManager:
         self.add_category_entry = tk.Entry(self.add_category_frame)
 
         self.add_category_listbox = tk.Listbox(
-            self.add_category_frame, width=25,
-            height=4, font=("Arial", 50))
+            self.add_category_frame, width=27,
+            height=4, font=("Arial", 45))
         add_category_scrollbar = tk.Scrollbar(
             self.add_category_frame,
             orient=tk.VERTICAL, width=40
@@ -871,9 +881,10 @@ class WidgetManager:
         add_category_scrollbar.config(command = self.add_category_listbox.yview)
 
         for values in (
-        "Camping", "Gifts", "Fishing", "General Merch",
-        "RV", "Summer Fun", "Toys & Hobby", "Candy & Snacks", "Misc.",
-        "Foodstuffs", "TBC Merch", "Souvenirs"):
+            "Camping","Candy & Snacks","Fishing","Foodstuffs",
+            "General Merch","Gifts","Misc.","RV","Souvenirs",
+            "Summer Fun","TBC Merch","Toys & Hobby"
+        ):
             self.add_category_listbox.insert(tk.END, values)
 
         tk.Button(
@@ -884,9 +895,10 @@ class WidgetManager:
         back_quit_frame.columnconfigure(0, weight=1)
         back_quit_frame.columnconfigure(1, weight=1)
         back_quit_frame.grid(column = 1, row = 3, sticky='ew', pady=(15, 0))
-        tk.Button(
+        self.add_category_back_button = tk.Button(
             back_quit_frame, text="Back", font=("Arial", 50),
-            command = lambda: self.controller.go_back()).grid(
+            command = lambda: self.controller.go_back())
+        self.add_category_back_button.grid(
                 column = 0, row = 0, sticky='ew', padx=(0, 15)
             )
         tk.Button(
@@ -901,8 +913,8 @@ class WidgetManager:
         self.add_subcategory_entry = tk.Entry(self.add_subcategory_frame)
 
         self.add_subcategory_listbox = tk.Listbox(
-            self.add_subcategory_frame, width=25,
-            height=4, font=("Arial", 50))
+            self.add_subcategory_frame, width=27,
+            height=4, font=("Arial", 45))
         add_subcategory_scrollbar = tk.Scrollbar(
             self.add_subcategory_frame,
             orient=tk.VERTICAL, width=40
@@ -922,9 +934,10 @@ class WidgetManager:
         back_quit_frame.columnconfigure(0, weight=1)
         back_quit_frame.columnconfigure(1, weight=1)
         back_quit_frame.grid(column = 1, row = 3, sticky='ew', pady=(15, 0))
-        tk.Button(
+        self.add_subcategory_back_button = tk.Button(
             back_quit_frame, text="Back", font=("Arial", 50),
-            command = lambda: self.controller.go_back()).grid(
+            command = lambda: self.controller.go_back())
+        self.add_subcategory_back_button.grid(
                 column = 0, row = 0, sticky='ew', padx=(0, 15)
             )
         tk.Button(
@@ -954,8 +967,9 @@ class WidgetManager:
         add_vendor_scrollbar.config(command = self.add_vendor_listbox.yview)
 
         for values in (
-        "Wilcor", "Restaurant Depot", "Shoprite", "Sam's Club", "ABC 123", "Zoologee", "Aldi", "Kohl's", "Cheap Carls", "Gib Carson", "D&D Distributing",
-        "Puka Creations", "Dollar Tree", "ACME", "Walmart"):
+        "ABC 123", "ACME", "Aldi", "Cheap Carls", "D&D Distributing", "Dollar Tree",
+        "Gib Carson","Kohl's","Puka Creations","Restaurant Depot","Sam's Club",
+        "Shoprite","Walmart","Wilcor","Zoologee"):
             self.add_vendor_listbox.insert(tk.END, values)
 
         tk.Button(
@@ -966,9 +980,10 @@ class WidgetManager:
         back_quit_frame.columnconfigure(0, weight=1)
         back_quit_frame.columnconfigure(1, weight=1)
         back_quit_frame.grid(column = 1, row = 3, sticky='ew', pady=(15, 0))
-        tk.Button(
+        self.add_vendor_back_button = tk.Button(
             back_quit_frame, text="Back", font=("Arial", 50),
-            command = lambda: self.controller.go_back()).grid(
+            command = lambda: self.controller.go_back())
+        self.add_vendor_back_button.grid(
                 column = 0, row = 0, sticky='ew', padx=(0, 15)
             )
         tk.Button(
@@ -977,9 +992,10 @@ class WidgetManager:
                 column = 1, row = 0, sticky='ew'
             )
         
-        tk.Button(
+        self.add_vendor_skip_button = tk.Button(
             self.add_vendor_frame, text="Skip", font=("Arial", 50),
-            command = lambda: self.controller.skip_vendor_step()).grid(
+            command = lambda: self.controller.skip_vendor_step())
+        self.add_vendor_skip_button.grid(
                 column = 1, row = 4, sticky='ew')
 
         
@@ -1006,9 +1022,10 @@ class WidgetManager:
         back_quit_frame.columnconfigure(0, weight=1)
         back_quit_frame.columnconfigure(1, weight=1)
         back_quit_frame.grid(column = 1, row = 3, sticky='ew', pady=(15, 0))
-        tk.Button(
+        self.add_quantity_back_button = tk.Button(
             back_quit_frame, text="Back", font=("Arial", 50),
-            command = lambda: self.controller.go_back()).grid(
+            command = lambda: self.controller.go_back())
+        self.add_quantity_back_button.grid(
                 column = 0, row = 0, sticky='ew', padx=(0, 15)
             )
         tk.Button(
@@ -1023,30 +1040,25 @@ class WidgetManager:
         match primary_category:
             case "Camping":
                 for values in (
-                    "BBQ Supplies", "Blankets, Bajas & Pillows", "Camp Books",
-                    "Camp Cookware", "Campfire Cooking", "Campfire Items and Starters",
-                    "Camping Accessories", "Camping Bedding", "Camp Tools & Tent Stakes",
-                    "Coolers and Thermals", "Flashlights (including head lamps)",
-                    "Fuels and Matches", "Hiking Gear", "Insect Control",
-                    "Knives", "Furniture & Hammocks", "Packs",
-                    "Picnic Products", "Propane Cooking and Lighting",
-                    "Raingear", "Ropes, Cords, Tiedowns", "Tarps, Tents, Shelters",
-                    "Pet Supplies", "Lanterns", "Decorative & Impulse Lights",
-                    "Waterproof Pouches and Bags", "Shopping Bags & Totes",
-                    "Ceramics Mugs", "Outdoor Adventure Books", "Nature Guides & Maps",
-                    "Cooking & Campfire Books", "Notebooks & Journals"
+                    "BBQ Supplies","Blankets, Bajas & Pillows","Camp Books","Camp Cookware",
+                    "Camp Tools & Tent Stakes","Campfire Cooking","Campfire Items and Starters",
+                    "Camping Accessories","Camping Bedding","Ceramics Mugs","Cooking & Campfire Books",
+                    "Coolers and Thermals","Decorative & Impulse Lights","Flashlights (including head lamps)",
+                    "Fuels and Matches","Furniture & Hammocks","Hiking Gear","Insect Control","Knives","Lanterns",
+                    "Nature Guides & Maps","Notebooks & Journals","Outdoor Adventure Books","Packs","Pet Supplies",
+                    "Picnic Products","Propane Cooking and Lighting","Raingear","Ropes, Cords, Tiedowns",
+                    "Shopping Bags & Totes","Tarps, Tents, Shelters","Waterproof Pouches and Bags"
                 ):
                     self.add_subcategory_listbox.insert(tk.END, values)
             case "Gifts":
                 for values in(
-                    "Antler Look Theme", "Baskets", "Bear Theme",
-                    "Birdhouses", "Camping and RV Gifts", "Canoe and Paddle Gifts",
-                    "Cute/Fantasy Theme", "Dream Catchers", "Fur Figures",
-                    "Lamps", "Magnets", "Moose Theme", "Ornaments",
-                    "Other Gifts", "Cabin & Lodge Gifts", "Pens",
-                    "Picture Frames", "Seaside Themes", "Signs and Plaques",
-                    "Stuffed Animals", "Wildlife Theme", "Wind Chimes and Spinners",
-                    "Wood Gifts", "Smore Gifts", "Big Foot"
+                    "Antler Look Theme","Baskets","Bear Theme","Big Foot"
+                    ,"Birdhouses","Cabin & Lodge Gifts","Camping and RV Gifts",
+                    "Canoe and Paddle Gifts","Cute/Fantasy Theme","Dream Catchers",
+                    "Fur Figures","Lamps","Magnets","Moose Theme","Ornaments",
+                    "Other Gifts","Pens","Picture Frames","Seaside Themes",
+                    "Signs and Plaques","Smore Gifts","Stuffed Animals","Wildlife Theme",
+                    "Wind Chimes and Spinners","Wood Gifts"
                 ):
                     self.add_subcategory_listbox.insert(tk.END, values)
             case "Fishing":
@@ -1057,9 +1069,9 @@ class WidgetManager:
                     self.add_subcategory_listbox.insert(tk.END, values)
             case "General Merch":
                 for values in(
-                    "Brooms Cleaning Supplies", "Hardware Related Products", "Health and Beauty Aids",
-                    "Household Electric", "Kitchen Utensils", "Kitchenware",
-                    "Laundry Products", "Other Household Items", "Drinkware"
+                    "Brooms Cleaning Supplies", "Drinkware", "Hardware Related Products",
+                    "Health and Beauty Aids", "Household Electric", "Kitchen Utensils",
+                    "Kitchenware", "Laundry Products", "Other Household Items", 
                 ):
                     self.add_subcategory_listbox.insert(tk.END, values)
             case "RV":
@@ -1082,28 +1094,28 @@ class WidgetManager:
                 for values in(
                     "Action Figures", "Activity Books", "Arts and Crafts",
                     "Bubbles, Traditional Toys", "Cap Guns, Caps", "Camper Toys",
-                    "Games", "Toys", "Gross & Squishy", "Guns, Action Toys", "Sand Toys",
-                    "School Supplies", "Vehicles, Die Cast", "Water Guns, Water Bombs", "Fur Figures",
-                    "Reptiles & Bugs"
+                    "Fur Figures", "Games", "Gross & Squishy", "Guns, Action Toys",
+                    "Reptiles & Bugs", "Sand Toys", "School Supplies", "Toys",
+                    "Vehicles, Die Cast", "Water Guns, Water Bombs"
                 ):
                     self.add_subcategory_listbox.insert(tk.END, values)
             case "Candy & Snacks":
                 for values in(
-                    "Jewelry & Novelties", "Candy and Jerky", "Hats & Bandanas",
+                    "Candy and Jerky", "Hats & Bandanas", "Jewelry & Novelties", 
                     "Jokes and Tricks", "Keychains", "Light Up Fun"
                 ):
                     self.add_subcategory_listbox.insert(tk.END, values)
             case "Misc.":
                 for values in(
-                    "Batteries", "Phone Accessories & Bluetooth",
-                    "Merchandising", "Other Items/Notions", "Playing Cards",
-                    "Winter Items", "Winter Wear", "Work Gloves", "PPE"
+                    "Batteries","Merchandising","Other Items/Notions",
+                    "PPE","Phone Accessories & Bluetooth","Playing Cards",
+                    "Winter Items","Winter Wear","Work Gloves"
                 ):
                     self.add_subcategory_listbox.insert(tk.END, values)
             case "Foodstuffs":
                 for values in(
-                    "Refrigerated", "Dry Goods", "Chips", "Ice Cream",
-                    "Cookies"):
+                    "Chips", "Cookies", "Dry Goods", "Ice Cream", "Refrigerated"
+                    ):
                     self.add_subcategory_listbox.insert(tk.END, values)
             case "TBC Merch":
                 for values in("N/A"):
@@ -1118,7 +1130,21 @@ class WidgetManager:
     def enter_add_item_frame(self):
         self.add_barcode_frame.tkraise()
         self.add_quantity_label.config(text="Please enter item's quantity:")
+        self.reset_add_item_back_buttons()
         self.add_barcode_entry.focus_set()
+
+    def reset_add_item_back_buttons(self):
+        self.add_barcode_back_button.config(command = lambda: self.controller.go_back())
+        self.add_name_back_button.config(command = lambda: self.controller.go_back())
+        self.add_price_back_button.config(command = lambda: self.controller.go_back())
+        self.add_tax_back_button.config(command = lambda: self.controller.go_back())
+        self.add_category_back_button.config(command = lambda: self.controller.go_back())
+        self.add_subcategory_back_button.config(command = lambda: self.controller.go_back())
+        self.add_vendor_back_button.config(command = lambda: self.controller.go_back())
+        self.add_quantity_back_button.config(command = lambda: self.controller.go_back())
+        self.add_vendor_skip_button.grid(column = 1, row = 4, sticky='ew')
+
+
 
     def enter_register_frame(self):
         self.invisible_entry.delete(0, tk.END)
@@ -1161,7 +1187,8 @@ class WidgetManager:
         self.invisible_entry.bind("<KeyRelease-KP_Add>", lambda event: self.controller.on_cc())
         self.invisible_entry.bind("<KeyRelease-KP_Multiply>", lambda event: self.enter_main_menu())
         self.invisible_entry.bind("<KeyRelease-KP_Divide>", lambda event: self.controller.cancel_sale())
-        self.invisible_entry.bind("<KeyRelease-KP_Subtract>", self.controller.no_sale)
+        self.invisible_entry.bind("<KeyRelease-KP_Subtract>", lambda event: self.controller.no_sale)
+        self.invisible_entry.bind("<KeyRelease-backslash>", lambda event: self.controller.complete_decrement())
         self.invisible_entry.unbind("<KeyRelease-Escape>")
 
     def unbind_invisible_entry_keys(self):
@@ -1175,17 +1202,17 @@ class WidgetManager:
         self.invisible_entry.unbind("<KeyRelease-KP_Subtract>")
 
     def setup_void_widgets(self):
-        self.browse_label.config(text="Browse or enter the Transaction ID\nPress 'Print' to confirm Void")
-        self.browse_confirm_button.config(text = "Print")
-        #self.browse_second_label.grid(column = 1, row = 2, sticky='ew')
-        self.browse_confirm_button.grid(column = 1, row = 0, sticky='sew')
+        self.browse_label.config(text="Void Transaction")
+        self.browse_print_button.grid_forget()
+        self.browse_void_print_button.grid(column = 1, row = 0, sticky='nsew')
         self.browse_entry.focus_set()
 
     def remove_void_widgets(self):
         self.browse_label.config(text="Browsing Transactions")
         self.browse_second_label.grid_forget()
         self.browse_entry_frame.grid_forget()
-        self.browse_confirm_button.grid_forget()
+        self.browse_void_print_button.grid_forget()
+        self.browse_print_button.grid(column = 1, row = 0, sticky='nsew')
 
     def update_entry(self, entry, text):
         entry.delete(0, tk.END)
