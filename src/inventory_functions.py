@@ -207,10 +207,13 @@ def print_confirmation_info(state_manager: StateManager, item_info_confirmation:
     else:
         item_info_confirmation.insert(tk.END, " | Tax? : No", "justify_right")
     item_info_confirmation.insert(tk.END, "\nCat.: " + state_manager.add_item_object.category)
-    if len(state_manager.add_item_object.subcategory) <= 30:
-        item_info_confirmation.insert(tk.END, f"\nSub Cat.: {state_manager.add_item_object.subcategory}")
+    if state_manager.add_item_object.subcategory != None:
+        if len(state_manager.add_item_object.subcategory) <= 30:
+            item_info_confirmation.insert(tk.END, f"\nSub Cat.: {state_manager.add_item_object.subcategory}")
+        else:
+            item_info_confirmation.insert(tk.END, f"\nSub Cat.: {state_manager.add_item_object.subcategory[0:30]}-\n{state_manager.add_item_object.subcategory[30:]}")
     else:
-        item_info_confirmation.insert(tk.END, f"\nSub Cat.: {state_manager.add_item_object.subcategory[0:30]}-\n{state_manager.add_item_object.subcategory[30:]}")
+        item_info_confirmation.insert(tk.END, f"\nSub Cat.: {state_manager.add_item_object.subcategory}")
     item_info_confirmation.insert(tk.END, "\nBarcode: " + str(state_manager.add_item_object.barcode))
     item_info_confirmation.insert(tk.END, " | Qty: " + str(state_manager.add_item_object.quantity), "justify_right")
     item_info_confirmation.insert(tk.END, f"\nVendor: {state_manager.add_item_object.vendor}")
