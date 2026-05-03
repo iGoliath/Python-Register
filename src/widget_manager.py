@@ -1187,7 +1187,7 @@ class WidgetManager:
         self.invisible_entry.bind("<KeyRelease-KP_Add>", lambda event: self.controller.on_cc())
         self.invisible_entry.bind("<KeyRelease-KP_Multiply>", lambda event: self.enter_main_menu())
         self.invisible_entry.bind("<KeyRelease-KP_Divide>", lambda event: self.controller.cancel_sale())
-        self.invisible_entry.bind("<KeyRelease-KP_Subtract>", lambda event: self.controller.no_sale)
+        self.invisible_entry.bind("<KeyRelease-KP_Subtract>", lambda event: self.controller.no_sale())
         self.invisible_entry.bind("<KeyRelease-backslash>", lambda event: self.controller.complete_decrement())
         self.invisible_entry.unbind("<KeyRelease-Escape>")
 
