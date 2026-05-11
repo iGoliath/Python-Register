@@ -20,8 +20,9 @@ class Register:
 	def __init__(self, root):
 		"""Initialize UI, StateManager, Config, and Printer"""
 		self.state_manager = StateManager(root)
-		self.state_manager.browse_index.trace('w', self.browse_transactions)
-		self.state_manager.item_lookup_var.trace('w', self.on_item_lookup)
+		self.state_manager.browse_index.trace_add('write', self.browse_transactions)
+		self.state_manager.item_lookup_var.trace_add('write', self.on_item_lookup)
+		self.state_manager.sale_items_listbox_var.trace_add('write', self.on_sale_items_listbox_var)
 		self.vcmd = (root.register(self.only_numbers), '%P')
 		self.ui = WidgetManager(root, self)
 		self.config = Config()
@@ -541,6 +542,8 @@ class Register:
 
 	def cancel_sale(self, event=None):
 		self.ui.invisible_entry.delete(0, tk.END)
+		self.state_manager.sale_items_listbox_var.set(-1)
+		self.on_sale_items_listbox_var()
 		if self.state_manager.trans.cash_used != 0 or self.state_manager.trans.cc_used != 0:
 			return
 		selected_index = self.ui.sale_items_listbox.curselection()
@@ -548,16 +551,7 @@ class Register:
 			self.enter_register_frame()
 		else:
 			index = selected_index[0]
-			if (self.state_manager.trans.items_list[index][2] == 1):
-				self.state_manager.trans.pretax -= self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4]
-				self.state_manager.trans.tax -= round(abs(self.config.data['tax_amount'] * (self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4])), 2)
-				self.state_manager.trans.total -= round(abs((1 + self.config.data['tax_amount']) * (self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4])), 2)
-				self.state_manager.trans.items_sold -= self.state_manager.trans.items_list[index][4]
-			else:
-				self.state_manager.trans.nontax -= self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4]
-				self.state_manager.trans.total -= self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4]
-				self.state_manager.trans.items_sold -= self.state_manager.trans.items_list[index][4]
-			del self.state_manager.trans.items_list[index]
+			self.remove_items_from_sale(index, True)
 			self.ui.update_entry(self.ui.balance_entry, f"${abs(self.state_manager.trans.total):.2f}")
 			self.ui.sale_items_listbox.delete(0, tk.END)
 			for item in self.state_manager.trans.items_list:
@@ -568,17 +562,46 @@ class Register:
 				self.ui.sale_items_listbox.insert(tk.END, sale_info)
 			self.ui.sale_items_listbox.yview_moveto(1.0)
 
-		
+	def remove_items_from_sale(self, index, canceling):
+		if (self.state_manager.trans.items_list[index][2] == 1):
+				self.state_manager.trans.pretax -= self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4]
+				self.state_manager.trans.tax -= round(abs(self.config.data['tax_amount'] * (self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4])), 2)
+				self.state_manager.trans.total -= round(abs((1 + self.config.data['tax_amount']) * (self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4])), 2)
+				self.state_manager.trans.items_sold -= self.state_manager.trans.items_list[index][4]
+		else:
+			self.state_manager.trans.nontax -= self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4]
+			self.state_manager.trans.total -= self.state_manager.trans.items_list[index][1] * self.state_manager.trans.items_list[index][4]
+			self.state_manager.trans.items_sold -= self.state_manager.trans.items_list[index][4]
+
+		if canceling:
+			del self.state_manager.trans.items_list[index]
 			
 	def on_sale_items_listbox_select(self):
-		selected_index = self.ui.sale_items_listbox.curselection()
-		if self.state_manager.sale_items_listbox_index == -1:
-			self.state_manager.sale_items_listbox_index = selected_index
-		elif self.state_manager.sale_items_listbox_index == selected_index:
-			self.state_manager.sale_items_listbox_index = -1
+		selected_index = self.ui.sale_items_listbox.curselection()[0]
+		if self.state_manager.sale_items_listbox_var.get() == -1:
+			self.state_manager.sale_items_listbox_var.set(selected_index)
+		elif self.state_manager.sale_items_listbox_var.get() == selected_index:
+			self.state_manager.sale_items_listbox_var.set(-1)
 			self.ui.sale_items_listbox.selection_clear(0, tk.END)
 
-		print(self.state_manager.sale_items_listbox_index)
+	def on_sale_items_listbox_var(self, *args):
+		if self.state_manager.sale_items_listbox_var.get() != -1:
+			self.ui.invisible_entry.unbind("<Return>")
+			self.ui.invisible_entry.bind("<Return>", lambda event: self.process_sale_multiples())
+		else:
+			self.ui.invisible_entry.unbind("<Return>")
+			self.ui.invisible_entry.bind("<Return>", self.process_sale)
+
+	
+	def process_sale_multiples(self, event=None):
+		self.remove_items_from_sale(self.state_manager.sale_items_listbox_var.get(), False)
+		self.state_manager.trans.items_list[self.state_manager.sale_items_listbox_var.get()][-2] = 0
+		for i in range(0, int(self.ui.invisible_entry.get())):
+			self.process_sale(None, self.state_manager.trans.items_list[self.state_manager.sale_items_listbox_var.get()][3])
+		self.ui.invisible_entry.delete(0, tk.END)
+		self.ui.update_entry(self.ui.user_entry, "$0.00")
+		self.state_manager.sale_items_listbox_var.set(-1)	
+
 
 	def no_sale(self, event=None):
 		
@@ -838,6 +861,7 @@ class Register:
 		else:
 			self.print_receipt_header("z", None)
 		gross_total = 0
+		gross_total_wo_tax = 0
 
 		for category in ("Cash Used", "CC Used", "Non-Tax", "Pre-Tax", "Tax"):
 			self.state_manager.cursor.execute('''SELECT SUM("%s") FROM SALES WHERE Date >= ? AND Date <= ? AND Voided != 1''' % (category), (self.config.data['tally_begin_date'], datetime.today().strftime('%Y-%m-%d'), ))
@@ -845,6 +869,8 @@ class Register:
 			sum_in_question = results if results is not None else 0
 			if category in ("Non-Tax", "Pre-Tax", "Tax"):
 				gross_total += sum_in_question
+			if category in ("Non-Tax", "Pre-Tax"):
+				gross_total_wo_tax += sum_in_question
 			rounded = f"{sum_in_question:.2f}"
 			spaces = 29 - len(category.split()[0]) - len(rounded)
 			self.printer.textln(f"{category.split()[0]} Collected: {' ' * spaces}${rounded}\n")
@@ -858,6 +884,10 @@ class Register:
 
 		spaces = 42 - 14 - len(f"{gross_total:.2f}")
 		self.printer.textln(f"Gross Total: {' ' * spaces}${gross_total:.2f}\n")
+
+
+		spaces = self.config.data['printing_width'] - 22 - len(f"{gross_total_wo_tax:.2f}")
+		self.printer.textln(f"Gross Total w/o Tax: {' ' * spaces}${gross_total_wo_tax:.2f}\n")
 
 		self.state_manager.cursor.execute('''SELECT SUM("Total") FROM Sales WHERE TOTAL < 0 AND Date = ?''', (datetime.today().strftime('%Y-%m-%d'), ))
 		results = self.state_manager.cursor.fetchone()[0]

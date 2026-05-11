@@ -19,6 +19,7 @@ class StateManager:
         self.item_lookup_var = tk.StringVar(root_window)
         self.browse_index = tk.IntVar(root_window)
         self.error_var = tk.StringVar(root_window)
+        self.sale_items_listbox_var = tk.IntVar(root_window, -1)
         self.binding_manager = None
         self.current_dir = Path(__file__).parent
         self.conn = sqlite3.connect(self.current_dir / 'RegisterDatabase')
