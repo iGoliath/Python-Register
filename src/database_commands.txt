@@ -1,6 +1,6 @@
-CREATE TABLE Inventory(item_id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT NOT NULL, Price REAL NOT NULL, Taxable BOOLEAN, Barcode TEXT, Quantity INTEGER, Category TEXT, Subcategory TEXT, Vendor TEXT)
-CREATE TABLE sales(sale_id INTEGER PRIMARY KEY AUTOINCREMENT, "Non-Tax" REAL,"Pre-Tax" REAL, Tax REAL, Total REAL, "# Items Sold" INTEGER, Date TEXT, Time TEXT, "Cash Used" REAL, "CC Used" REAL, Voided BOOLEAN)
-CREATE TABLE saleitems(sale_id INTEGER, Name TEXT, Price REAL, Tax BOOLEAN, Barcode TEXT, Quantity INTEGER, FOREIGN KEY(sale_id) REFERENCES sales(sale_id))
+CREATE TABLE Inventory(item_id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT NOT NULL, Price TWODECINT NOT NULL, Taxable BOOLEAN, Barcode TEXT, Quantity FOURDECINT, Category TEXT, Subcategory TEXT, Vendor TEXT)
+CREATE TABLE sales(sale_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "non_tax" TWODECINT NOT NULL,"pre_tax" TWODECINT NOT NULL, tax TWODECINT NOT NULL, total TWODECINT NOT NULL, num_items_sold FOURDECINT NOT NULL, sale_date TEXT NOT NULL, sale_time TEXT NOT NULL, cash_used TWODECINT NOT NULL, cc_used TWODECINT NOT NULL, is_voided BOOLEAN NOT NULL);
+CREATE TABLE saleitems(sale_id INTEGER NOT NULL, price_at_sale TWODECINT NOT NULL, Quantity FOURDECINT NOT NULL, item_id INTEGER NOT NULL, FOREIGN KEY(sale_id) REFERENCES sales(sale_id), FOREIGN KEY(item_id) REFERENCES inventory(item_id));
 CREATE TABLE no_sale(date TEXT UNIQUE, times_pressed INT)
 CREATE TABLE inventory_decrements(decrement_id INTEGER PRIMARY KEY AUTOINCREMENT, datetime TEXT)
 CREATE TABLE inventory_decrements_items(decrement_id INTEGER, item_id INTEGER, decrement_quantity INTEGER, FOREIGN KEY(decrement_id) REFERENCES inventory_decrements(decrement_id), FOREIGN KEY(item_id) REFERENCES Inventory(item_id))
@@ -20,4 +20,6 @@ INSERT INTO Inventory VALUES(NULL, 'Test9', 1.23, 1, 'Test9', 100, 'Camping', 'N
 INSERT INTO seasonals VALUES(NULL, 'TwentyLetterLNameOOO', 'TwentyLetterFNameOOO', 'Long Site Name', 100.00)
 INSERT INTO seasonals VALUES(NULL, 'Smith', 'John', '1', 100.00)
 INSERT INTO seasonals VALUES(NULL, 'Doe', 'Jane', '2', 100.00)
+
+
 

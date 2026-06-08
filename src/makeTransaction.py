@@ -1,36 +1,37 @@
 import sqlite3
 from datetime import datetime
-
-date = datetime.today().strftime('%Y-%m-%d')
-date_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+from decimal import Decimal
+from enteritem import Dec4
 
 class Transaction:
 	def __init__(self, db_conn, db_cursor):
 		self.db_conn = db_conn
 		self.db_cursor = db_cursor
-		self.nontax = self.pretax = self.tax = self.total = 0
-		self.items_sold = self.cash_used = self.cc_used = 0
-		self.cash_tendered = self.cc_tendered = 0
+		self.nontax = self.pretax = self.tax = Decimal('0.0')
+		self.total = self.cash_used = self.cc_used = Decimal('0.0')
+		self.cash_tendered = self.cc_tendered = Decimal('0.0')
+		self.items_sold = Dec4('0.0')
 		self.items_list = []
 		self.returning = False
 		
 		
 	def complete_transaction(self, coupon_info = None):
-		global date
 		self.db_cursor.execute("INSERT INTO SALES VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-			(self.nontax, self.pretax, self.tax, self.total, self.items_sold, date,
+			(self.nontax, self.pretax, self.tax, self.total, Dec4(self.items_sold), datetime.today().strftime('%Y-%m-%d'),
 			datetime.now().strftime("%H:%M"), self.cash_used, self.cc_used, 0))
 		self.db_cursor.execute('''SELECT MAX(sale_id) FROM Sales''')
 		max_sale_id = (self.db_cursor.fetchall()[0])[0]
 		for item in self.items_list:
-			self.db_cursor.execute("INSERT OR IGNORE INTO SALEITEMS VALUES(?, ?, ?, ?, ?, ?)",
-				(max_sale_id, item[0], item[1], item[2], item[3], item[4]))
+			self.db_cursor.execute("INSERT OR IGNORE INTO SALEITEMS VALUES(?, ?, ?, ?)",
+				(max_sale_id, item[1], Dec4(item[4]), item[5]))
+			self.db_cursor.execute("SELECT Quantity FROM Inventory where Barcode = ?", (item[3],))
+			current_quantity = self.db_cursor.fetchall()[0][0]
 			if not self.returning:
-				self.db_cursor.execute("UPDATE INVENTORY SET Quantity = Quantity - ? WHERE barcode = ?",
-					(item[4], item[3]))
+				self.db_cursor.execute("UPDATE INVENTORY SET Quantity = ? WHERE barcode = ?",
+					(Dec4(current_quantity - item[4]), item[3]))
 			else:
-				self.db_cursor.execute("UPDATE INVENTORY SET Quantity = Quantity + ? WHERE barcode = ?",
-					(item[4], item[3]))
+				self.db_cursor.execute("UPDATE INVENTORY SET Quantity = ? WHERE barcode = ?",
+					(Dec4(current_quantity + item[4]), item[3]))
 		
 		#if seasonal_id is not None:
 			#self.db_cursor.execute('''INSERT INTO seasonal_sales VALUES (NULL, ?, ?)''', (seasonal_id, max_sale_id))
@@ -43,14 +44,16 @@ class Transaction:
 
 	def complete_as_decrement(self):
 		global datetime
-		self.db_cursor.execute('''INSERT INTO inventory_decrements VALUES (NULL, ?)''', (date_time, ))
+		self.db_cursor.execute('''INSERT INTO inventory_decrements VALUES (NULL, ?)''', (datetime.now().strftime('%Y-%m-%d_%H-%M-%S'), ))
 		self.db_cursor.execute('''SELECT MAX(decrement_id) FROM inventory_decrements''')
 		max_decrement_id = (self.db_cursor.fetchall()[0])[0]
 		for item in self.items_list:
 			self.db_cursor.execute("INSERT OR IGNORE INTO inventory_decrements_items VALUES (?, ?, ?)",
 				(max_decrement_id, item[5], item[4]))
-			self.db_cursor.execute("UPDATE Inventory SET Quantity = Quantity - ? WHERE barcode = ?",
-					(item[4], item[3]))
+			self.db_cursor.execute("SELECT Quantity FROM Inventory where Barcode = ?", (item[3],))
+			current_quantity = self.db_cursor.fetchall()[0][0]
+			self.db_cursor.execute("UPDATE Inventory SET Quantity = ? WHERE barcode = ?",
+					(Dec4(current_quantity - item[4]), item[3]))
 		self.db_conn.commit()
 
 		
@@ -58,7 +61,7 @@ class Transaction:
 
 		self.db_cursor.execute('''INSERT INTO seasonals ''')
 
-	def sell_item(self, entered_barcode):
+	def sell_item(self, entered_barcode, decimal_amount = Decimal('1')):
 	
 		self.db_cursor.execute('''SELECT "Name", "Price", "Taxable", item_id FROM Inventory WHERE Barcode = ?''',
 			(entered_barcode,))
@@ -68,23 +71,27 @@ class Transaction:
 		
 		results = list(results)
 		if results[2] == 1:
-			self.tax += round(results[1] * 0.06625, 2)
-			self.pretax += results[1]
+			self.tax += Decimal((results[1])) * Decimal('0.06625') * Decimal(decimal_amount)
+			self.pretax += (results[1]) * Decimal(decimal_amount)
 		else:
-			self.nontax += results[1]
-		self.total = round(self.nontax + self.pretax + self.tax, 2)
+			self.nontax += Decimal(results[1]) * Decimal(decimal_amount)
+		self.total = self.nontax + self.pretax + self.tax
 		if not any(entered_barcode in sublist for sublist in self.items_list):
-			self.items_list.append([results[0], results[1], results[2], entered_barcode, 1, results[3]])
-			quantity_sold = 1
+			self.items_list.append([results[0], Decimal(results[1]), results[2], entered_barcode, Decimal('1.0'), results[3]])
+			quantity_sold = Decimal('1.0')
 		else:
 			for sublist in self.items_list:
 				if entered_barcode in sublist:
-					sublist[-2] += 1
+					sublist[-2] += Decimal(decimal_amount)
 					quantity_sold = sublist[-2]
 					break
 
-		self.items_sold += 1	
+		
+		self.items_sold += Decimal(decimal_amount)	
 				
-		return self.total, results[0], results[1], results[2]
+		return self.total, results[0], Decimal(results[1]) / Decimal(100), results[2]
+
+
+
 		
 	

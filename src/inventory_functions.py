@@ -2,6 +2,7 @@ from state_manager import StateManager
 from widget_manager import * 
 import tkinter as tk
 import sqlite3
+from decimal import Decimal
 
 def update_barcode(state_manager: StateManager, barcode: str) -> None:
     state_manager.cursor.execute('''INSERT INTO updated_barcodes SELECT item_id, barcode, ? FROM Inventory WHERE Barcode = ?''', (barcode, barcode.lstrip('0')))
@@ -57,11 +58,11 @@ def enter_item_name(state_manager: StateManager, name: str) -> bool:
         return True
 
 def enter_item_price(
-        state_manager: StateManager, price: float) -> bool:
+        state_manager: StateManager, price: Decimal) -> bool:
     """Set the add item object's price. If we are not re-entering, change
     the necessary widgets to ask user whether the item is taxable."""
+    state_manager.add_item_object.price = (Decimal(price) / Decimal("100")).quantize(Decimal("0.01"))
 
-    state_manager.add_item_object.price = round(float(price[1:]), 2)
     if not state_manager.reentering:
         state_manager.add_item_index += 1
     elif state_manager.reentering:
@@ -125,15 +126,15 @@ def enter_item_confirmation(
             if state_manager.reentering:
                 state_manager.reentering = False
             elif state_manager.reentering_quantity:
-                state_manager.add_item_object.quantity = quantity
+                state_manager.add_item_object.quantity = Decimal(quantity)
                 state_manager.reentering_quantity = False
         elif not state_manager.reentering:
-            state_manager.add_item_object.quantity = quantity
+            state_manager.add_item_object.quantity = Decimal(quantity)
         elif state_manager.reentering:
             state_manager.reentering = False
         elif state_manager.reentering_quantity:
             ui.add_quantity_label.config(text="Please enter item's quantity:")
-            state_manager.add_item_object.quantity = quantity
+            state_manager.add_item_object.quantity = Decimal(quantity)
             state_manager.reentering_quantity = False
     
 
@@ -215,7 +216,7 @@ def print_confirmation_info(state_manager: StateManager, item_info_confirmation:
     else:
         item_info_confirmation.insert(tk.END, f"\nSub Cat.: {state_manager.add_item_object.subcategory}")
     item_info_confirmation.insert(tk.END, "\nBarcode: " + str(state_manager.add_item_object.barcode))
-    item_info_confirmation.insert(tk.END, " | Qty: " + str(state_manager.add_item_object.quantity), "justify_right")
+    item_info_confirmation.insert(tk.END, f" | Qty: {state_manager.add_item_object.quantity:.4f}", "justify_right")
     item_info_confirmation.insert(tk.END, f"\nVendor: {state_manager.add_item_object.vendor}")
     
     

@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 RegisterDatabase
 src/RegisterDatabase
+src/config.json

@@ -34,7 +34,7 @@ class WidgetManager:
         self.register_add_item_yes_no_frame = tk.Frame(self.register_add_item_prompt_frame)
         self.browse_transactions_frame = tk.Frame(self.root)
         self.browse_entry_frame = tk.Frame(self.browse_transactions_frame)
-        self.errors_frame = tk.Frame(self.root, width = 400, height = 300, borderwidth=20, relief="ridge", bg="black")
+        self.popup_frame = tk.Frame(self.root, width = 400, height = 300, borderwidth=20, relief="ridge", bg="black")
         self.seasonal_id_entry_frame = tk.Frame(self.root, width=400, height=300, borderwidth=20, relief='ridge', bg="black")
         self.datetime_frame = tk.Frame(self.root)
         self.edit_seasonal_frame = tk.Frame(self.root)
@@ -92,10 +92,10 @@ class WidgetManager:
         self.admin_menu_frame.columnconfigure(0, uniform="equal")
         self.admin_menu_frame.columnconfigure(1, uniform="equal")
 
-        self.errors_frame.place(relx=0.5, rely=0.5, anchor="center")
-        self.errors_frame.columnconfigure(0, weight=1)
-        self.errors_frame.columnconfigure(1, weight=0)
-        self.errors_frame.columnconfigure(2, weight=1)
+        self.popup_frame.place(relx=0.5, rely=0.5, anchor="center")
+        self.popup_frame.columnconfigure(0, weight=1)
+        self.popup_frame.columnconfigure(1, weight=0)
+        self.popup_frame.columnconfigure(2, weight=1)
 
         self.seasonal_id_entry_frame.place(relx=0.5, rely=0.5, anchor="center")
         self.seasonal_id_entry_frame.columnconfigure(0, weight=1)
@@ -136,7 +136,7 @@ class WidgetManager:
             bg="black", fg="#68FF00", justify="right", width=9)
         self.balance_entry.insert(tk.END, "$0.00")
         self.balance_entry.grid(column=1, row=0, sticky='e', padx=2)
-        self.balance_entry.bind("<FocusIn>", controller.return_invisible_entry_focus)
+        self.balance_entry.bind("<FocusIn>", self.return_invisible_entry_focus)
 
         # Invisible entry where user input actually occurs. Allows user entry to be untampered so 
         # same entry box can be used for barcodes and numberic values alike
@@ -152,7 +152,7 @@ class WidgetManager:
             fg="#68FF00")
         self.user_entry.insert(tk.END, "$0.00")
         self.user_entry.grid(column = 0, row = 0, sticky='nw')
-        self.user_entry.bind("<FocusIn>", controller.return_invisible_entry_focus)
+        self.user_entry.bind("<FocusIn>", self.return_invisible_entry_focus)
 
         self.register_info_frame.grid(column = 1, row = 0, sticky='nsew')
         self.sale_items_listbox = tk.Listbox(
@@ -160,7 +160,7 @@ class WidgetManager:
             height=8, font=("Courier New", 37), fg="white"
         )
         self.sale_items_listbox.grid(column = 1, row = 2, sticky='nsw')
-        self.sale_items_listbox.bind("<FocusIn>", controller.return_invisible_entry_focus)
+        self.sale_items_listbox.bind("<FocusIn>", self.return_invisible_entry_focus)
         self.sale_items_listbox.bind("<<ListboxSelect>>", lambda event: controller.on_sale_items_listbox_select())
         self.sale_items_scrollbar = tk.Scrollbar(
             self.register_frame, bg="white",
@@ -393,7 +393,7 @@ class WidgetManager:
 
         self.run_x_button = tk.Button(
             self.admin_menu_frame, text = "Run X", font=("Arial", 58),
-            height = 1, command = lambda: controller.run_x())
+            height = 1, command = lambda: controller.printer.run_x())
 
         self.new_item_button = tk.Button(
             self.admin_menu_frame, text = "Manage Inv", font=("Arial", 58),
@@ -516,7 +516,7 @@ class WidgetManager:
         )
         self.browse_text.tag_configure("bold", font=("Courier New", 40, "bold"))
         self.browse_text.grid(column = 1, row = 1, sticky='ew', pady=10)
-        self.browse_text.bind("<FocusIn>", self.controller.return_browse_entry_focus)
+        self.browse_text.bind("<FocusIn>", self.return_browse_entry_focus)
 
         self.browse_second_label = tk.Label(
             self.browse_transactions_frame, text="Press continue when satisfied", font=("Arial", 50)
@@ -608,35 +608,42 @@ class WidgetManager:
             text="Confirm", command = lambda: self.controller.state_manager.seasonal_id_var.set(self.seasonal_id_entry.get()))
         self.seasonal_id_button.grid(column = 1, row = 2, sticky='nsew')
 
-        # ============================
-        # Widgets for the Errors Frame
-        # ============================
+        # ===========================
+        # Widgets for the Popup Frame
+        # ===========================
 
-        self.error_label = tk.Label(self.errors_frame, text="ERROR:", font=("Arial", 50), fg="red", justify="center")
-        self.error_label.grid(column=1, row=0, sticky='ew')
+        self.popup_label = tk.Label(self.popup_frame, text="ERROR:", font=("Arial", 50), fg="red", justify="center")
+        self.popup_label.grid(column=1, row=0, sticky='ew')
 
-        self.error_description_label = tk.Label(self.errors_frame, text="", font=("Arial", 50))
-        self.error_description_label.grid(column = 1, row = 1, sticky='ew')
+        self.popup_description_label = tk.Label(self.popup_frame, text="", font=("Arial", 50))
+        self.popup_description_label.grid(column = 1, row = 1, sticky='ew')
 
-        self.error_ok_button = tk.Button(self.errors_frame, text="Ok", font=("Arial", 50),
-            command = lambda: self.errors_frame.lower())
-        self.error_ok_button.grid(column = 1, row = 2, sticky='ew')
+        self.popup_ok_button = tk.Button(self.popup_frame, text="Ok", font=("Arial", 50),
+            command = lambda: self.popup_frame.lower())
+        self.popup_ok_button.grid(column = 1, row = 2, sticky='ew')
 
-        self.error_back_confirm_frame = tk.Frame(self.errors_frame)
-        self.error_back_confirm_frame.columnconfigure(0, weight=1, uniform="equal")
-        self.error_back_confirm_frame.columnconfigure(1, weight=1, uniform="equal")
-        self.error_back_button = tk.Button(
-            self.error_back_confirm_frame, text="Back", font=("Arial", 50),
-            command = lambda: self.controller.state_manager.error_var.set("Back")
+        self.popup_back_confirm_frame = tk.Frame(self.popup_frame)
+        self.popup_back_confirm_frame.columnconfigure(0, weight=1, uniform="equal")
+        self.popup_back_confirm_frame.columnconfigure(1, weight=1, uniform="equal")
+        self.popup_back_button = tk.Button(
+            self.popup_back_confirm_frame, text="Back", font=("Arial", 50),
+            command = lambda: self.controller.state_manager.popup_var.set("Back")
         )
-        self.error_back_button.grid(column = 0, row = 0, sticky='nsew')
+        self.popup_back_button.grid(column = 0, row = 0, sticky='nsew')
 
-        self.error_confirm_button = tk.Button(
-            self.error_back_confirm_frame, text="Confirm", font=("Arial", 50),
-            command = lambda: self.controller.state_manager.error_var.set("Confirm")
+        self.popup_confirm_button = tk.Button(
+            self.popup_back_confirm_frame, text="Confirm", font=("Arial", 50),
+            command = lambda: self.controller.state_manager.popup_var.set("Confirm")
         )
         
-        self.error_confirm_button.grid(column = 1 , row = 0, sticky='nsew')
+        self.popup_confirm_button.grid(column = 1 , row = 0, sticky='nsew')
+
+        self.popup_listbox = tk.Listbox(
+            self.popup_frame, font=("Courier New", 40),
+            height = 4, bg="black", fg="white", width=31
+        )
+
+
         
         # =============================
         # Widgets for Manual Time Entry
@@ -1007,7 +1014,7 @@ class WidgetManager:
 
         self.add_quantity_entry = tk.Entry(
             self.add_quantity_frame, font=("Arial", 50), justify="right",
-            validate='key', vcmd=self.controller.vcmd)
+            validate='key')
         self.add_quantity_entry.grid(column = 1, row = 1, sticky='ew', pady=15)
         self.add_quantity_entry.bind("<Return>", lambda e: self.controller.on_add_item_enter())
 
@@ -1168,11 +1175,11 @@ class WidgetManager:
     def setup_browse_seasonals(self):
         self.browse_label.grid_forget()
         self.browse_transactions_frame.tkraise()
-        self.error_description_label.config(font=("Arial", 35))	
-        self.error_description_label.config(text='You are now browsing seasonals. ' \
+        self.popup_description_label.config(font=("Arial", 35))	
+        self.popup_description_label.config(text='You are now browsing seasonals. ' \
         'Enter a\nseasonal ID in the entry box and select "GO"\nto jump to one. ' \
         'Press one of the buttons\nto delete, add, or edit that seasonal.')
-        self.errors_frame.tkraise()
+        self.popup_frame.tkraise()
         self.browse_entry.focus_set()
 
     def enter_main_menu(self):
@@ -1180,7 +1187,7 @@ class WidgetManager:
         self.invisible_entry.delete(0, tk.END)
 
     def bind_invisible_entry_keys(self):
-        for key in ("Home", "Up", "Prior", "Left","Begin", "Right", "End", "Down", "Next", "Insert"):
+        for key in ("Home", "Up", "Prior", "Left","Begin", "Right", "End", "Down", "Next", "Insert", "Delete"):
             self.invisible_entry.bind(f"<KeyRelease-KP_{key}>", lambda e: self.controller.number_pressed())
         self.invisible_entry.bind("<KeyRelease-BackSpace>", self.controller.clear)
         self.invisible_entry.bind("<KeyRelease-KP_Enter>", lambda event: self.controller.on_cash())
@@ -1252,13 +1259,61 @@ class WidgetManager:
         subprocess.run(['sudo', 'date', '-s', time_string])
         self.quit_program()
 
-    def setup_errors_ok(self):
-        self.error_label.config(text="ERROR:")
-        self.error_ok_button.grid(column = 1, row = 2, sticky='nsew')
-        self.error_back_confirm_frame.grid_forget()
+    def setup_popup_ok(self):
+        self.popup_label.config(text="ERROR:")
+        self.popup_ok_button.grid(column = 1, row = 2, sticky='nsew')
+        self.popup_back_confirm_frame.grid_forget()
 
-    def setup_errors_back_confirm(self):
-        self.error_label.config(text="NOTE:")
-        self.error_ok_button.grid_forget()
-        self.error_back_confirm_frame.grid(column = 1, row = 2, sticky='ew')
+    def setup_popup_back_confirm(self):
+        self.popup_label.config(text="NOTE:")
+        self.popup_ok_button.grid_forget()
+        self.popup_back_confirm_frame.grid(column = 1, row = 2, sticky='ew')
 
+    def return_invisible_entry_focus(self, event):
+        """Bound to FocusIn on register widgets. Returns focus to invisible
+        entry, and returns 'break' to stop propagating event."""
+        self.invisible_entry.focus_set()
+        return "break"
+
+    def return_browse_entry_focus(self, event):
+        """Bound to FocusIn on browse items textbox. Returns focus to browse_entry,
+        and returns 'break' to stop propagating event."""
+        self.browse_entry.focus_set()
+        return "break"
+
+    def add_item_go_back(self, add_item_index):
+
+        match add_item_index:
+            case 0:
+                self.add_barcode_frame.tkraise()
+                self.add_barcode_entry.focus_set()
+            case 1:
+                self.add_name_frame.tkraise()
+                self.add_name_entry.focus_set()
+            case 2:
+                self.add_price_frame.tkraise()
+                self.add_price_invisible_entry.delete(0, tk.END)
+                self.add_price_entry.focus_set()
+            case 3:
+                self.add_tax_frame.tkraise()
+            case 4:
+                self.add_category_frame.tkraise()
+            case 5:
+                self.populate_subcategory_listbox(self.state_manager.add_item_object.category)
+                self.add_subcategory_frame.tkraise()
+            case 6:
+                self.add_vendor_frame.tkraise()
+            case 7:
+                self.add_quantity_frame.tkraise()
+
+    def print_seasonal_info(self, seasonal_info):
+        self.browse_text.delete("1.0", "end")
+        #self.ui.browse_text.insert("end", f"ID: {seasonal_info[0]}  |  Site: {seasonal_info[3]}\n")
+        self.browse_text.insert("end", "ID: ", "bold")
+        self.browse_text.insert("end", seasonal_info[0])
+        self.browse_text.insert("end", "|Site: ", "bold")
+        self.browse_text.insert("end", f"{seasonal_info[3]}")
+        self.browse_text.insert("end", "|Balance: ", "bold")
+        self.browse_text.insert("end", f"{seasonal_info[4]:.2f}\n")
+        self.browse_text.insert("end", "Name: ", "bold")
+        self.browse_text.insert("end", f"{seasonal_info[1]}\n{seasonal_info[2]}\n")
