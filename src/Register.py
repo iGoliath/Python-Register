@@ -66,7 +66,7 @@ class Register:
 	def perform_backup(self):
 		time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 		source_db = sqlite3.connect(self.current_dir / 'RegisterDatabase')
-		dest_db = sqlite3.connect(f'/media/tbc/3CC9-2F54/RegisterDatabaseBackup_{time}.db')
+		dest_db = sqlite3.connect(f'/media/tbc/aed49e02-11c4-40be-b39f-9711a0b3c457/RegisterDatabaseBackup_{time}.db')
 		source_db.backup(dest_db)
 		source_db.close()
 		dest_db.close()
@@ -78,8 +78,8 @@ class Register:
 
 	def remove_old_backups(self, days):
 		cutoff = time.time() - (days * 86400)
-		for filename in os.listdir('/media/tbc/3CC9-2F54/'):
-			filepath = os.path.join('/media/tbc/3CC9-2F54/', filename)
+		for filename in os.listdir('/media/tbc/aed49e02-11c4-40be-b39f-9711a0b3c457/'):
+			filepath = os.path.join('/media/tbc/aed49e02-11c4-40be-b39f-9711a0b3c457/', filename)
 			if os.path.getmtime(filepath) < cutoff and not os.path.isdir(filepath):
 				os.remove(filepath)
 				
