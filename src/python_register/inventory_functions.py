@@ -1,12 +1,12 @@
-from state_manager import StateManager
-from widget_manager import * 
+from .state_manager import StateManager
+from .widget_manager import WidgetManager
 import tkinter as tk
 import sqlite3
 from decimal import Decimal
 
 def update_barcode(state_manager: StateManager, barcode: str) -> None:
-    state_manager.cursor.execute('''INSERT INTO updated_barcodes SELECT item_id, barcode, ? FROM Inventory WHERE Barcode = ?''', (barcode, barcode.lstrip('0')))
-    state_manager.cursor.execute('''UPDATE Inventory SET Barcode = ? WHERE Barcode = ?''', (barcode, barcode.lstrip('0')))
+    state_manager.cursor.execute('''INSERT INTO updated_barcodes SELECT item_id, item_barcode, ? FROM inventory WHERE item_barcode = ?''', (barcode, barcode.lstrip('0')))
+    state_manager.cursor.execute('''UPDATE inventory SET item_barcode = ? WHERE item_barcode = ?''', (barcode, barcode.lstrip('0')))
     state_manager.conn.commit()
 def check_item_exists(state_manager: StateManager, barcode: str) -> bool:
     """This function is the pre-requisite to adding an item. We want to
@@ -15,7 +15,7 @@ def check_item_exists(state_manager: StateManager, barcode: str) -> bool:
     if (len(barcode.lstrip('0')) != (len(barcode))):
         update_barcode(state_manager, barcode)
     
-    state_manager.cursor.execute("SELECT * FROM INVENTORY WHERE BARCODE=?", (barcode,))
+    state_manager.cursor.execute("SELECT * FROM inventory WHERE item_barcode = ?", (barcode,))
     results = state_manager.cursor.fetchall()
     if results:
         found_item_info = results[0]
@@ -25,9 +25,12 @@ def check_item_exists(state_manager: StateManager, barcode: str) -> bool:
         state_manager.add_item_object.barcode = found_item_info[4]
         state_manager.add_item_object.old_barcode = found_item_info[4]
         state_manager.add_item_object.quantity = found_item_info[5]
-        state_manager.add_item_object.category = found_item_info[6]
-        state_manager.add_item_object.subcategory = found_item_info[7]
-        state_manager.add_item_object.vendor = found_item_info[8]
+        category = state_manager.cursor.execute('''SELECT category_name FROM categories WHERE category_id = ?''', (found_item_info[6], )).fetchone()
+        state_manager.add_item_object.category = category[0] if category else None
+        subcategory = state_manager.cursor.execute('''SELECT category_name FROM categories WHERE category_id = ?''', (found_item_info[7], )).fetchone()
+        state_manager.add_item_object.subcategory = subcategory[0] if subcategory else None
+        vendor = state_manager.cursor.execute('''SELECT vendor_name FROM vendors WHERE vendor_id = ?''', (found_item_info[8], )).fetchone()
+        state_manager.add_item_object.vendor = vendor[0] if vendor else None
         state_manager.add_item_index = state_manager.ADD_ITEM_LAST_STEP
         state_manager.updating_existing_item = True
         return True
@@ -74,10 +77,11 @@ def enter_item_taxable(
     """Waits for the user to click yes/no for whether the item is taxable. 
     Set the add_item_object variable accordingly, and clean up widgets."""
 
-    if yes_no == "yes":
+    if yes_no == "1":
         state_manager.add_item_object.taxable = 1
-    else:
+    elif yes_no == "0":
         state_manager.add_item_object.taxable = 0
+        
     if not state_manager.reentering:
         state_manager.add_item_index+=1
         return False
@@ -118,7 +122,7 @@ def enter_item_vendor(state_manager: StateManager, ui: WidgetManager) -> bool:
         return True
 
 def enter_item_confirmation(
-        state_manager: StateManager, quantity: int, root: tk.Tk,
+        state_manager: StateManager, quantity: int,
         ui: WidgetManager, skipping_ahead = False) -> bool:
     """Last step of the 'add item' process. """
     if not skipping_ahead:
@@ -140,21 +144,7 @@ def enter_item_confirmation(
 
     ui.add_item_label.config(text="Confirm item info is correct: ")
     print_confirmation_info(state_manager, ui.item_info_confirmation)
-    root.wait_variable(state_manager.yes_no_var)
-    yes_no_answer = state_manager.yes_no_var.get()
 
-    if yes_no_answer == 'yes':
-        if state_manager.coming_from_register:
-            yes_register(state_manager, ui)
-            return True
-        elif state_manager.updating_existing_item:
-            yes_existing(state_manager, ui)
-            return False
-        elif not state_manager.coming_from_register:
-            yes_not_register(state_manager, ui)
-            return False
-    elif yes_no_answer == 'no':
-        return None
 
 
 def yes_register(
@@ -189,7 +179,7 @@ def yes_not_register(
     try:
         state_manager.add_item_object.commit_item()
     except sqlite3.Error as e:
-        print(f"{e} when committing item normally")
+        print(f"{e} Error when committing item normally")
         ui.add_item_label.config(text="Commit errored. Please try again")
         #Return user to step 1
     finally:

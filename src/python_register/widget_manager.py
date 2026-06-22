@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
-import widget_functions as wf
+from . import inventory_functions as invf
+from . import widget_functions as wf
 from datetime import datetime
 import subprocess
 
@@ -46,6 +47,20 @@ class WidgetManager:
         self.coupon_buttons_frame = tk.Frame(self.coupon_frame)
         self.register_lookup_items_frame = tk.Frame(self.root)
         self.register_lookup_items_buttons_frame = tk.Frame(self.register_lookup_items_frame)
+
+        self.name_var = tk.StringVar()
+        self.barcode_var = tk.StringVar()
+        self.price_var = tk.StringVar()
+        self.tax_var = tk.StringVar()
+        self.quantity_var = tk.StringVar()
+        self.category_var = tk.StringVar()
+        self.subcategory_var = tk.StringVar()
+        self.vendor_var = tk.StringVar()
+
+        self.invisible_entry_var = tk.StringVar()
+        self.popup_label_var = tk.StringVar()
+        self.popup_description_label_var = tk.StringVar()
+
 
         
         self._init_add_barcode_frame()
@@ -141,7 +156,7 @@ class WidgetManager:
         # Invisible entry where user input actually occurs. Allows user entry to be untampered so 
         # same entry box can be used for barcodes and numberic values alike
 
-        self.invisible_entry = tk.Entry(self.register_frame)
+        self.invisible_entry = tk.Entry(self.register_frame, textvariable=self.invisible_entry_var)
         self.invisible_entry.place(x=-100, y=-100)
         self.invisible_entry.bind("<Return>", controller.process_sale)
         self.bind_invisible_entry_keys()
@@ -612,10 +627,10 @@ class WidgetManager:
         # Widgets for the Popup Frame
         # ===========================
 
-        self.popup_label = tk.Label(self.popup_frame, text="ERROR:", font=("Arial", 50), fg="red", justify="center")
+        self.popup_label = tk.Label(self.popup_frame, text="ERROR:", font=("Arial", 50), fg="red", justify="center", textvariable=self.popup_label_var)
         self.popup_label.grid(column=1, row=0, sticky='ew')
 
-        self.popup_description_label = tk.Label(self.popup_frame, text="", font=("Arial", 50))
+        self.popup_description_label = tk.Label(self.popup_frame, text="", font=("Arial", 50), textvariable=self.popup_description_label_var)
         self.popup_description_label.grid(column = 1, row = 1, sticky='ew')
 
         self.popup_ok_button = tk.Button(self.popup_frame, text="Ok", font=("Arial", 50),
@@ -741,7 +756,7 @@ class WidgetManager:
         tk.Label(self.add_barcode_frame, text="Please enter item's barcode:", 
         font=("Arial", 50), width=25).grid(column = 1, row = 0, sticky='ew')
         self.add_barcode_entry = tk.Entry(
-            self.add_barcode_frame, font=("Arial", 50), justify="right")
+            self.add_barcode_frame, font=("Arial", 50), justify="right", textvariable=self.barcode_var)
         self.add_barcode_entry.grid(column = 1, row = 1, sticky='ew', pady=15)
         self.add_barcode_entry.bind("<Return>", lambda event: self.controller.on_add_item_enter())
         tk.Button(
@@ -768,7 +783,7 @@ class WidgetManager:
         tk.Label(self.add_name_frame, text="Please enter item's name:", 
         font=("Arial", 50), width=25).grid(column = 1, row = 0, sticky='ew')
         self.add_name_entry = tk.Entry(
-            self.add_name_frame, font=("Arial", 50), justify="right")
+            self.add_name_frame, font=("Arial", 50), justify="right", textvariable=self.name_var)
         self.add_name_entry.grid(column = 1, row = 1, sticky='ew', pady=15)
         self.add_name_entry.bind("<Return>", lambda event: self.controller.on_add_item_enter())
         tk.Button(
@@ -804,7 +819,7 @@ class WidgetManager:
 
         self.add_price_invisible_entry = tk.Entry(
             self.add_price_frame, validate='key', vcmd=self.controller.vcmd,
-            textvariable=self.controller.state_manager.add_price_var)
+            textvariable=self.price_var)
         self.add_price_invisible_entry.place(x=-100, y=-100)
         self.add_price_invisible_entry.bind("<Return>", lambda event: self.controller.on_add_item_enter())
         for key in ("Left", "Right", "Up", "Down"):
@@ -841,12 +856,12 @@ class WidgetManager:
         
         tk.Button(
             yes_no_frame, text="Yes", font=("Arial", 100),
-            command= lambda: self.controller.on_yes_no("yes")).grid(
+            command= lambda: self.tax_var.set("1")).grid(
                 column = 0, row = 0, sticky='ew'
             )
         tk.Button(
-            yes_no_frame, text="No", font=("Ariak", 100),
-            command= lambda: self.controller.on_yes_no("no")).grid(
+            yes_no_frame, text="No", font=("Arial", 100),
+            command= lambda: self.tax_var.set("0")).grid(
                 column = 1, row = 0, sticky='ew'
             )
 
@@ -1014,7 +1029,7 @@ class WidgetManager:
 
         self.add_quantity_entry = tk.Entry(
             self.add_quantity_frame, font=("Arial", 50), justify="right",
-            validate='key')
+            validate='key', textvariable=self.quantity_var)
         self.add_quantity_entry.grid(column = 1, row = 1, sticky='ew', pady=15)
         self.add_quantity_entry.bind("<Return>", lambda e: self.controller.on_add_item_enter())
 

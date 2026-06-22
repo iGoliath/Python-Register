@@ -3,3 +3,4 @@ __pycache__/
 RegisterDatabase
 src/RegisterDatabase
 src/config.json
+src/convert.py

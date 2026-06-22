@@ -1,7 +1,7 @@
 import sqlite3
 from datetime import datetime
 from decimal import Decimal
-from enteritem import Dec4
+from .enter_item import Dec4
 
 class Transaction:
 	def __init__(self, db_conn, db_cursor):
@@ -16,28 +16,28 @@ class Transaction:
 		
 		
 	def complete_transaction(self, coupon_info = None):
-		self.db_cursor.execute("INSERT INTO SALES VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		self.db_cursor.execute("INSERT INTO sales VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			(self.nontax, self.pretax, self.tax, self.total, Dec4(self.items_sold), datetime.today().strftime('%Y-%m-%d'),
 			datetime.now().strftime("%H:%M"), self.cash_used, self.cc_used, 0))
-		self.db_cursor.execute('''SELECT MAX(sale_id) FROM Sales''')
+		self.db_cursor.execute('''SELECT MAX(sale_id) FROM sales''')
 		max_sale_id = (self.db_cursor.fetchall()[0])[0]
 		for item in self.items_list:
-			self.db_cursor.execute("INSERT OR IGNORE INTO SALEITEMS VALUES(?, ?, ?, ?)",
+			self.db_cursor.execute("INSERT OR IGNORE INTO sale_items VALUES(?, ?, ?, ?)",
 				(max_sale_id, item[1], Dec4(item[4]), item[5]))
-			self.db_cursor.execute("SELECT Quantity FROM Inventory where Barcode = ?", (item[3],))
+			self.db_cursor.execute("SELECT item_quantity FROM inventory WHERE item_barcode = ?", (item[3],))
 			current_quantity = self.db_cursor.fetchall()[0][0]
 			if not self.returning:
-				self.db_cursor.execute("UPDATE INVENTORY SET Quantity = ? WHERE barcode = ?",
+				self.db_cursor.execute("UPDATE inventory SET item_quantity = ? WHERE item_barcode = ?",
 					(Dec4(current_quantity - item[4]), item[3]))
 			else:
-				self.db_cursor.execute("UPDATE INVENTORY SET Quantity = ? WHERE barcode = ?",
+				self.db_cursor.execute("UPDATE inventory SET item_quantity = ? WHERE item_barcode = ?",
 					(Dec4(current_quantity + item[4]), item[3]))
 		
 		#if seasonal_id is not None:
 			#self.db_cursor.execute('''INSERT INTO seasonal_sales VALUES (NULL, ?, ?)''', (seasonal_id, max_sale_id))
 
 		if coupon_info:
-			self.db_cursor.execute("INSERT INTO coupons VALUES(NULL, ?, ?, ?)", (max_sale_id, coupon_info[0], coupon_info[1]))
+			self.db_cursor.execute("INSERT INTO coupons VALUES (NULL, ?, ?, ?)", (max_sale_id, coupon_info[0], coupon_info[1]))
 
 
 		self.db_conn.commit()
@@ -50,9 +50,9 @@ class Transaction:
 		for item in self.items_list:
 			self.db_cursor.execute("INSERT OR IGNORE INTO inventory_decrements_items VALUES (?, ?, ?)",
 				(max_decrement_id, item[5], item[4]))
-			self.db_cursor.execute("SELECT Quantity FROM Inventory where Barcode = ?", (item[3],))
+			self.db_cursor.execute("SELECT item_quantity FROM inventory WHERE item_barcode = ?", (item[3],))
 			current_quantity = self.db_cursor.fetchall()[0][0]
-			self.db_cursor.execute("UPDATE Inventory SET Quantity = ? WHERE barcode = ?",
+			self.db_cursor.execute("UPDATE inventory SET item_quantity = ? WHERE item_barcode = ?",
 					(Dec4(current_quantity - item[4]), item[3]))
 		self.db_conn.commit()
 
@@ -63,7 +63,7 @@ class Transaction:
 
 	def sell_item(self, entered_barcode, decimal_amount = Decimal('1')):
 	
-		self.db_cursor.execute('''SELECT "Name", "Price", "Taxable", item_id FROM Inventory WHERE Barcode = ?''',
+		self.db_cursor.execute('''SELECT item_name, item_price, item_taxable, item_id FROM inventory WHERE item_barcode = ?''',
 			(entered_barcode,))
 		results = self.db_cursor.fetchone()
 		if not results:

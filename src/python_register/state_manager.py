@@ -1,5 +1,5 @@
-from makeTransaction import * 
-from enteritem import *
+from .make_transaction import Transaction
+from .enter_item import Dec4, AddToInventory
 import tkinter as tk
 import sqlite3
 from pathlib import Path
@@ -13,7 +13,7 @@ sqlite3.register_converter("FOURDECINT", lambda b: Dec4(b.decode()) / Dec4("1000
 
 
 class StateManager:
-    def __init__(self, root_window):
+    def __init__(self, root_window, database_name, db_connection):
         self.add_item_index = self.coupon = 0
         self.sale_items_listbox_index = -1
         self.coupon_reason = ''
@@ -22,7 +22,6 @@ class StateManager:
         self.yes_no_var = tk.StringVar(root_window)
         self.seasonal_id_var = tk.StringVar(root_window)
         self.return_var = tk.StringVar(root_window)
-        self.add_price_var = tk.StringVar(root_window)
         self.void_var = tk.StringVar(root_window)
         self.item_lookup_var = tk.StringVar(root_window)
         self.browse_index = tk.IntVar(root_window)
@@ -30,7 +29,12 @@ class StateManager:
         self.sale_items_listbox_var = tk.IntVar(root_window, -1)
         self.binding_manager = None
         self.current_dir = Path(__file__).parent
-        self.conn = sqlite3.connect(self.current_dir / 'RegisterDatabase', detect_types=sqlite3.PARSE_DECLTYPES)
+        if db_connection == None:
+            self.conn = sqlite3.connect(self.current_dir / database_name, detect_types=sqlite3.PARSE_DECLTYPES)
+        else:
+            self.conn = db_connection
+        
+        self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA foreign_keys = ON")
         self.cursor = self.conn.cursor()
         self.trans = Transaction(self.conn, self.cursor)

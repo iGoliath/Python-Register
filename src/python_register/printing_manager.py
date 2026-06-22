@@ -21,7 +21,7 @@ class Printer:
 				sale_info[i] *= -1
 
 		for sublist in items:
-			self.state_manager.cursor.execute('''SELECT Name from Inventory where item_id = ?''', (sublist[3], ))
+			self.state_manager.cursor.execute('''SELECT item_name FROM inventory WHERE item_id = ?''', (sublist[3], ))
 			self.printer.textln(self.state_manager.cursor.fetchall()[0][0])
 			if sublist[3] == 1:
 				self.printer.text("TX ")
@@ -69,7 +69,7 @@ class Printer:
 			gross_total_wo_tax = 0
 
 			for category in ("cash_used", "cc_used", "non_tax", "pre_tax", "Tax"):
-				self.state_manager.cursor.execute('''SELECT "%s" FROM SALES WHERE sale_date >= ? AND sale_date <= ? AND is_voided != 1''' % (category), (self.config.data['tally_begin_date'], end_of_day, ))
+				self.state_manager.cursor.execute('''SELECT "%s" FROM sales WHERE sale_date >= ? AND sale_date <= ? AND is_voided != 1''' % (category), (self.config.data['tally_begin_date'], end_of_day, ))
 				sum_in_question = sum(Decimal(row[0]) for row in self.state_manager.cursor.fetchall())
 				if category in ("non_tax", "pre_tax", "tax"):
 					gross_total += sum_in_question
@@ -79,7 +79,7 @@ class Printer:
 				spaces = 29 - len(category.split()[0]) - len(f"{sum_in_question}")
 				self.printer.textln(f"{category.split()[0]} Collected: {' ' * spaces}${sum_in_question}\n")
 			
-			self.state_manager.cursor.execute('''SELECT price_at_sale, quantity FROM saleitems JOIN sales ON saleitems.sale_id = sales.sale_id WHERE saleitems.item_id IN (78, 79, 92, 692, 693, 1274) AND sales.sale_date >= ? AND sales.sale_date <= ?''', (self.config.data['tally_begin_date'], end_of_day, ))
+			self.state_manager.cursor.execute('''SELECT price_at_sale, quantity FROM sale_items JOIN sales ON sale_items.sale_id = sales.sale_id WHERE sale_items.item_id IN (78, 79, 92, 692, 693, 1274) AND sales.sale_date >= ? AND sales.sale_date <= ?''', (self.config.data['tally_begin_date'], end_of_day, ))
 			propane_sold = sum(row[0] * row[1] for row in self.state_manager.cursor.fetchall()).quantize(Decimal("0.01"))
 			spaces = 42 - 15 - len(f"{propane_sold}")
 			self.printer.textln(f"Propane Sold: {' ' * spaces}${propane_sold}\n")
@@ -90,10 +90,16 @@ class Printer:
 			spaces = self.config.data['printing_width'] - 22 - len(f"{gross_total_wo_tax:.2f}")
 			self.printer.textln(f"Gross Total w/o Tax: {' ' * spaces}${gross_total_wo_tax:.2f}\n")
 
-			self.state_manager.cursor.execute('''SELECT total FROM Sales WHERE total < 0 AND sale_date = ?''', (datetime.today().strftime('%Y-%m-%d'), ))
-			total_returns = sum(row[0] for row in self.state_manager.cursor.fetchall()).quantize(Decimal("0.01"))
-			spaces = 42 - 15 - len(f"{total_returns}")
-			self.printer.textln(f"Total Returns: {' ' * spaces}${abs(total_returns)}\n")
+			self.state_manager.cursor.execute('''SELECT total FROM sales WHERE total < 0 AND sale_date = ?''', (datetime.today().strftime('%Y-%m-%d'), ))
+			results = self.state_manager.cursor.fetchall()
+			if results == []:
+				total_returns = 0
+				spaces = 42 - 16 - len(f"{total_returns:.2f}")
+				self.printer.textln(f"Total Returns: {' ' * spaces}${abs(total_returns):.2f}\n")
+			else:
+				total_returns = sum(row[0] for row in results).quantize(Decimal("0.01"))
+				spaces = 42 - 15 - len(f"{total_returns}")
+				self.printer.textln(f"Total Returns: {' ' * spaces}${abs(total_returns):.2f}\n")
 
 			self.state_manager.cursor.execute('''SELECT SUM(times_pressed) FROM no_sale WHERE date >= ? AND date <= ?''', (self.config.data['tally_begin_date'], end_of_day, ))
 			results = self.state_manager.cursor.fetchall()

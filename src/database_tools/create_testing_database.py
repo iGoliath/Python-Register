@@ -11,7 +11,7 @@ if os.path.exists(database_path):
 conn = sqlite3.connect(database_path)
 cursor = conn.cursor()
 
-with open('database_commands.txt', 'r') as fp:
+with open(Path(__file__).parent / 'database_commands.txt') as fp:
     text = fp.read().split("\n")
 
     for command in text:
