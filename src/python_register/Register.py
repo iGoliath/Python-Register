@@ -871,7 +871,7 @@ if __name__ == "__main__":
 	pygame.mixer.init()
 	register.enter_register_frame()
 
-	'''if register.config.data['manual_time_last_boot']:
+	if register.config.data['manual_time_last_boot']:
 		results = subprocess.run(
 			['ping', '-c', '1', '-W', '10', '8.8.8.8'], capture_output=True, text=True)
 		if results.returncode == 0:
@@ -882,7 +882,7 @@ if __name__ == "__main__":
 			)
 			register.ui.popup_frame.tkraise()
 	elif not register.check_time_synced():
-		register.ui.datetime_frame.tkraise()'''
+		register.ui.datetime_frame.tkraise()
 
 	root.after(500, lambda: root.attributes("-fullscreen", True))
 
