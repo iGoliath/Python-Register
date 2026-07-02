@@ -68,7 +68,7 @@ class Printer:
 			gross_total = 0
 			gross_total_wo_tax = 0
 
-			for category in ("cash_used", "cc_used", "non_tax", "pre_tax", "Tax"):
+			for category in ("cash_used", "cc_used", "non_tax", "pre_tax", "tax"):
 				self.state_manager.cursor.execute('''SELECT "%s" FROM sales WHERE sale_date >= ? AND sale_date <= ? AND is_voided != 1''' % (category), (self.config.data['tally_begin_date'], end_of_day, ))
 				sum_in_question = sum(Decimal(row[0]) for row in self.state_manager.cursor.fetchall())
 				if category in ("non_tax", "pre_tax", "tax"):

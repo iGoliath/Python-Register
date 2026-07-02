@@ -19,17 +19,17 @@ def check_item_exists(state_manager: StateManager, barcode: str) -> bool:
     results = state_manager.cursor.fetchall()
     if results:
         found_item_info = results[0]
-        state_manager.add_item_object.name = found_item_info[1]
-        state_manager.add_item_object.price = found_item_info[2]
-        state_manager.add_item_object.taxable = found_item_info[3]
-        state_manager.add_item_object.barcode = found_item_info[4]
-        state_manager.add_item_object.old_barcode = found_item_info[4]
-        state_manager.add_item_object.quantity = found_item_info[5]
-        category = state_manager.cursor.execute('''SELECT category_name FROM categories WHERE category_id = ?''', (found_item_info[6], )).fetchone()
+        state_manager.add_item_object.name = found_item_info['item_name']
+        state_manager.add_item_object.price = found_item_info['item_price']
+        state_manager.add_item_object.taxable = found_item_info['item_taxable']
+        state_manager.add_item_object.barcode = found_item_info['item_barcode']
+        state_manager.add_item_object.old_barcode = found_item_info['item_barcode']
+        state_manager.add_item_object.quantity = found_item_info['item_quantity']
+        category = state_manager.cursor.execute('''SELECT category_name FROM categories WHERE category_id = ?''', (found_item_info['category_id'], )).fetchone()
         state_manager.add_item_object.category = category[0] if category else None
-        subcategory = state_manager.cursor.execute('''SELECT category_name FROM categories WHERE category_id = ?''', (found_item_info[7], )).fetchone()
+        subcategory = state_manager.cursor.execute('''SELECT category_name FROM categories WHERE category_id = ?''', (found_item_info['subcategory_id'], )).fetchone()
         state_manager.add_item_object.subcategory = subcategory[0] if subcategory else None
-        vendor = state_manager.cursor.execute('''SELECT vendor_name FROM vendors WHERE vendor_id = ?''', (found_item_info[8], )).fetchone()
+        vendor = state_manager.cursor.execute('''SELECT vendor_name FROM vendors WHERE vendor_id = ?''', (found_item_info['vendor_id'], )).fetchone()
         state_manager.add_item_object.vendor = vendor[0] if vendor else None
         state_manager.add_item_index = state_manager.ADD_ITEM_LAST_STEP
         state_manager.updating_existing_item = True
@@ -197,7 +197,7 @@ def print_confirmation_info(state_manager: StateManager, item_info_confirmation:
         item_info_confirmation.insert(tk.END, " | Tax?: Yes", "justify_right")
     else:
         item_info_confirmation.insert(tk.END, " | Tax? : No", "justify_right")
-    item_info_confirmation.insert(tk.END, "\nCat.: " + state_manager.add_item_object.category)
+    item_info_confirmation.insert(tk.END, f"\nCat.: {state_manager.add_item_object.category}")
     if state_manager.add_item_object.subcategory != None:
         if len(state_manager.add_item_object.subcategory) <= 30:
             item_info_confirmation.insert(tk.END, f"\nSub Cat.: {state_manager.add_item_object.subcategory}")

@@ -10,6 +10,8 @@ class WidgetManager:
     def __init__(self, root, controller):
         self.root = root
         self.controller = controller
+        self.vcmd = (self.root.register(self.only_numbers), '%P')
+
 
         """Initialize all frames necessary for the program"""
 
@@ -539,7 +541,7 @@ class WidgetManager:
        
         self.browse_entry = tk.Entry(
             self.browse_entry_frame, font=("Arial", 35),
-            width = 10, validate='key', vcmd=self.controller.vcmd)
+            width = 10, validate='key', vcmd=self.vcmd)
         self.browse_entry.bind("<Return>", lambda event: self.controller.state_manager.browse_index.set(int(self.browse_entry.get())))
         self.browse_entry.grid(column = 0, row = 0, sticky='nsew')
         self.browse_entry_frame.grid(column = 1, row = 2, sticky='ew', pady=30)
@@ -615,7 +617,7 @@ class WidgetManager:
 
         self.seasonal_id_entry = tk.Entry(
             self.seasonal_id_entry_frame, font=("Arial", 50),
-            validate='key', vcmd=self.controller.vcmd)
+            validate='key', vcmd=self.vcmd)
         self.seasonal_id_entry.grid(column = 1, row = 1, sticky='nsew')
 
         self.seasonal_id_button = tk.Button(
@@ -739,6 +741,13 @@ class WidgetManager:
             command = lambda: self.set_system_time())
         
         self.datetime_confirm_button.grid(column = 1, row = 3, sticky='nsew')
+    
+    def only_numbers(self, P):
+        """Check if potential key is a number or space, return false if not"""
+        if P.isdigit() or P == "":
+            return True
+        else:
+            return False
 
     def return_to_register(self):
         self.register_frame.tkraise()
@@ -777,6 +786,12 @@ class WidgetManager:
             back_quit_frame, text="Quit", font=("Arial", 50),
             command = lambda: self.main_menu_frame.tkraise()).grid(
                 column = 1, row = 0, sticky='ew'
+            )
+        
+        tk.Button(
+            self.add_barcode_frame, text="Lookup Item", font=("Arial", 50),
+            command = lambda: self.controller.enter_add_item_lookup()).grid(
+                column = 1, row = 4, sticky='ew', pady=15
             )
 
     def _init_add_name_frame(self):
@@ -818,7 +833,7 @@ class WidgetManager:
         self.add_price_entry.grid(column = 1, row = 1, sticky='ew', pady=15)
 
         self.add_price_invisible_entry = tk.Entry(
-            self.add_price_frame, validate='key', vcmd=self.controller.vcmd,
+            self.add_price_frame, validate='key', vcmd=self.vcmd,
             textvariable=self.price_var)
         self.add_price_invisible_entry.place(x=-100, y=-100)
         self.add_price_invisible_entry.bind("<Return>", lambda event: self.controller.on_add_item_enter())
@@ -1059,94 +1074,13 @@ class WidgetManager:
     def populate_subcategory_listbox(self, primary_category):
         self.add_subcategory_listbox.delete(0, tk.END)
 
-        match primary_category:
-            case "Camping":
-                for values in (
-                    "BBQ Supplies","Blankets, Bajas & Pillows","Camp Books","Camp Cookware",
-                    "Camp Tools & Tent Stakes","Campfire Cooking","Campfire Items and Starters",
-                    "Camping Accessories","Camping Bedding","Ceramics Mugs","Cooking & Campfire Books",
-                    "Coolers and Thermals","Decorative & Impulse Lights","Flashlights (including head lamps)",
-                    "Fuels and Matches","Furniture & Hammocks","Hiking Gear","Insect Control","Knives","Lanterns",
-                    "Nature Guides & Maps","Notebooks & Journals","Outdoor Adventure Books","Packs","Pet Supplies",
-                    "Picnic Products","Propane Cooking and Lighting","Raingear","Ropes, Cords, Tiedowns",
-                    "Shopping Bags & Totes","Tarps, Tents, Shelters","Waterproof Pouches and Bags"
-                ):
-                    self.add_subcategory_listbox.insert(tk.END, values)
-            case "Gifts":
-                for values in(
-                    "Antler Look Theme","Baskets","Bear Theme","Big Foot"
-                    ,"Birdhouses","Cabin & Lodge Gifts","Camping and RV Gifts",
-                    "Canoe and Paddle Gifts","Cute/Fantasy Theme","Dream Catchers",
-                    "Fur Figures","Lamps","Magnets","Moose Theme","Ornaments",
-                    "Other Gifts","Pens","Picture Frames","Seaside Themes",
-                    "Signs and Plaques","Smore Gifts","Stuffed Animals","Wildlife Theme",
-                    "Wind Chimes and Spinners","Wood Gifts"
-                ):
-                    self.add_subcategory_listbox.insert(tk.END, values)
-            case "Fishing":
-                for values in(
-                    "Fishing Accessories", "Lures", "Nets",
-                    "Rod and Reel Combos", "Tackle"
-                ):
-                    self.add_subcategory_listbox.insert(tk.END, values)
-            case "General Merch":
-                for values in(
-                    "Brooms Cleaning Supplies", "Drinkware", "Hardware Related Products",
-                    "Health and Beauty Aids", "Household Electric", "Kitchen Utensils",
-                    "Kitchenware", "Laundry Products", "Other Household Items", 
-                ):
-                    self.add_subcategory_listbox.insert(tk.END, values)
-            case "RV":
-                for values in(
-                    "Automovite", "Drinking Water Hoses & Acc", "Ground Coverings & Awning Mats",
-                    "Leveling Towing", "Patio Lights & Accessories", "RV Accessories",
-                    "RV Cleaning Products", "RV Electrical", "RV Parts & Maintenance",
-                    "Sewer Products", "Toilet Chemicals and Tissue"
-                ):
-                    self.add_subcategory_listbox.insert(tk.END, values)
-            case "Summer Fun":
-                for values in(
-                    "Beach Towels", "Flags, Pennants, Yard Spinners", "Footwear",
-                    "Inflateable Floats, Tubes, Rafts", "Outdoor Fun & Sport Items",
-                    "Ski Tubes, Towables, Life Preserv", "Sunglasses",
-                    "Suntan Lotion", "Swim Goggles and Fins"
-                ):
-                    self.add_subcategory_listbox.insert(tk.END, values)
-            case "Toys & Hobby":
-                for values in(
-                    "Action Figures", "Activity Books", "Arts and Crafts",
-                    "Bubbles, Traditional Toys", "Cap Guns, Caps", "Camper Toys",
-                    "Fur Figures", "Games", "Gross & Squishy", "Guns, Action Toys",
-                    "Reptiles & Bugs", "Sand Toys", "School Supplies", "Toys",
-                    "Vehicles, Die Cast", "Water Guns, Water Bombs"
-                ):
-                    self.add_subcategory_listbox.insert(tk.END, values)
-            case "Candy & Snacks":
-                for values in(
-                    "Candy and Jerky", "Hats & Bandanas", "Jewelry & Novelties", 
-                    "Jokes and Tricks", "Keychains", "Light Up Fun"
-                ):
-                    self.add_subcategory_listbox.insert(tk.END, values)
-            case "Misc.":
-                for values in(
-                    "Batteries","Merchandising","Other Items/Notions",
-                    "PPE","Phone Accessories & Bluetooth","Playing Cards",
-                    "Winter Items","Winter Wear","Work Gloves"
-                ):
-                    self.add_subcategory_listbox.insert(tk.END, values)
-            case "Foodstuffs":
-                for values in(
-                    "Chips", "Cookies", "Dry Goods", "Ice Cream", "Refrigerated"
-                    ):
-                    self.add_subcategory_listbox.insert(tk.END, values)
-            case "TBC Merch":
-                for values in("N/A"):
-                    self.add_subcategory_listbox.insert(tk.END, values)
-            case "Souvenirs":
-                for values in(
-                    "NULL"
-                ):
-                    self.add_subcategory_listbox.insert(tk.END, values)
+        category_id = self.controller.state_manager.cursor.execute('''SELECT category_id from categories where category_name = ?''', (primary_category, )).fetchone()['category_id']
+        subcategories = self.controller.state_manager.cursor.execute('''SELECT category_name from categories where parent_id = ?''', (category_id, )).fetchall()
+        if subcategories == []:
+            self.add_subcategory_listbox.insert(tk.END, 'None')            
+        else:
+            for entry in subcategories:
+                self.add_subcategory_listbox.insert(tk.END, entry['category_name'])
 
         
     def enter_add_item_frame(self):
@@ -1207,7 +1141,7 @@ class WidgetManager:
         self.invisible_entry.bind("<KeyRelease-BackSpace>", self.controller.clear)
         self.invisible_entry.bind("<KeyRelease-KP_Enter>", lambda event: self.controller.on_cash())
         self.invisible_entry.bind("<KeyRelease-KP_Add>", lambda event: self.controller.on_cc())
-        self.invisible_entry.bind("<KeyRelease-KP_Multiply>", lambda event: self.enter_main_menu())
+        self.invisible_entry.bind("<KeyRelease-KP_Multiply", lambda event: self.enter_main_menu())
         self.invisible_entry.bind("<KeyRelease-KP_Divide>", lambda event: self.controller.cancel_sale())
         self.invisible_entry.bind("<KeyRelease-KP_Subtract>", lambda event: self.controller.no_sale())
         self.invisible_entry.bind("<KeyRelease-backslash>", lambda event: self.controller.complete_decrement())

@@ -19,6 +19,7 @@ class StateManager:
         self.coupon_reason = ''
         self.reentering = self.coming_from_register = self.updating_existing_item = False
         self.reentering_quantity = self.browsing_seasonals = self.used_coupon = False 
+        self.looking_up_add_item = False
         self.yes_no_var = tk.StringVar(root_window)
         self.seasonal_id_var = tk.StringVar(root_window)
         self.return_var = tk.StringVar(root_window)

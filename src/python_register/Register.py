@@ -26,7 +26,6 @@ class Register:
 		self.state_manager.item_lookup_var.trace_add('write', self.on_item_lookup)
 		self.state_manager.sale_items_listbox_var.trace_add('write', self.on_sale_items_listbox_var)
 		self.state_manager.return_var.trace_add('write', self.finish_return)
-		self.vcmd = (root.register(self.only_numbers), '%P')
 		self.ui = WidgetManager(root, self)
 		self.ui.price_var.trace_add('write', self.on_price_entry_update)
 		self.ui.tax_var.trace_add('write', lambda *args: self.on_add_item_enter())
@@ -55,6 +54,11 @@ class Register:
 			self.ui.lookup_items_listbox.insert(tk.END, f'{item[0]}\n')
 
 
+	def enter_add_item_lookup(self):
+		self.ui.register_lookup_items_frame.tkraise()
+		self.ui.lookup_items_entry.focus_set()
+		self.state_manager.looking_up_add_item = True
+	
 	def confirm_lookup_items(self):
 		index = self.ui.lookup_items_listbox.curselection()
 		name = self.ui.lookup_items_listbox.get(index).strip()
@@ -62,14 +66,19 @@ class Register:
 		self.state_manager.cursor.execute('''SELECT item_barcode FROM inventory WHERE item_name = ?''', (name, ))
 		barcode = self.state_manager.cursor.fetchall()[0][0]
 		
-		for i in range(0, quantity):
-			self.process_sale(None, barcode)
-		self.ui.register_frame.tkraise()
-		self.ui.invisible_entry.focus_set()
+		if self.state_manager.looking_up_add_item:
+			self.ui.barcode_var.set(barcode)
+			self.state_manager.looking_up_add_item = False
+			self.on_add_item_enter()
+		else:
+			for i in range(0, quantity):
+				self.process_sale(None, barcode)
+			self.ui.register_frame.tkraise()
+			self.ui.invisible_entry.focus_set()
 
 	def perform_backup(self):
 		time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-		source_db = self.state_manager.conn
+		source_db = sqlite3.connect(self.current_dir / self.config.data['database_name'])
 		dest_db = sqlite3.connect(f'/media/tbc/aed49e02-11c4-40be-b39f-9711a0b3c457/RegisterDatabaseBackup_{time}.db')
 		source_db.backup(dest_db)
 		source_db.close()
@@ -96,13 +105,6 @@ class Register:
 			)
 			return 'System clock synchronized: yes' in results.stdout
 		except Exception:
-			return False
-
-	def only_numbers(self, P):
-		"""Check if potential key is a number or space, return false if not"""
-		if P.isdigit() or P == "":
-			return True
-		else:
 			return False
          
 	def enter_register_frame(self, event = None):
@@ -223,7 +225,7 @@ class Register:
 			elif yes_no_answer == "no":
 				self.ui.register_frame.tkraise()
 				return
-		self.ui.update_entry(self.ui.balance_entry, f'${total.quantize(Decimal('0.01'))}')
+		self.ui.update_entry(self.ui.balance_entry, f'${total.quantize(Decimal("0.01"))}')
 		self.ui.sale_items_listbox.delete(0, tk.END)
 		for item in self.state_manager.trans.items_list:
 			if len(item[0]) > 13:
@@ -411,7 +413,7 @@ class Register:
 		sale_info = results[0]
 		self.state_manager.cursor.execute('''SELECT * FROM sale_items WHERE sale_id = ?''', (sale_info[0], ))
 		sale_items_list = self.state_manager.cursor.fetchall()
-		self.printer.print_receipt("sale", sale_items_list, sale_info, self.state_manager.trans.cash_tendered, self.state_manager.trans.cc_tendered)
+		#self.printer.print_receipt("sale", sale_items_list, sale_info, self.state_manager.trans.cash_tendered, self.state_manager.trans.cc_tendered)
 		self.ui.sale_items_listbox.delete(0, tk.END)
 		self.state_manager.new_transaction()
 
@@ -833,7 +835,7 @@ class Register:
 
 
 	def apply_coupon(self):
-		coupon_amount = float(self.ui.coupon_entry.get()[1:])
+		coupon_amount = Decimal(self.ui.coupon_entry.get()[1:])
 		self.state_manager.coupon = coupon_amount
 		self.state_manager.used_coupon = True
 		coupon_reason = self.ui.coupon_reason_entry.get()
@@ -860,13 +862,15 @@ if __name__ == "__main__":
 	getcontext().rounding = 'ROUND_HALF_UP'
 	
 
-	'''backup_thread = threading.Thread(
+	backup_thread = threading.Thread(
 		target = register.backup_scheduler,
 		daemon=True
 	)
 	backup_thread.start()
 
-	register.remove_old_backups(register.config.data['backup_removal_cutoff'])'''
+	register.remove_old_backups(register.config.data['backup_removal_cutoff'])
+	
+	self.perform_backup()
 
 	pygame.mixer.init()
 	register.enter_register_frame()

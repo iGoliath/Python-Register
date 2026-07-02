@@ -16,7 +16,7 @@ cursor.execute('''ALTER TABLE Inventory RENAME TO old_inventory''')
 cursor.execute('''ALTER TABLE sales RENAME TO old_sales''')
 cursor.execute('''ALTER TABLE saleitems RENAME TO old_saleitems''')
 cursor.execute('''CREATE TABLE inventory(item_id INTEGER PRIMARY KEY AUTOINCREMENT, item_name TEXT NOT NULL, item_price TWODECINT NOT NULL, item_taxable BOOLEAN, item_barcode TEXT, item_quantity FOURDECINT, category_id INTEGER, subcategory_id INTEGER, vendor_id INTEGER, FOREIGN KEY (category_id) REFERENCES categories(category_id), FOREIGN KEY (subcategory_id) REFERENCES categories(category_id), FOREIGN KEY (vendor_id) REFERENCES vendors(vendor_id))''')
-cursor.execute('''CREATE TABLE sales(sale_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "non_tax" TWODECINT NOT NULL, "pre_tax" TWODECINT NOT NULL, tax TWODECINT NOT NULL, total TWODECINT NOT NULL, num_items_sold FOURDECINT NOT NULL, sale_date TEXT NOT NULL, sale_time TEXT NOT NULL, cash_used TWODECINT NOT NULL, cc_used TWODECINT NOT NULL, is_voided BOOLEAN NOT NULL)''')
+cursor.execute('''CREATE TABLE sales(sale_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, non_tax TWODECINT NOT NULL, pre_tax TWODECINT NOT NULL, tax TWODECINT NOT NULL, total TWODECINT NOT NULL, num_items_sold FOURDECINT NOT NULL, sale_date TEXT NOT NULL, sale_time TEXT NOT NULL, cash_used TWODECINT NOT NULL, cc_used TWODECINT NOT NULL, is_voided BOOLEAN NOT NULL)''')
 cursor.execute('''CREATE TABLE sale_items(sale_id INTEGER NOT NULL, price_at_sale TWODECINT NOT NULL, quantity FOURDECINT NOT NULL, item_id INTEGER NOT NULL, FOREIGN KEY(sale_id) REFERENCES sales(sale_id) ON DELETE RESTRICT, FOREIGN KEY(item_id) REFERENCES inventory(item_id) ON DELETE RESTRICT)''')
 cursor.execute('''CREATE TABLE categories(category_id INTEGER PRIMARY KEY NOT NULL, category_name TEXT NOT NULL, parent_id INTEGER REFERENCES categories(category_id))''')
 cursor.execute('''CREATE TABLE vendors(vendor_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, vendor_name TEXT NOT NULL)''')
@@ -191,8 +191,11 @@ cursor.execute('''SELECT sale_id, price, quantity, barcode FROM old_saleitems'''
 saleitem_results = cursor.fetchall()
 
 for row in saleitem_results:
-    cursor.execute('''INSERT INTO sale_items(sale_id, price_at_sale, quantity, item_id) VALUES (?, ?, ?, (SELECT coalesce((select item_id from old_inventory where barcode = ? limit 1), -1) from old_saleitems))''', (row[0], row[1], row[2] * Decimal('100'), row[3]))
-
+    try:
+        cursor.execute('''INSERT INTO sale_items(sale_id, price_at_sale, quantity, item_id) VALUES (?, ?, ?, (SELECT coalesce((select item_id from old_inventory where barcode = ? limit 1), -1) from old_saleitems))''', (row[0], row[1], row[2] * Decimal('100'), row[3]))
+    except sqlite3.IntegrityError as e:
+        print(f"IntegrityError: {e}")
+        print(f"Row: {row}")
 
 cursor.execute('''SELECT * FROM old_inventory''')
 

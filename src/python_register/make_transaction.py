@@ -63,14 +63,15 @@ class Transaction:
 
 	def sell_item(self, entered_barcode, decimal_amount = Decimal('1')):
 	
-		self.db_cursor.execute('''SELECT item_name, item_price, item_taxable, item_id FROM inventory WHERE item_barcode = ?''',
-			(entered_barcode,))
-		results = self.db_cursor.fetchone()
-		if not results:
+		results = self.db_cursor.execute('''SELECT item_name, item_price, item_taxable, item_id FROM inventory WHERE item_barcode = ?''',
+			(entered_barcode,)).fetchall()
+
+		if results == []:
 			return "item_not_found", None, None, None
 		
-		results = list(results)
-		if results[2] == 1:
+		print(type(results))
+		print(results)
+		if results['item_taxable'] == 1:
 			self.tax += Decimal((results[1])) * Decimal('0.06625') * Decimal(decimal_amount)
 			self.pretax += (results[1]) * Decimal(decimal_amount)
 		else:
