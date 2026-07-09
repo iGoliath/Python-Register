@@ -536,7 +536,7 @@ class Register:
 		
 		self.printer.kick_drawer()
 		self.ui.invisible_entry.delete(0, tk.END)
-		self.printer.print_no_sale_receipt()
+		#self.printer.print_no_sale_receipt()
 		self.state_manager.cursor.execute(
 			"UPDATE no_sale SET times_pressed = times_pressed + 1 WHERE date = ?",
 			(datetime.today().strftime('%Y-%m-%d'),))

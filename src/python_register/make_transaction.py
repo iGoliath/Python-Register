@@ -44,21 +44,22 @@ class Transaction:
 
 	def complete_as_decrement(self):
 		global datetime
-		self.db_cursor.execute('''INSERT INTO inventory_decrements VALUES (NULL, ?)''', (datetime.now().strftime('%Y-%m-%d_%H-%M-%S'), ))
-		self.db_cursor.execute('''SELECT MAX(decrement_id) FROM inventory_decrements''')
-		max_decrement_id = (self.db_cursor.fetchall()[0])[0]
-		for item in self.items_list:
-			try:
+		try:
+			self.db_cursor.execute('''INSERT INTO inventory_decrements VALUES (NULL, ?)''', (datetime.now().strftime('%Y-%m-%d_%H-%M-%S'), ))
+			self.db_cursor.execute('''SELECT MAX(decrement_id) FROM inventory_decrements''')
+			max_decrement_id = (self.db_cursor.fetchall()[0])[0]
+			for item in self.items_list:
 				self.db_cursor.execute("INSERT OR IGNORE INTO inventory_decrements_items VALUES (?, ?, ?)",
 				(max_decrement_id, item[5], Dec4(item[4])))
 				self.db_cursor.execute("SELECT item_quantity FROM inventory WHERE item_barcode = ?", (item[3],))
 				current_quantity = self.db_cursor.fetchall()[0][0]
 				self.db_cursor.execute("UPDATE inventory SET item_quantity = ? WHERE item_barcode = ?",
 					(Dec4(current_quantity - item[4]), item[3]))
-			except sqlite3.IntegrityError as e:
-				self.db_conn.rollback()
-
-		self.db_conn.commit()
+		except sqlite3.IntegrityError as e:
+			print(e)
+			self.db_conn.rollback()
+		finally:
+			self.db_conn.commit()
 
 		
 	def update_seasonal_info(self, seasonal_id):

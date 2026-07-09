@@ -7,8 +7,8 @@ class Printer:
 	def __init__(self, state_manager, config):
 		self.state_manager = state_manager
 		self.config = config
-		#self.printer = Usb(0x0fe6, 0x811e, 0) 
-		self.printer = File("/tmp/output.bin")
+		self.printer = Usb(0x0fe6, 0x811e, 0) 
+		#self.printer = File("/tmp/output.bin")
 
 	def print_receipt(
 			self, receipt_type,
