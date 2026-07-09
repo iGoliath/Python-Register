@@ -7,8 +7,8 @@ class Printer:
 	def __init__(self, state_manager, config):
 		self.state_manager = state_manager
 		self.config = config
-		self.printer = Usb(0x0fe6, 0x811e, 0) 
-		#self.printer = File("/tmp/output.bin")
+		#self.printer = Usb(0x0fe6, 0x811e, 0) 
+		self.printer = File("/tmp/output.bin")
 
 	def print_receipt(
 			self, receipt_type,
@@ -79,8 +79,8 @@ class Printer:
 				spaces = 29 - len(category.split()[0]) - len(f"{sum_in_question}")
 				self.printer.textln(f"{category.split()[0]} Collected: {' ' * spaces}${sum_in_question}\n")
 			
-			self.state_manager.cursor.execute('''SELECT price_at_sale, quantity FROM sale_items JOIN sales ON sale_items.sale_id = sales.sale_id WHERE sale_items.item_id IN (78, 79, 92, 692, 693, 1274) AND sales.sale_date >= ? AND sales.sale_date <= ?''', (self.config.data['tally_begin_date'], end_of_day, ))
-			propane_sold = sum(row[0] * row[1] for row in self.state_manager.cursor.fetchall()).quantize(Decimal("0.01"))
+			propane_results = self.state_manager.cursor.execute('''SELECT price_at_sale, quantity FROM sale_items JOIN sales ON sale_items.sale_id = sales.sale_id WHERE sale_items.item_id IN (78, 79, 92, 692, 693, 1274) AND sales.sale_date >= ? AND sales.sale_date <= ?''', (self.config.data['tally_begin_date'], end_of_day, )).fetchall()
+			propane_sold = sum(row[0] * row[1] for row in propane_results).quantize(Decimal("0.01")) if propane_results else Decimal('0.00')
 			spaces = 42 - 15 - len(f"{propane_sold}")
 			self.printer.textln(f"Propane Sold: {' ' * spaces}${propane_sold}\n")
 
@@ -90,7 +90,7 @@ class Printer:
 			spaces = self.config.data['printing_width'] - 22 - len(f"{gross_total_wo_tax:.2f}")
 			self.printer.textln(f"Gross Total w/o Tax: {' ' * spaces}${gross_total_wo_tax:.2f}\n")
 
-			self.state_manager.cursor.execute('''SELECT total FROM sales WHERE total < 0 AND sale_date = ?''', (datetime.today().strftime('%Y-%m-%d'), ))
+			self.state_manager.cursor.execute('''SELECT total FROM sales WHERE total < 0 AND sale_date BETWEEN ? AND ?''', (self.config.data['tally_begin_date'], end_of_day))
 			results = self.state_manager.cursor.fetchall()
 			if results == []:
 				total_returns = 0

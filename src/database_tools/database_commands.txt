@@ -3,7 +3,7 @@ CREATE TABLE sales(sale_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, non_tax T
 CREATE TABLE sale_items(sale_id INTEGER NOT NULL, price_at_sale TWODECINT NOT NULL, quantity FOURDECINT NOT NULL, item_id INTEGER NOT NULL, FOREIGN KEY(sale_id) REFERENCES sales(sale_id) ON DELETE RESTRICT, FOREIGN KEY(item_id) REFERENCES inventory(item_id) ON DELETE RESTRICT)
 CREATE TABLE no_sale(date TEXT UNIQUE, times_pressed INT)
 CREATE TABLE inventory_decrements(decrement_id INTEGER PRIMARY KEY AUTOINCREMENT, datetime TEXT)
-CREATE TABLE inventory_decrements_items(decrement_id INTEGER, item_id INTEGER, decrement_quantity INTEGER, FOREIGN KEY(decrement_id) REFERENCES inventory_decrements(decrement_id), FOREIGN KEY(item_id) REFERENCES inventory(item_id))
+CREATE TABLE inventory_decrements_items(decrement_id INTEGER, item_id INTEGER, decrement_quantity FOURDECINT, FOREIGN KEY(decrement_id) REFERENCES inventory_decrements(decrement_id), FOREIGN KEY(item_id) REFERENCES inventory(item_id))
 CREATE TABLE coupons(coupon_id INTEGER PRIMARY KEY AUTOINCREMENT, sale_id INTEGER, coupon_amount REAL, coupon_reason TEXT, FOREIGN KEY(sale_id) REFERENCES sales(sale_id))
 CREATE TABLE seasonals(seasonal_id INTEGER PRIMARY KEY AUTOINCREMENT, seasonal_lname TEXT, seasonal_fname TEXT, seasonal_siteno TEXT, seasonal_balance REAL)
 CREATE TABLE seasonal_sales(seasonal_sale_id INTEGER PRIMARY KEY AUTOINCREMENT, seasonal_id INTEGER, sale_id INTEGER, FOREIGN KEY(seasonal_id) REFERENCES seasonals(seasonal_id), FOREIGN KEY(sale_id) REFERENCES sales(sale_id))

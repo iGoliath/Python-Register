@@ -1,5 +1,4 @@
-import tkinter as tk
-from tkinter import ttk
+import tkinter as tk 
 from . import inventory_functions as invf
 from . import widget_functions as wf
 from datetime import datetime
@@ -11,6 +10,8 @@ class WidgetManager:
         self.root = root
         self.controller = controller
         self.vcmd = (self.root.register(self.only_numbers), '%P')
+
+        self.frames = {}
 
 
         """Initialize all frames necessary for the program"""
@@ -49,6 +50,7 @@ class WidgetManager:
         self.coupon_buttons_frame = tk.Frame(self.coupon_frame)
         self.register_lookup_items_frame = tk.Frame(self.root)
         self.register_lookup_items_buttons_frame = tk.Frame(self.register_lookup_items_frame)
+        self.x_dates_frame = tk.Frame(self.root)
 
         self.name_var = tk.StringVar()
         self.barcode_var = tk.StringVar()
@@ -64,16 +66,6 @@ class WidgetManager:
         self.popup_description_label_var = tk.StringVar()
 
 
-        
-        self._init_add_barcode_frame()
-        self._init_add_name_frame()
-        self._init_add_price_frame()
-        self._init_add_tax_frame()
-        self._init_add_category_frame()
-        self._init_add_subcategory_frame()
-        self._init_add_vendor_frame()
-        self._init_add_quantity_frame()
-
 
         # Loop through frames, fit them to screen, and configure them so that widgets in column 1 are centered
         # Widgets in column 1 will determine the width of the rest of the widgets
@@ -82,7 +74,7 @@ class WidgetManager:
             self.browse_transactions_frame, self.edit_seasonal_frame, self.datetime_frame,
             self.coupon_frame, self.register_lookup_items_frame, self.add_barcode_frame,
             self.add_name_frame, self.add_price_frame, self.add_tax_frame, self.add_category_frame,
-            self.add_quantity_frame, self.add_subcategory_frame, self.add_vendor_frame):
+            self.add_quantity_frame, self.add_subcategory_frame, self.add_vendor_frame, self.x_dates_frame):
             frame.grid(row=0, column=0, sticky='nsew')
             frame.columnconfigure(0, weight=1)
             frame.columnconfigure(1, weight=0)
@@ -741,6 +733,14 @@ class WidgetManager:
             command = lambda: self.set_system_time())
         
         self.datetime_confirm_button.grid(column = 1, row = 3, sticky='nsew')
+
+    
+    # ===================
+    # Widgets for X frame
+    # ===================
+    def enter_x_dates_frame(self):
+        self._init_x_dates_frame()
+        self.x_dates_frame.tkraise()
     
     def only_numbers(self, P):
         """Check if potential key is a number or space, return false if not"""
@@ -1084,6 +1084,14 @@ class WidgetManager:
 
         
     def enter_add_item_frame(self):
+        self._init_add_barcode_frame()
+        self._init_add_name_frame()
+        self._init_add_price_frame()
+        self._init_add_tax_frame()
+        self._init_add_category_frame()
+        self._init_add_subcategory_frame()
+        self._init_add_vendor_frame()
+        self._init_add_quantity_frame()
         self.add_barcode_frame.tkraise()
         self.add_quantity_label.config(text="Please enter item's quantity:")
         self.reset_add_item_back_buttons()

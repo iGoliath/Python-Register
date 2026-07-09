@@ -493,7 +493,11 @@ class Register:
 			del self.state_manager.trans.items_list[index]
 			
 	def on_sale_items_listbox_select(self):
-		selected_index = self.ui.sale_items_listbox.curselection()[0]
+		selected_index = self.ui.sale_items_listbox.curselection()
+		if selected_index:
+			selected_index = selected_index[0]
+		else:
+			return
 		if self.state_manager.sale_items_listbox_var.get() == -1:
 			self.state_manager.sale_items_listbox_var.set(selected_index)
 		elif self.state_manager.sale_items_listbox_var.get() == selected_index:
@@ -870,7 +874,7 @@ if __name__ == "__main__":
 
 	register.remove_old_backups(register.config.data['backup_removal_cutoff'])
 	
-	self.perform_backup()
+	register.perform_backup()
 
 	pygame.mixer.init()
 	register.enter_register_frame()

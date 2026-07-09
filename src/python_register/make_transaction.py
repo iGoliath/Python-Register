@@ -48,12 +48,16 @@ class Transaction:
 		self.db_cursor.execute('''SELECT MAX(decrement_id) FROM inventory_decrements''')
 		max_decrement_id = (self.db_cursor.fetchall()[0])[0]
 		for item in self.items_list:
-			self.db_cursor.execute("INSERT OR IGNORE INTO inventory_decrements_items VALUES (?, ?, ?)",
-				(max_decrement_id, item[5], item[4]))
-			self.db_cursor.execute("SELECT item_quantity FROM inventory WHERE item_barcode = ?", (item[3],))
-			current_quantity = self.db_cursor.fetchall()[0][0]
-			self.db_cursor.execute("UPDATE inventory SET item_quantity = ? WHERE item_barcode = ?",
+			try:
+				self.db_cursor.execute("INSERT OR IGNORE INTO inventory_decrements_items VALUES (?, ?, ?)",
+				(max_decrement_id, item[5], Dec4(item[4])))
+				self.db_cursor.execute("SELECT item_quantity FROM inventory WHERE item_barcode = ?", (item[3],))
+				current_quantity = self.db_cursor.fetchall()[0][0]
+				self.db_cursor.execute("UPDATE inventory SET item_quantity = ? WHERE item_barcode = ?",
 					(Dec4(current_quantity - item[4]), item[3]))
+			except sqlite3.IntegrityError as e:
+				self.db_conn.rollback()
+
 		self.db_conn.commit()
 
 		
@@ -64,14 +68,12 @@ class Transaction:
 	def sell_item(self, entered_barcode, decimal_amount = Decimal('1')):
 	
 		results = self.db_cursor.execute('''SELECT item_name, item_price, item_taxable, item_id FROM inventory WHERE item_barcode = ?''',
-			(entered_barcode,)).fetchall()
+			(entered_barcode,)).fetchone()
 
-		if results == []:
+		if results == [] or not results:
 			return "item_not_found", None, None, None
 		
-		print(type(results))
-		print(results)
-		if results['item_taxable'] == 1:
+		if results[2] == 1:
 			self.tax += Decimal((results[1])) * Decimal('0.06625') * Decimal(decimal_amount)
 			self.pretax += (results[1]) * Decimal(decimal_amount)
 		else:
