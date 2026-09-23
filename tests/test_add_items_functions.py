@@ -94,43 +94,43 @@ def test_enter_item(register_instance, db):
     register_instance.ui.barcode_var.set("Test Item")
     register_instance.on_add_item_enter()
 
-    assert register_instance.state_manager.add_item_object.barcode == "Test Item"
+    assert register_instance.state_mgr.add_item_object.barcode == "Test Item"
 
     register_instance.ui.name_var.set("Test Item")
     register_instance.on_add_item_enter()
 
-    assert register_instance.state_manager.add_item_object.name == "Test Item"
+    assert register_instance.state_mgr.add_item_object.name == "Test Item"
 
     register_instance.ui.price_var.set("123")
     register_instance.on_add_item_enter()
 
-    assert register_instance.state_manager.add_item_object.price == Decimal("1.23")
+    assert register_instance.state_mgr.add_item_object.price == Decimal("1.23")
 
     register_instance.ui.tax_var.set("1")
 
-    assert register_instance.state_manager.add_item_object.taxable == 1
+    assert register_instance.state_mgr.add_item_object.taxable == 1
 
     register_instance.ui.add_category_listbox.selection_set(0)
     register_instance.on_add_category_listbox_next()
 
-    assert register_instance.state_manager.add_item_object.category == "Camping"
+    assert register_instance.state_mgr.add_item_object.category == "Camping"
 
     register_instance.ui.add_subcategory_listbox.selection_set(0)
     register_instance.on_add_subcategory_listbox_next()
 
-    assert register_instance.state_manager.add_item_object.subcategory == "BBQ Supplies"
+    assert register_instance.state_mgr.add_item_object.subcategory == "BBQ Supplies"
 
     register_instance.ui.add_vendor_listbox.selection_set(0)
     register_instance.on_add_vendor_listbox_next()
 
-    assert register_instance.state_manager.add_item_object.vendor == "ABC 123"
+    assert register_instance.state_mgr.add_item_object.vendor == "ABC 123"
 
     register_instance.ui.quantity_var.set("100")
     register_instance.on_add_item_enter()
 
-    assert register_instance.state_manager.add_item_object.quantity == Decimal('100')
+    assert register_instance.state_mgr.add_item_object.quantity == Decimal('100')
 
-    register_instance.state_manager.yes_no_var.set("yes")
+    register_instance.state_mgr.yes_no_var.set("yes")
 
     item_info = c.execute("SELECT * FROM inventory WHERE item_barcode = 'Test Item'").fetchall()[0]
 

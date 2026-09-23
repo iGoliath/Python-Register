@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
 RegisterDatabase
-src/RegisterDatabase
-src/config.json
-src/convert.py
+src/python_register/RegisterDatabase
+src/python_register/config.json
+src/database_tools/print.py
+src/database_tools/decrements_tables_convert.py
+src/database_tools/convert.py

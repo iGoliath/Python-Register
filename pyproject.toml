@@ -5,8 +5,22 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "python_register"
 version = "0.1.0"
+description = "POS system that integrates with SQLite, and ESC/POS receipt printers"
+dependencies = [
+  "setuptools<82",
+  "python-escpos",
+  "pygame",
+  "pyusb",
+  "tkcalendar",
+  "luma.core",
+  "luma.led_matrix",
+  "spidev",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"] 
 
-
+[tool.pytest.ini_options]
+pythonpath = [
+  ".", "src",
+]

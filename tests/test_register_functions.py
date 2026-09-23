@@ -6,11 +6,15 @@ import pygame
 from decimal import Decimal
 from pathlib import Path
 
+def convert_twdecint(b):
+    print(repr(b))
+    return Decimal(b.decode()) / Decimal("100")
+
 @pytest.fixture
 def db():
     conn = sqlite3.connect(":memory:", detect_types=sqlite3.PARSE_DECLTYPES)
     sqlite3.register_adapter(Decimal, lambda d: int(d.quantize(Decimal("0.01")) * Decimal("100")))
-    sqlite3.register_converter("TWODECINT", lambda b: Decimal(b.decode()) / Decimal("100"))
+    sqlite3.register_converter("TWODECINT", convert_twdecint)
     sqlite3.register_adapter(Dec4, lambda d: int(d.quantize(Decimal("0.0001")) * Decimal("10000")))
     sqlite3.register_converter("FOURDECINT", lambda b: Dec4(b.decode()) / Dec4("10000"))
     _create_schema(conn)
@@ -117,11 +121,11 @@ sqlite3.register_converter("FOURDECINT", lambda b: Dec4(b.decode()) / Dec4("1000
 def assert_sale_empty(register):
     assert register.ui.user_entry.get() == '$0.00'
     assert register.ui.balance_entry.get() == '$0.00'
-    assert register.state_manager.trans.items_sold == Decimal('0')
-    assert register.state_manager.trans.nontax == Decimal('0')
-    assert register.state_manager.trans.pretax == Decimal('0')
-    assert register.state_manager.trans.tax == Decimal('0')
-    assert register.state_manager.trans.total == Decimal('0')
+    assert register.state_mgr.trans.items_sold == Decimal('0')
+    assert register.state_mgr.trans.nontax == Decimal('0')
+    assert register.state_mgr.trans.pretax == Decimal('0')
+    assert register.state_mgr.trans.tax == Decimal('0')
+    assert register.state_mgr.trans.total == Decimal('0')
     assert register.ui.sale_items_listbox.get(0, tk.END) == ()
 
 @pytest.mark.parametrize("payment_method,cash_used,cc_used", [
@@ -141,7 +145,6 @@ def test_basic_sale_(register_instance, payment_method, cash_used, cc_used, db):
         'SELECT * FROM sales WHERE sale_id = (SELECT MAX(sale_id) FROM sales)'
         ).fetchone()
    
-    print(dict(row))
     assert row["cash_used"] == cash_used
     assert row["cc_used"] == cc_used
     assert row["is_voided"] == 0
@@ -217,7 +220,7 @@ def test_cc_invalid(register_instance, db):
 
     result = register_instance.ui.popup_description_label_var.get()
     assert result == 'CC Amount Entered\nExceeds Balance!'
-    assert register_instance.state_manager.trans.total == Decimal('1.23')
+    assert register_instance.state_mgr.trans.total == Decimal('1.23')
 
 def test_quantity_decrement_single(register_instance, db):
 
@@ -282,14 +285,14 @@ def test_basic_return(register_instance, db):
     register_instance.process_return()
     register_instance.ui.invisible_entry_var.set("Test")
     register_instance.process_sale()
-    register_instance.state_manager.return_var.set("cash")
+    register_instance.state_mgr.return_var.set("cash")
 
     c.execute('SELECT item_quantity FROM inventory WHERE item_barcode = ?', ("Test", ))
     results = c.fetchone()[0]
     end_quantity = results
 
     assert end_quantity == Decimal(starting_quantity) + Decimal('1')
-    assert register_instance.state_manager.trans.returning == False
+    assert register_instance.state_mgr.trans.returning == False
 
 def test_inventory_decrement(register_instance, db):
 
@@ -317,7 +320,7 @@ def test_inventory_decrement(register_instance, db):
     assert starting_sale_id == ending_sale_id
     assert register_instance.ui.user_entry.get() == '$0.00'
     assert register_instance.ui.sale_items_listbox.get(0, tk.END) == ()
-    assert register_instance.state_manager.trans.total == Decimal('0')
+    assert register_instance.state_mgr.trans.total == Decimal('0')
 
 def test_manual_quantity_input(register_instance):
     
@@ -328,7 +331,7 @@ def test_manual_quantity_input(register_instance):
     register_instance.ui.invisible_entry_var.set('1.2345')
     register_instance.process_sale_multiples()
 
-    assert register_instance.state_manager.trans.items_sold == Decimal('1.2345')
+    assert register_instance.state_mgr.trans.items_sold == Decimal('1.2345')
 
 def test_decimal_sale(register_instance, db):
 
@@ -367,7 +370,7 @@ def test_tax_sale(register_instance):
     register_instance.ui.invisible_entry_var.set('Test1')
     register_instance.process_sale()
 
-    assert register_instance.state_manager.trans.tax == Decimal('1.23') * Decimal(register_instance.config.data['tax_amount'])
+    assert register_instance.state_mgr.trans.tax == Decimal('1.23') * Decimal(register_instance.config.data['tax_amount'])
 
 @pytest.mark.parametrize("item_name", [
     ("Test"),
@@ -386,9 +389,9 @@ def test_cancel_entire_single_item_sale(register_instance, item_name):
         "listbox_index,balance_entry,user_entry,nontax,pretax,tax," \
         "total,items_sold,listbox_first_item,listbox_second_item", [
             (1, "$1.23", "$0.00", Decimal('1.23'), Decimal('0'),
-            Decimal('0'), Decimal('1.23'), Decimal('1'), (), ('Test (1.0) $1.23 NT', )),
+            Decimal('0'), Decimal('1.23'), Decimal('1'), (), ('Test (1) $1.23 NT', )),
             (0, "$1.31", "$0.00", Decimal('0'), Decimal('1.23'),
-              Decimal('0.08'), Decimal('1.31'), Decimal('1'), (), ('Test1 (1.0) $1.23 TX', ))
+              Decimal('0.08'), Decimal('1.31'), Decimal('1'), (), ('Test1 (1) $1.23 TX', ))
         ])
 def test_cancel_single_item(
     register_instance, listbox_index, balance_entry, user_entry, nontax,
@@ -405,11 +408,11 @@ def test_cancel_single_item(
 
     assert register_instance.ui.balance_entry.get() == balance_entry
     assert register_instance.ui.user_entry.get() == user_entry
-    assert register_instance.state_manager.trans.nontax == nontax
-    assert register_instance.state_manager.trans.pretax == pretax
-    assert register_instance.state_manager.trans.tax.quantize(Decimal('0.01')) == tax
-    assert register_instance.state_manager.trans.total.quantize(Decimal('0.01')) == total
-    assert register_instance.state_manager.trans.items_sold == items_sold
+    assert register_instance.state_mgr.trans.nontax == nontax
+    assert register_instance.state_mgr.trans.pretax == pretax
+    assert register_instance.state_mgr.trans.tax.quantize(Decimal('0.01')) == tax
+    assert register_instance.state_mgr.trans.total.quantize(Decimal('0.01')) == total
+    assert register_instance.state_mgr.trans.items_sold == items_sold
     assert register_instance.ui.sale_items_listbox.get(1, tk.END) == listbox_first_item
     assert register_instance.ui.sale_items_listbox.get(0, 1) == listbox_second_item
 

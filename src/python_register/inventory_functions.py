@@ -5,9 +5,14 @@ import sqlite3
 from decimal import Decimal
 
 def update_barcode(state_manager: StateManager, barcode: str) -> None:
-    state_manager.cursor.execute('''INSERT INTO updated_barcodes SELECT item_id, item_barcode, ? FROM inventory WHERE item_barcode = ?''', (barcode, barcode.lstrip('0')))
-    state_manager.cursor.execute('''UPDATE inventory SET item_barcode = ? WHERE item_barcode = ?''', (barcode, barcode.lstrip('0')))
-    state_manager.conn.commit()
+    try:
+        state_manager.cursor.execute('''INSERT INTO updated_barcodes SELECT item_id, item_barcode, ? FROM inventory WHERE item_barcode = ?''', (barcode, barcode.lstrip('0')))
+        state_manager.cursor.execute('''UPDATE inventory SET item_barcode = ? WHERE item_barcode = ?''', (barcode, barcode.lstrip('0')))
+        state_manager.conn.commit()
+    except sqlite3.Error as e:
+        print(f"Error when updating item's barcode. inventory_functions line 9/10. Error: {e}")
+        state_manager.conn.rollback()
+   
 def check_item_exists(state_manager: StateManager, barcode: str) -> bool:
     """This function is the pre-requisite to adding an item. We want to
     make sure that the item does not already exist."""
@@ -15,8 +20,7 @@ def check_item_exists(state_manager: StateManager, barcode: str) -> bool:
     if (len(barcode.lstrip('0')) != (len(barcode))):
         update_barcode(state_manager, barcode)
     
-    state_manager.cursor.execute("SELECT * FROM inventory WHERE item_barcode = ?", (barcode,))
-    results = state_manager.cursor.fetchall()
+    results = state_manager.cursor.execute("SELECT * FROM inventory WHERE item_barcode = ?", (barcode,)).fetchall()
     if results:
         found_item_info = results[0]
         state_manager.add_item_object.name = found_item_info['item_name']
@@ -137,7 +141,7 @@ def enter_item_confirmation(
         elif state_manager.reentering:
             state_manager.reentering = False
         elif state_manager.reentering_quantity:
-            ui.add_quantity_label.config(text="Please enter item's quantity:")
+            ui.add_quantity_var.set("Please enter item's quantity:")
             state_manager.add_item_object.quantity = Decimal(quantity)
             state_manager.reentering_quantity = False
     
