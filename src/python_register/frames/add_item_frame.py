@@ -74,46 +74,46 @@ class AddItemFrame(BaseFrame):
 
         self.item_info_confirmation.delete("1.0", "end")
         self.item_info_confirmation.insert(
-            tk.END, f"Name: {self.state_mgr.add_item_object.name}"
+            tk.END, f"Name: {self.state_mgr.add_item_dictionary.name}"
         )
         self.item_info_confirmation.insert(
             tk.END,
-            f"\nPrice : ${self.state_mgr.add_item_object.price:.2f}",
+            f"\nPrice : ${self.state_mgr.add_item_dictionary.price:.2f}",
         )
         self.item_info_confirmation.insert(
             tk.END,
             (
                 " | Tax?: Yes"
-                if self.state_mgr.add_item_object.taxable == 1
+                if self.state_mgr.add_item_dictionary.taxable == 1
                 else " | Tax?: No"
             ),
         )
         self.item_info_confirmation.insert(
-            tk.END, f"\nCat.: {self.state_mgr.add_item_object.category}"
+            tk.END, f"\nCat.: {self.state_mgr.add_item_dictionary.category}"
         )
-        if self.state_mgr.add_item_object.subcategory != None:
-            if len(self.state_mgr.add_item_object.subcategory) <= 30:
+        if self.state_mgr.add_item_dictionary.subcategory != None:
+            if len(self.state_mgr.add_item_dictionary.subcategory) <= 30:
                 self.item_info_confirmation.insert(
                     tk.END,
-                    f"\nSub Cat.: {self.state_mgr.add_item_object.subcategory}",
+                    f"\nSub Cat.: {self.state_mgr.add_item_dictionary.subcategory}",
                 )
             else:
                 self.item_info_confirmation.insert(
                     tk.END,
-                    f"\nSub Cat.: {self.state_mgr.add_item_object.subcategory[0:30]}-\n{self.state_mgr.add_item_object.subcategory[30:]}",
+                    f"\nSub Cat.: {self.state_mgr.add_item_dictionary.subcategory[0:30]}-\n{self.state_mgr.add_item_dictionary.subcategory[30:]}",
                 )
         else:
             self.item_info_confirmation.insert(
-                tk.END, f"\nSub Cat.: {self.state_mgr.add_item_object.subcategory}"
+                tk.END, f"\nSub Cat.: {self.state_mgr.add_item_dictionary.subcategory}"
             )
         self.item_info_confirmation.insert(
-            tk.END, "\nBarcode: " + str(self.state_mgr.add_item_object.barcode)
+            tk.END, "\nBarcode: " + str(self.state_mgr.add_item_dictionary.barcode)
         )
         self.item_info_confirmation.insert(
             tk.END,
-            f" | Qty: {self.state_mgr.add_item_object.quantity:.4f}",
+            f" | Qty: {self.state_mgr.add_item_dictionary.quantity:.4f}",
             "justify_right",
         )
         self.item_info_confirmation.insert(
-            tk.END, f"\nVendor: {self.state_mgr.add_item_object.vendor}"
+            tk.END, f"\nVendor: {self.state_mgr.add_item_dictionary.vendor}"
         )

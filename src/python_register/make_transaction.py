@@ -2,7 +2,7 @@ import sqlite3
 from datetime import datetime
 from decimal import Decimal
 
-from .enter_item import Dec4
+from .add_item_data import Dec4
 
 
 class Transaction:

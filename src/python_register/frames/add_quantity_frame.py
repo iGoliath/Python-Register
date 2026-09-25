@@ -66,7 +66,7 @@ class AddQuantityFrame(BaseFrame):
                 command=lambda: self.controller.reenter_back_button()
             )
             self.add_quantity_label_var.set(
-                f"Current quantity is: {self.controller.state_mgr.add_item_object.quantity}\nNew quantity will be:"
+                f"Current quantity is: {self.controller.state_mgr.add_item_dictionary.quantity}\nNew quantity will be:"
             )
         else:
             self.add_quantity_label_var.set("Please enter item's quantity:")

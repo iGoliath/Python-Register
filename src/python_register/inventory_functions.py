@@ -2,7 +2,7 @@ import sqlite3
 import tkinter as tk
 from decimal import Decimal
 
-from .make_transaction import Dec4
+from .add_item_data import Dec4
 from .state_manager import StateManager
 from .widget_manager import WidgetManager
 
@@ -37,31 +37,33 @@ def check_item_exists(state_manager: StateManager, barcode: str) -> bool:
     ).fetchall()
     if results:
         found_item_info = results[0]
-        state_manager.add_item_object.name = found_item_info["item_name"]
-        state_manager.add_item_object.price = found_item_info["item_price"]
-        state_manager.add_item_object.taxable = found_item_info["item_taxable"]
-        state_manager.add_item_object.barcode = found_item_info["item_barcode"]
-        state_manager.add_item_object.old_barcode = found_item_info["item_barcode"]
-        state_manager.add_item_object.quantity = found_item_info["item_quantity"]
+        state_manager.add_item_dictionary.name = found_item_info["item_name"]
+        state_manager.add_item_dictionary.price = found_item_info["item_price"]
+        state_manager.add_item_dictionary.taxable = found_item_info["item_taxable"]
+        state_manager.add_item_dictionary.barcode = found_item_info["item_barcode"]
+        state_manager.add_item_dictionary.old_barcode = found_item_info["item_barcode"]
+        state_manager.add_item_dictionary.quantity = found_item_info["item_quantity"]
         category = state_manager.cursor.execute(
             """SELECT category_name FROM categories WHERE category_id = ?""",
             (found_item_info["category_id"],),
         ).fetchone()
-        state_manager.add_item_object.category = (
+        state_manager.add_item_dictionary.category = (
             category["category_name"] if category else None
         )
         subcategory = state_manager.cursor.execute(
             """SELECT category_name FROM categories WHERE category_id = ?""",
             (found_item_info["subcategory_id"],),
         ).fetchone()
-        state_manager.add_item_object.subcategory = (
+        state_manager.add_item_dictionary.subcategory = (
             subcategory["category_name"] if subcategory else None
         )
         vendor = state_manager.cursor.execute(
             """SELECT vendor_name FROM vendors WHERE vendor_id = ?""",
             (found_item_info["vendor_id"],),
         ).fetchone()
-        state_manager.add_item_object.vendor = vendor["vendor_name"] if vendor else None
+        state_manager.add_item_dictionary.vendor = (
+            vendor["vendor_name"] if vendor else None
+        )
         state_manager.add_item_index = state_manager.ADD_ITEM_LAST_STEP
         state_manager.updating_existing_item = True
         return True
@@ -74,7 +76,7 @@ def enter_item_barcode(state_manager: StateManager, barcode: str) -> bool:
     """Set the barcode variable of our add item object. If we are re-entering,
     skip to confirmation page"""
 
-    state_manager.add_item_object.barcode = barcode
+    state_manager.add_item_dictionary.barcode = barcode
     if not state_manager.reentering:
         state_manager.add_item_index += 1
     elif state_manager.reentering:
@@ -86,7 +88,7 @@ def enter_item_name(state_manager: StateManager, name: str) -> bool:
     """Same as barcode. Set variable to entered name, and check whether
     or not the user is re-entering or not."""
 
-    state_manager.add_item_object.name = name
+    state_manager.add_item_dictionary.name = name
     if not state_manager.reentering:
         state_manager.add_item_index += 1
     elif state_manager.reentering:
@@ -98,9 +100,9 @@ def enter_item_price(state_manager: StateManager, price: Decimal) -> bool:
     """Set the add item object's price. If we are not re-entering, change
     the necessary widgets to ask user whether the item is taxable."""
 
-    state_manager.add_item_object.price = (Decimal(price) / Decimal("100")).quantize(
-        Decimal("0.01")
-    )
+    state_manager.add_item_dictionary.price = (
+        Decimal(price) / Decimal("100")
+    ).quantize(Decimal("0.01"))
     if not state_manager.reentering:
         state_manager.add_item_index += 1
     elif state_manager.reentering:
@@ -110,12 +112,12 @@ def enter_item_price(state_manager: StateManager, price: Decimal) -> bool:
 
 def enter_item_taxable(yes_no: str, state_manager: StateManager) -> bool:
     """Waits for the user to click yes/no for whether the item is taxable.
-    Set the add_item_object variable accordingly, and clean up widgets."""
+    Set the add_item_dictionary variable accordingly, and clean up widgets."""
 
     if yes_no == "1":
-        state_manager.add_item_object.taxable = 1
+        state_manager.add_item_dictionary.taxable = 1
     elif yes_no == "0":
-        state_manager.add_item_object.taxable = 0
+        state_manager.add_item_dictionary.taxable = 0
 
     if not state_manager.reentering:
         state_manager.add_item_index += 1
@@ -128,7 +130,7 @@ def enter_item_taxable(yes_no: str, state_manager: StateManager) -> bool:
 def enter_item_category(state_manager: StateManager, category: str) -> bool:
     """Once user selects a category from listbox, set variable, and
     clean up widgets."""
-    state_manager.add_item_object.category = category
+    state_manager.add_item_dictionary.category = category
 
     if not state_manager.reentering:
         state_manager.add_item_index += 1
@@ -139,7 +141,7 @@ def enter_item_category(state_manager: StateManager, category: str) -> bool:
 
 def enter_item_subcategory(state_manager: StateManager, subcategory: str) -> bool:
 
-    state_manager.add_item_object.subcategory = subcategory
+    state_manager.add_item_dictionary.subcategory = subcategory
 
     if not state_manager.reentering:
         state_manager.add_item_index += 1
@@ -150,7 +152,7 @@ def enter_item_subcategory(state_manager: StateManager, subcategory: str) -> boo
 
 def enter_item_vendor(state_manager: StateManager, vendor: str) -> bool:
 
-    state_manager.add_item_object.vendor = vendor
+    state_manager.add_item_dictionary.vendor = vendor
 
     if not state_manager.reentering:
         state_manager.add_item_index += 1
@@ -168,14 +170,14 @@ def enter_item_confirmation(
             if state_manager.reentering:
                 state_manager.reentering = False
             elif state_manager.reentering_quantity:
-                state_manager.add_item_object.quantity = Dec4(quantity)
+                state_manager.add_item_dictionary.quantity = Dec4(quantity)
                 state_manager.reentering_quantity = False
         elif not state_manager.reentering:
-            state_manager.add_item_object.quantity = Dec4(quantity)
+            state_manager.add_item_dictionary.quantity = Dec4(quantity)
         elif state_manager.reentering:
             state_manager.reentering = False
         elif state_manager.reentering_quantity:
-            state_manager.add_item_object.quantity = Dec4(quantity)
+            state_manager.add_item_dictionary.quantity = Dec4(quantity)
             state_manager.reentering_quantity = False
 
     ui.show_frame("add_item")
@@ -185,7 +187,7 @@ def yes_register(state_manager: StateManager) -> None:
     """Commit the changes when coming from register frame"""
 
     try:
-        state_manager.add_item_object.commit_item()
+        state_manager.commit_item()
     except sqlite3.Error as e:
         print(f"{e} occured when entering item and" "coming from register")
     finally:
@@ -197,9 +199,7 @@ def yes_existing(state_manager: StateManager) -> None:
     state_manager.updating_existing_item = False
 
     try:
-        state_manager.add_item_object.update_item(
-            state_manager.add_item_object.old_barcode
-        )
+        state_manager.update_item(state_manager.add_item_dictionary.old_barcode)
     except sqlite3.Error as e:
         print(f"{e} when updating an existing item")
     finally:
@@ -210,7 +210,7 @@ def yes_not_register(state_manager: StateManager) -> None:
     """Commit changes when adding item normally"""
 
     try:
-        state_manager.add_item_object.commit_item()
+        state_manager.commit_item()
     except sqlite3.Error as e:
         print(f"{e} Error when committing item normally")
         # Return user to step 1
