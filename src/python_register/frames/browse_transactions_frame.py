@@ -58,7 +58,7 @@ class BrowseTransactionsFrame(BaseFrame):
 
         self.back_button = tk.Button(
             browse_back_quit_frame, text="Back",
-            font=("Arial", 50), command = lambda: self.controller.menu_back()
+            font=("Arial", 50), command = lambda: self.wm.show_frame("main_menu")
         )
         self.back_button.grid(column=0, row=0, sticky='nsew')
 

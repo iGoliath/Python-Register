@@ -10,8 +10,11 @@ def create_config_json():
     "tax_amount": "0.06625",
     "backup_removal_cutoff": 14,
     "manual_time_last_boot": True,
-    "tally_begin_date": "2026-07-01",
-    "database_name": "RegisterDatabase"
+    "database_name": "RegisterDatabase",
+    "backup_path": "~/Desktop/",
+    "printer_vendor_id": "0x0000",
+    "printer_product_id": "0x0000",
+    "email_address": "johnsmith123@gmail.com"
 }
     try:
         with open(Path(__file__).parent / '../python_register/config.json', 'x') as file:

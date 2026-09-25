@@ -13,8 +13,8 @@ sqlite3.register_converter("FOURDECINT", lambda b: Dec4(b.decode()) / Dec4("1000
 
 
 class StateManager:
-    def __init__(self, root_window, database_name, db_connection, tax_rate = None):
-        self.tax_rate = tax_rate
+    def __init__(self, root_window, database_name, db_connection, tax_rate = Decimal("1")):
+        self.tax_rate = Decimal(tax_rate)
         self.add_item_index = self.coupon = 0
         self.sale_items_listbox_index = -1
         self.coupon_reason = ''
@@ -55,10 +55,10 @@ class StateManager:
         return self.cursor.execute("SELECT item_name FROM inventory WHERE item_name LIKE ?", (f'%{name}%', )).fetchall()
 
     def grab_barcode_given_name(self, name):
-        return self.cursor.execute('''SELECT item_barcode FROM inventory WHERE item_name = ?''', (name,)).fetchone()[0]
+        return self.cursor.execute('''SELECT item_barcode FROM inventory WHERE item_name = ?''', (name,)).fetchone()['item_barcode']
 
     def check_voided(self, sale_id):
-        return self.cursor.execute('''SELECT is_voided FROM sales WHERE sale_id = ?''', (sale_id, )).fetchone()[0]
+        return self.cursor.execute('''SELECT is_voided FROM sales WHERE sale_id = ?''', (sale_id, )).fetchone()['is_voided']
 
     def set_voided(self, sale_id):
         self.cursor.execute('''UPDATE sales SET is_voided = ? WHERE sale_id = ?''', (1, sale_id))
@@ -70,10 +70,43 @@ class StateManager:
         return self.cursor.execute('''SELECT * from sale_items WHERE sale_id = ?''', (sale_id, )).fetchall()
 
     def get_item_quantity_id(self, id):
-        return self.cursor.execute('''SELECT item_quantity FROM inventory WHERE item_id = ?''', (id, )).fetchone()[0]
+        return self.cursor.execute('''SELECT item_quantity FROM inventory WHERE item_id = ?''', (id, )).fetchone()['item_quantity']
 
     def update_quantity(self, quantity, id):
         self.cursor.execute('''UPDATE inventory SET item_quantity = ? WHERE item_id = ?''', (Dec4(quantity), id))
+
+    def get_primary_categories(self):
+        return self.cursor.execute('''SELECT category_name FROM categories WHERE parent_id IS NULL''').fetchall()
+
+    def get_category_id(self, category_name):
+        return self.cursor.execute('''SELECT category_id FROM categories WHERE category_name = ?''', (category_name, )).fetchone()['category_id']
+
+    def get_secondary_categories(self, primary_category_id):
+        return self.cursor.execute('''SELECT category_name FROM categories WHERE parent_id = ?''', (primary_category_id, )).fetchall()
+
+    def get_vendor_names(self):
+        return self.cursor.execute('''SELECT vendor_name from vendors''').fetchall()
+
+    def get_drink_quantities(self):
+        return self.cursor.execute('''
+            SELECT i.item_id,
+            i.item_name,
+            i.item_price,
+            i.item_quantity,
+            COALESCE(s.total_sold, 0)        AS total_sold,
+            COALESCE(d.total_decremented, 0) AS total_decremented
+        FROM inventory i
+        LEFT JOIN (
+            SELECT item_id, SUM(quantity) / 10000 AS total_sold
+            FROM sale_items
+            GROUP BY item_id
+        ) s ON s.item_id = i.item_id
+        LEFT JOIN (
+            SELECT item_id, SUM(decrement_quantity) / 10000 AS total_decremented
+            FROM inventory_decrements_items
+            GROUP BY item_id
+        ) d ON d.item_id = i.item_id
+        WHERE subcategory_id = 141''').fetchall()
 
 
    

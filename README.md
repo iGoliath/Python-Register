@@ -91,7 +91,6 @@ backup_interval: Time, in seconds, to perform each scheduled backup.
 tax_amount: Amount of tax to be applied to sold items.
 backup_removal_cutoff: Time, in days, back in history that backups will be removed by remove_old_backups()
 manual_time_last_boot: Flag whether or not the last boot could not establish the time. This is less used for right now.
-tally_begin_date: Date that run_x() will sum back from.
 database_name: Name of the database. Only RegisterDatabase is accepted for now.
 
 ### Default keybinds are as follows:

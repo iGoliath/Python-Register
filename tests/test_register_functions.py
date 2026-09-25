@@ -226,13 +226,13 @@ def test_quantity_decrement_single(register_instance, db):
 
     c = db.cursor()
 
-    quantity = c.execute('SELECT item_quantity FROM inventory WHERE item_barcode = ?', ("Test", )).fetchone()[0]
+    quantity = c.execute('SELECT item_quantity FROM inventory WHERE item_barcode = ?', ("Test", )).fetchone()['item_quantity']
     
     register_instance.ui.invisible_entry_var.set("Test")
     register_instance.process_sale()
     register_instance.on_cash()
 
-    new_quantity = c.execute('SELECT item_quantity FROM inventory WHERE item_barcode = ?', ("Test", )).fetchone()[0]
+    new_quantity = c.execute('SELECT item_quantity FROM inventory WHERE item_barcode = ?', ("Test", )).fetchone()['item_quantity']
 
     assert new_quantity == Decimal(quantity) - Decimal('1')
 
@@ -278,9 +278,9 @@ def test_basic_return(register_instance, db):
 
     c = db.cursor()
 
-    c.execute('SELECT item_quantity FROM inventory WHERE item_barcode = ?', ("Test", ))
-    results = c.fetchone()[0]
-    starting_quantity = results
+    starting_quantity = c.execute(
+        'SELECT item_quantity FROM inventory WHERE item_barcode = ?',
+        ("Test", )).fetchone()['item_quantity']
 
     register_instance.process_return()
     register_instance.ui.invisible_entry_var.set("Test")
@@ -288,7 +288,7 @@ def test_basic_return(register_instance, db):
     register_instance.state_mgr.return_var.set("cash")
 
     c.execute('SELECT item_quantity FROM inventory WHERE item_barcode = ?', ("Test", ))
-    results = c.fetchone()[0]
+    results = c.fetchone()['item_quantity']
     end_quantity = results
 
     assert end_quantity == Decimal(starting_quantity) + Decimal('1')
