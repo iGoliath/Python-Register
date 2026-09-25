@@ -52,7 +52,7 @@ class AddSubcategoryFrame(BaseFrame):
 
     def on_show(self, reentering=False):
 
-        if self.controller.state_mgr.add_item_dictionary.category != "":
+        if self.controller.state_mgr.add_item_dict.category != "":
             self.populate_listbox()
 
         if reentering:
@@ -73,7 +73,7 @@ class AddSubcategoryFrame(BaseFrame):
         self.add_subcategory_listbox.delete(0, tk.END)
 
         category_id = self.controller.state_mgr.get_category_id(
-            self.controller.state_mgr.add_item_dictionary.category
+            self.controller.state_mgr.add_item_dict.category
         )
         subcategories = self.controller.state_mgr.get_secondary_categories(category_id)
         if subcategories == []:

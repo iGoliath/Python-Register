@@ -105,41 +105,41 @@ def test_enter_item(register_instance, db):
     register_instance.ui.barcode_var.set("Test Item")
     register_instance.on_add_item_enter()
 
-    assert register_instance.state_mgr.add_item_dictionary.barcode == "Test Item"
+    assert register_instance.state_mgr.add_item_dict.barcode == "Test Item"
 
     register_instance.ui.name_var.set("Test Item")
     register_instance.on_add_item_enter()
 
-    assert register_instance.state_mgr.add_item_dictionary.name == "Test Item"
+    assert register_instance.state_mgr.add_item_dict.name == "Test Item"
 
     register_instance.ui.price_var.set("123")
     register_instance.on_add_item_enter()
 
-    assert register_instance.state_mgr.add_item_dictionary.price == Decimal("1.23")
+    assert register_instance.state_mgr.add_item_dict.price == Decimal("1.23")
 
     register_instance.ui.tax_var.set("0")
 
-    assert register_instance.state_mgr.add_item_dictionary.taxable == 0
+    assert register_instance.state_mgr.add_item_dict.taxable == 0
 
     register_instance.ui.category_var.set("Camping")
     register_instance.on_add_item_enter()
 
-    assert register_instance.state_mgr.add_item_dictionary.category == "Camping"
+    assert register_instance.state_mgr.add_item_dict.category == "Camping"
 
     register_instance.ui.subcategory_var.set("BBQ Supplies")
     register_instance.on_add_item_enter()
 
-    assert register_instance.state_mgr.add_item_dictionary.subcategory == "BBQ Supplies"
+    assert register_instance.state_mgr.add_item_dict.subcategory == "BBQ Supplies"
 
     register_instance.ui.vendor_var.set("ABC 123")
     register_instance.on_add_item_enter()
 
-    assert register_instance.state_mgr.add_item_dictionary.vendor == "ABC 123"
+    assert register_instance.state_mgr.add_item_dict.vendor == "ABC 123"
 
     register_instance.ui.quantity_var.set("100")
     register_instance.on_add_item_enter()
 
-    assert register_instance.state_mgr.add_item_dictionary.quantity == Decimal("100")
+    assert register_instance.state_mgr.add_item_dict.quantity == Decimal("100")
 
     register_instance.state_mgr.yes_no_var.set("yes")
 
@@ -200,7 +200,7 @@ def _enter_full_item(
 
 
 def _assert_item_attributes(
-    add_item_dictionary,
+    add_item_dict,
     barcode="Test Item",
     name="Test Item",
     price=Decimal("1.23"),
@@ -210,18 +210,18 @@ def _assert_item_attributes(
     vendor="ABC 123",
     quantity=Decimal("100"),
 ):
-    """Assert add_item_dictionary against the given expected values, which
+    """Assert add_item_dict against the given expected values, which
     default to the same values _enter_full_item enters. Used to confirm
     that reentering a single field doesn't disturb the others."""
 
-    assert add_item_dictionary.barcode == barcode
-    assert add_item_dictionary.name == name
-    assert add_item_dictionary.price == price
-    assert add_item_dictionary.taxable == taxable
-    assert add_item_dictionary.category == category
-    assert add_item_dictionary.subcategory == subcategory
-    assert add_item_dictionary.vendor == vendor
-    assert add_item_dictionary.quantity == quantity
+    assert add_item_dict.barcode == barcode
+    assert add_item_dict.name == name
+    assert add_item_dict.price == price
+    assert add_item_dict.taxable == taxable
+    assert add_item_dict.category == category
+    assert add_item_dict.subcategory == subcategory
+    assert add_item_dict.vendor == vendor
+    assert add_item_dict.quantity == quantity
 
 
 def test_reenter_barcode(register_instance):
@@ -233,7 +233,7 @@ def test_reenter_barcode(register_instance):
     register_instance.on_add_item_enter()
 
     _assert_item_attributes(
-        register_instance.state_mgr.add_item_dictionary, barcode="Reentered Item"
+        register_instance.state_mgr.add_item_dict, barcode="Reentered Item"
     )
 
 
@@ -246,7 +246,7 @@ def test_reenter_name(register_instance):
     register_instance.on_add_item_enter()
 
     _assert_item_attributes(
-        register_instance.state_mgr.add_item_dictionary, name="Reentered Name"
+        register_instance.state_mgr.add_item_dict, name="Reentered Name"
     )
 
 
@@ -259,7 +259,7 @@ def test_reenter_price(register_instance):
     register_instance.on_add_item_enter()
 
     _assert_item_attributes(
-        register_instance.state_mgr.add_item_dictionary, price=Decimal("4.56")
+        register_instance.state_mgr.add_item_dict, price=Decimal("4.56")
     )
 
 
@@ -270,7 +270,7 @@ def test_reenter_taxable(register_instance):
     register_instance.reenter_button_pressed("taxable")
     register_instance.ui.tax_var.set("0")
 
-    _assert_item_attributes(register_instance.state_mgr.add_item_dictionary, taxable=0)
+    _assert_item_attributes(register_instance.state_mgr.add_item_dict, taxable=0)
 
 
 def test_reenter_category(register_instance):
@@ -282,7 +282,7 @@ def test_reenter_category(register_instance):
     register_instance.on_add_item_enter()
 
     _assert_item_attributes(
-        register_instance.state_mgr.add_item_dictionary, category="Reentered Category"
+        register_instance.state_mgr.add_item_dict, category="Reentered Category"
     )
 
 
@@ -295,7 +295,7 @@ def test_reenter_subcategory(register_instance):
     register_instance.on_add_item_enter()
 
     _assert_item_attributes(
-        register_instance.state_mgr.add_item_dictionary,
+        register_instance.state_mgr.add_item_dict,
         subcategory="Reentered Subcategory",
     )
 
@@ -309,7 +309,7 @@ def test_reenter_vendor(register_instance):
     register_instance.on_add_item_enter()
 
     _assert_item_attributes(
-        register_instance.state_mgr.add_item_dictionary, vendor="Reentered Vendor"
+        register_instance.state_mgr.add_item_dict, vendor="Reentered Vendor"
     )
 
 
@@ -322,7 +322,7 @@ def test_reenter_quantity(register_instance):
     register_instance.on_add_item_enter()
 
     _assert_item_attributes(
-        register_instance.state_mgr.add_item_dictionary, quantity=Decimal("50")
+        register_instance.state_mgr.add_item_dict, quantity=Decimal("50")
     )
 
 
@@ -339,7 +339,7 @@ def test_add_item_coming_from_register(register_instance, db):
     assert register_instance.state_mgr.coming_from_register == False
 
     _assert_item_attributes(
-        register_instance.state_mgr.add_item_dictionary, barcode="UNKNOWN BARCODE"
+        register_instance.state_mgr.add_item_dict, barcode="UNKNOWN BARCODE"
     )
 
     database_version = c.execute(

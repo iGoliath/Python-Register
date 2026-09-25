@@ -37,33 +37,31 @@ def check_item_exists(state_manager: StateManager, barcode: str) -> bool:
     ).fetchall()
     if results:
         found_item_info = results[0]
-        state_manager.add_item_dictionary.name = found_item_info["item_name"]
-        state_manager.add_item_dictionary.price = found_item_info["item_price"]
-        state_manager.add_item_dictionary.taxable = found_item_info["item_taxable"]
-        state_manager.add_item_dictionary.barcode = found_item_info["item_barcode"]
-        state_manager.add_item_dictionary.old_barcode = found_item_info["item_barcode"]
-        state_manager.add_item_dictionary.quantity = found_item_info["item_quantity"]
+        state_manager.add_item_dict.name = found_item_info["item_name"]
+        state_manager.add_item_dict.price = found_item_info["item_price"]
+        state_manager.add_item_dict.taxable = found_item_info["item_taxable"]
+        state_manager.add_item_dict.barcode = found_item_info["item_barcode"]
+        state_manager.add_item_dict.old_barcode = found_item_info["item_barcode"]
+        state_manager.add_item_dict.quantity = found_item_info["item_quantity"]
         category = state_manager.cursor.execute(
             """SELECT category_name FROM categories WHERE category_id = ?""",
             (found_item_info["category_id"],),
         ).fetchone()
-        state_manager.add_item_dictionary.category = (
+        state_manager.add_item_dict.category = (
             category["category_name"] if category else None
         )
         subcategory = state_manager.cursor.execute(
             """SELECT category_name FROM categories WHERE category_id = ?""",
             (found_item_info["subcategory_id"],),
         ).fetchone()
-        state_manager.add_item_dictionary.subcategory = (
+        state_manager.add_item_dict.subcategory = (
             subcategory["category_name"] if subcategory else None
         )
         vendor = state_manager.cursor.execute(
             """SELECT vendor_name FROM vendors WHERE vendor_id = ?""",
             (found_item_info["vendor_id"],),
         ).fetchone()
-        state_manager.add_item_dictionary.vendor = (
-            vendor["vendor_name"] if vendor else None
-        )
+        state_manager.add_item_dict.vendor = vendor["vendor_name"] if vendor else None
         state_manager.add_item_index = state_manager.ADD_ITEM_LAST_STEP
         state_manager.updating_existing_item = True
         return True
@@ -76,7 +74,7 @@ def enter_item_barcode(state_manager: StateManager, barcode: str) -> bool:
     """Set the barcode variable of our add item object. If we are re-entering,
     skip to confirmation page"""
 
-    state_manager.add_item_dictionary.barcode = barcode
+    state_manager.add_item_dict.barcode = barcode
     if not state_manager.reentering:
         state_manager.add_item_index += 1
     elif state_manager.reentering:
@@ -88,7 +86,7 @@ def enter_item_name(state_manager: StateManager, name: str) -> bool:
     """Same as barcode. Set variable to entered name, and check whether
     or not the user is re-entering or not."""
 
-    state_manager.add_item_dictionary.name = name
+    state_manager.add_item_dict.name = name
     if not state_manager.reentering:
         state_manager.add_item_index += 1
     elif state_manager.reentering:
@@ -100,9 +98,9 @@ def enter_item_price(state_manager: StateManager, price: Decimal) -> bool:
     """Set the add item object's price. If we are not re-entering, change
     the necessary widgets to ask user whether the item is taxable."""
 
-    state_manager.add_item_dictionary.price = (
-        Decimal(price) / Decimal("100")
-    ).quantize(Decimal("0.01"))
+    state_manager.add_item_dict.price = (Decimal(price) / Decimal("100")).quantize(
+        Decimal("0.01")
+    )
     if not state_manager.reentering:
         state_manager.add_item_index += 1
     elif state_manager.reentering:
@@ -112,12 +110,12 @@ def enter_item_price(state_manager: StateManager, price: Decimal) -> bool:
 
 def enter_item_taxable(yes_no: str, state_manager: StateManager) -> bool:
     """Waits for the user to click yes/no for whether the item is taxable.
-    Set the add_item_dictionary variable accordingly, and clean up widgets."""
+    Set the add_item_dict variable accordingly, and clean up widgets."""
 
     if yes_no == "1":
-        state_manager.add_item_dictionary.taxable = 1
+        state_manager.add_item_dict.taxable = 1
     elif yes_no == "0":
-        state_manager.add_item_dictionary.taxable = 0
+        state_manager.add_item_dict.taxable = 0
 
     if not state_manager.reentering:
         state_manager.add_item_index += 1
@@ -130,7 +128,7 @@ def enter_item_taxable(yes_no: str, state_manager: StateManager) -> bool:
 def enter_item_category(state_manager: StateManager, category: str) -> bool:
     """Once user selects a category from listbox, set variable, and
     clean up widgets."""
-    state_manager.add_item_dictionary.category = category
+    state_manager.add_item_dict.category = category
 
     if not state_manager.reentering:
         state_manager.add_item_index += 1
@@ -141,7 +139,7 @@ def enter_item_category(state_manager: StateManager, category: str) -> bool:
 
 def enter_item_subcategory(state_manager: StateManager, subcategory: str) -> bool:
 
-    state_manager.add_item_dictionary.subcategory = subcategory
+    state_manager.add_item_dict.subcategory = subcategory
 
     if not state_manager.reentering:
         state_manager.add_item_index += 1
@@ -152,7 +150,7 @@ def enter_item_subcategory(state_manager: StateManager, subcategory: str) -> boo
 
 def enter_item_vendor(state_manager: StateManager, vendor: str) -> bool:
 
-    state_manager.add_item_dictionary.vendor = vendor
+    state_manager.add_item_dict.vendor = vendor
 
     if not state_manager.reentering:
         state_manager.add_item_index += 1
@@ -170,14 +168,14 @@ def enter_item_confirmation(
             if state_manager.reentering:
                 state_manager.reentering = False
             elif state_manager.reentering_quantity:
-                state_manager.add_item_dictionary.quantity = Dec4(quantity)
+                state_manager.add_item_dict.quantity = Dec4(quantity)
                 state_manager.reentering_quantity = False
         elif not state_manager.reentering:
-            state_manager.add_item_dictionary.quantity = Dec4(quantity)
+            state_manager.add_item_dict.quantity = Dec4(quantity)
         elif state_manager.reentering:
             state_manager.reentering = False
         elif state_manager.reentering_quantity:
-            state_manager.add_item_dictionary.quantity = Dec4(quantity)
+            state_manager.add_item_dict.quantity = Dec4(quantity)
             state_manager.reentering_quantity = False
 
     ui.show_frame("add_item")
@@ -199,7 +197,7 @@ def yes_existing(state_manager: StateManager) -> None:
     state_manager.updating_existing_item = False
 
     try:
-        state_manager.update_item(state_manager.add_item_dictionary.old_barcode)
+        state_manager.update_item(state_manager.add_item_dict.old_barcode)
     except sqlite3.Error as e:
         print(f"{e} when updating an existing item")
     finally:

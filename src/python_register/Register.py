@@ -138,7 +138,7 @@ class Register:
     def enter_add_item_frame(self, entered_barcode=None):
         """Reset the necessary add item process parameters to defaults. If a barcode
         is present, send it to the add item process."""
-        self.state_mgr.new_add_item_dictionary()
+        self.state_mgr.new_add_item_dict()
         self.state_mgr.reentering = False
         self.state_mgr.add_item_index = 0
         self.ui.enter_add_item_frame()
@@ -584,7 +584,7 @@ class Register:
         self.ui.show_frame("reenter")
 
     def skip_vendor_step(self):
-        self.state_mgr.add_item_dictionary.vendor = "N/A"
+        self.state_mgr.add_item_dict.vendor = "N/A"
         self.state_mgr.add_item_index += 1
         self.ui.show_frame("add_quantity")
 
@@ -681,7 +681,7 @@ class Register:
             if self.state_mgr.coming_from_register:
                 print("A")
                 invf.yes_register(self.state_mgr)
-                self.process_sale(None, self.state_mgr.add_item_dictionary.barcode)
+                self.process_sale(None, self.state_mgr.add_item_dict.barcode)
                 self.state_mgr.coming_from_register = False
                 self.ui.register_frame.tkraise()
                 self.ui.invisible_entry.focus_set()

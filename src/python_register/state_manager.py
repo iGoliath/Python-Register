@@ -21,7 +21,7 @@ class StateManager:
     def __init__(
         self, root_window, database_name, db_connection, tax_rate=Decimal("1")
     ):
-        self.add_item_dictionary = AddItemData()
+        self.add_item_dict = AddItemData()
         self.tax_rate = Decimal(tax_rate)
         self.add_item_index = self.coupon = 0
         self.sale_items_listbox_index = -1
@@ -58,9 +58,9 @@ class StateManager:
         del self.trans
         self.trans = Transaction(self.conn, self.cursor, self.tax_rate)
 
-    def new_add_item_dictionary(self):
-        del self.add_item_dictionary
-        self.add_item_dictionary = AddItemData()
+    def new_add_item_dict(self):
+        del self.add_item_dict
+        self.add_item_dict = AddItemData()
 
     def grab_names_like(self, name):
         return self.cursor.execute(
@@ -145,19 +145,19 @@ class StateManager:
         WHERE subcategory_id = 141""").fetchall()
 
     def commit_item(self):
-        """Commit items in the add_item_dictionary to inventory"""
+        """Commit items in the add_item_dict to inventory"""
         try:
             self.cursor.execute(
                 "INSERT INTO inventory VALUES (NULL, ?, ?, ?, ?, ?, (SELECT category_id FROM categories WHERE category_name  = ?), (SELECT category_id FROM categories WHERE category_name = ?), (SELECT vendor_id FROM vendors WHERE vendor_name = ?))",
                 (
-                    self.add_item_dictionary.name,
-                    self.add_item_dictionary.price,
-                    self.add_item_dictionary.taxable,
-                    self.add_item_dictionary.barcode,
-                    Dec4(self.add_item_dictionary.quantity),
-                    self.add_item_dictionary.category,
-                    self.add_item_dictionary.subcategory,
-                    self.add_item_dictionary.vendor,
+                    self.add_item_dict.name,
+                    self.add_item_dict.price,
+                    self.add_item_dict.taxable,
+                    self.add_item_dict.barcode,
+                    Dec4(self.add_item_dict.quantity),
+                    self.add_item_dict.category,
+                    self.add_item_dict.subcategory,
+                    self.add_item_dict.vendor,
                 ),
             )
             self.conn.commit()
@@ -170,14 +170,14 @@ class StateManager:
             self.cursor.execute(
                 "UPDATE inventory SET item_name = ?, item_price = ?, item_taxable = ?, item_barcode = ?, item_quantity = ?, category_id = (SELECT category_id from categories where category_name = ?), subcategory_id = (SELECT category_id FROM categories WHERE category_name = ?), vendor_id = (SELECT vendor_id FROM vendors WHERE vendor_name = ?) WHERE item_barcode = ?",
                 (
-                    self.add_item_dictionary.name,
-                    self.add_item_dictionary.price,
-                    self.add_item_dictionary.taxable,
-                    self.add_item_dictionary.barcode,
-                    Dec4(self.add_item_dictionary.quantity),
-                    self.add_item_dictionary.category,
-                    self.add_item_dictionary.subcategory,
-                    self.add_item_dictionary.vendor,
+                    self.add_item_dict.name,
+                    self.add_item_dict.price,
+                    self.add_item_dict.taxable,
+                    self.add_item_dict.barcode,
+                    Dec4(self.add_item_dict.quantity),
+                    self.add_item_dict.category,
+                    self.add_item_dict.subcategory,
+                    self.add_item_dict.vendor,
                     old_barcode,
                 ),
             )
@@ -185,13 +185,13 @@ class StateManager:
         except sqlite3.Error as e:
             print(f"Error when updating item. state_manager.update_item. Error: {e}")
             print(
-                f"Errored item's info: Name:  {self.add_item_dictionary.name}\n"
-                f"Price: {self.add_item_dictionary.price}\n"
-                f"Taxable: {self.add_item_dictionary.taxable}\n"
-                f"New Barcode: {self.add_item_dictionary.barcode}\n"
-                f"Quantity: {Dec4(self.add_item_dictionary.quantity)}\n"
-                f"Category: {self.add_item_dictionary.category}\n"
-                f"Subcategory: {self.add_item_dictionary.subcategory}\n"
-                f"Vendor: {self.add_item_dictionary.vendor}\n"
+                f"Errored item's info: Name:  {self.add_item_dict.name}\n"
+                f"Price: {self.add_item_dict.price}\n"
+                f"Taxable: {self.add_item_dict.taxable}\n"
+                f"New Barcode: {self.add_item_dict.barcode}\n"
+                f"Quantity: {Dec4(self.add_item_dict.quantity)}\n"
+                f"Category: {self.add_item_dict.category}\n"
+                f"Subcategory: {self.add_item_dict.subcategory}\n"
+                f"Vendor: {self.add_item_dict.vendor}\n"
                 f"Old Barcode: {old_barcode}"
             )
