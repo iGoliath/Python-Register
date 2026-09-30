@@ -93,6 +93,7 @@ class BrowseTransactionsFrame(BaseFrame):
         )
 
     def on_show(self, browse_mode):
+        self.max_browse_index = self.state_mgr.get_max_sale_id()
         self.browse_mode.set(browse_mode)
         enter = self.enter_browse_transactions_frame()
         if enter:
@@ -123,29 +124,31 @@ class BrowseTransactionsFrame(BaseFrame):
         """Setup necessary information for browse transaction frame. If voiding,
         set up those widgets as well. Returns boolean dependant on whether or not
         there are transactions in the database."""
-        self.controller.state_mgr.cursor.execute(
+        results = self.controller.state_mgr.cursor.execute(
             """SELECT * FROM sales WHERE sale_id = (SELECT MAX(sale_id) FROM SALES)"""
-        )
-        results = self.controller.state_mgr.cursor.fetchone()
+        ).fetchone()
         if results == None:
             return False
         else:
-            self.browse_index.set(results[0])
-            self.controller.print_transaction_info(self.text, results)
+            self.browse_index.set(results["sale_id"])
+            transaction_string = self.print_transaction_info(results)
+            self.text.delete("1.0", "end")
+            self.text.insert("end", transaction_string)
             self.label.config(text="Browsing Transactions")
             if self.browse_mode.get() == "void":
                 self.setup_void_widgets()
+            self.entry.focus_set()
             return True
         """elif args[1] == 1:
-            self.state_manager.browsing_seasonals = True
-            self.state_manager.cursor.execute(
+            self.state_mgr.browsing_seasonals = True
+            self.state_mgr.cursor.execute(
                 "SELECT * FROM seasonals WHERE seasonal_id = (SELECT MAX(seasonal_id) FROM seasonals)")
-            results = self.state_manager.cursor.fetchone()
+            results = self.state_mgr.cursor.fetchone()
             if not results:
                 self.ui.browse_text.delete("1.0", "end")
                 self.ui.browse_text.insert("end",  "No Seasonals Yet...")
             else:
-                self.state_manager.browse_index.set(results[0])
+                self.state_mgr.browse_index.set(results[0])
                 self.ui.print_seasonal_info(results)
 
             self.ui.setup_browse_seasonals()"""
@@ -158,24 +161,28 @@ class BrowseTransactionsFrame(BaseFrame):
                 """SELECT * FROM sales WHERE sale_id = ?""", (self.browse_index.get(),)
             )
         else:
-            self.state_manager.cursor.execute(
+            self.state_mgr.cursor.execute(
                 """SELECT * FROM seasonals WHERE seasonal_id = ?""",
                 (self.browse_index.get(),),
             )
 
         results = self.controller.state_mgr.cursor.fetchone()
         if not results:
-            if self.browse_index.get() == 0:
+            if self.browse_index.get() <= 0:
                 self.browse_index.set(1)
+                self.browse_transactions()
                 return
             else:
-                self.browse_index.set(self.browse_index.get() - 1)
+                self.browse_index.set(self.state_mgr.get_max_sale_id())
+                self.browse_transactions()
                 return
 
         if not self.controller.state_mgr.browsing_seasonals:
-            self.controller.print_transaction_info(self.text, list(results))
+            transaction_string = self.print_transaction_info(results)
+            self.text.delete("1.0", "end")
+            self.text.insert("end", transaction_string)
         else:
-            self.ui.print_seasonal_info(results)
+            self.wm.print_seasonal_info(results)
 
     def browse_print_receipt(self):
         self.controller.state_mgr.cursor.execute(
@@ -230,3 +237,33 @@ class BrowseTransactionsFrame(BaseFrame):
             self.controller.printer.print_receipt("void", items, transaction_info)
             self.remove_void_widgets()
             self.wm.return_to_register()
+
+    def print_transaction_info(self, transaction_info: sqlite3.Row) -> str:
+        """Print item info for transaction into a text widget. (Currently formatted for
+        4 height)."""
+        transaction_string = ""
+        transaction_string += f"Trans ID: {str(transaction_info["sale_id"])} |\t"
+        transaction_string += f"Total: ${transaction_info["total"]:.2f}\n"
+        transaction_string += (
+            f"Items Sold: {str(transaction_info["num_items_sold"])} |\t"
+        )
+        transaction_string += f"Cash: ${transaction_info["cash_used"]:.2f}\n"
+        transaction_string += f"CC: ${transaction_info["cc_used"]:.2f} |\t"
+        transaction_string += f"Date: {transaction_info["sale_date"]}\n"
+        transaction_string += f"Time: {transaction_info["sale_time"]} | "
+        transaction_string += (
+            "Voided?: Yes" if transaction_info["is_voided"] == 1 else "Voided?: No"
+        )
+        return transaction_string
+
+    def print_seasonal_info(self, seasonal_info):
+        self.text.delete("1.0", "end")
+        # self.ui.text.insert("end", f"ID: {seasonal_info[0]}  |  Site: {seasonal_info[3]}\n")
+        self.text.insert("end", "ID: ", "bold")
+        self.text.insert("end", seasonal_info[0])
+        self.text.insert("end", "|Site: ", "bold")
+        self.text.insert("end", f"{seasonal_info[3]}")
+        self.text.insert("end", "|Balance: ", "bold")
+        self.text.insert("end", f"{seasonal_info[4]:.2f}\n")
+        self.text.insert("end", "Name: ", "bold")
+        self.text.insert("end", f"{seasonal_info[1]}\n{seasonal_info[2]}\n")

@@ -35,7 +35,6 @@ class StateManager:
         self.register_yes_no_var = tk.StringVar(root_window)
         self.seasonal_id_var = tk.StringVar(root_window)
         self.return_var = tk.StringVar(root_window)
-        self.browse_index = tk.IntVar(root_window)
         self.browse_mode = tk.StringVar(root_window)
         self.popup_var = tk.StringVar(root_window)
         self.sale_items_listbox_var = tk.IntVar(root_window, -1)
@@ -195,3 +194,6 @@ class StateManager:
                 f"Vendor: {self.add_item_dict.vendor}\n"
                 f"Old Barcode: {old_barcode}"
             )
+
+    def get_max_sale_id(self):
+        return self.cursor.execute("SELECT MAX(sale_id) FROM sales").fetchone()[0]

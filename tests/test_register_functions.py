@@ -183,12 +183,14 @@ def test_basic_sale_(register_instance, payment_method, cash_used, cc_used, db):
 
     c = db.cursor()
 
-    num_sales_beginning = c.execute("SELECT MAX(sale_id) FROM sales")
+    num_sales_beginning = c.execute("SELECT MAX(sale_id) FROM sales").fetchone()[0]
+    if num_sales_beginning == None:
+        num_sales_beginning = 0
 
     _sell_test_item(register_instance)
     getattr(register_instance, f"on_{payment_method}")()
 
-    num_entries_ending = c.execute("SELECT MAX(sale_id) FROM sales")
+    num_entries_ending = c.execute("SELECT MAX(sale_id) FROM sales").fetchone()[0]
 
     assert num_sales_beginning == num_entries_ending - 1
 
@@ -578,7 +580,8 @@ def test_lookup_item_register(
     entered_quantity,
     expected_quantity,
 ):
-
+    """Ensure that valid entries for item lookup fields
+    ring up a transaction, while proper ones are disallowed."""
     register_instance.ui.show_frame("lookup_items")
     register_instance.ui.frames["lookup_items"].item_lookup_var.set(item_looked_up)
     if listbox_selected:
@@ -598,3 +601,157 @@ def test_lookup_item_register(
         _assert_sale_empty(register_instance)
     else:
         assert register_instance.state_mgr.trans.items_sold == expected_quantity
+
+
+def test_browse_transaction_go_past_max(register_instance, db):
+    """Entering a transaction id greater than the highest in
+    sales table should set output to the max transaction id"""
+    c = db.cursor()
+
+    for i in range(0, 4):
+        _sell_test_item(register_instance)
+        register_instance.complete_sale()
+
+    register_instance.ui.show_frame("browse_transactions", browse_mode="browse")
+    register_instance.ui.frames["browse_transactions"].browse_index.set(1)
+
+    current_trans_id = (
+        register_instance.ui.frames["browse_transactions"]
+        .text.get("1.0", "end-1c")
+        .split("Trans ID: ", 1)[1]
+        .split(" |", 1)[0]
+    )
+
+    assert current_trans_id == "1"
+
+    register_instance.ui.frames["browse_transactions"].browse_index.set(9999)
+
+    current_trans_id = (
+        register_instance.ui.frames["browse_transactions"]
+        .text.get("1.0", "end-1c")
+        .split("Trans ID: ", 1)[1]
+        .split(" |", 1)[0]
+    )
+
+    max_transaction_id = c.execute("SELECT MAX(sale_id) FROM sales").fetchone()[0]
+
+    assert current_trans_id == str(max_transaction_id)
+
+
+def test_browse_transaction_go_past_min(register_instance, db):
+    """Entering a transaction id less than the lowest in
+    sales table should set output to the min transaction id"""
+    c = db.cursor()
+
+    for i in range(0, 4):
+        _sell_test_item(register_instance)
+        register_instance.complete_sale()
+
+    register_instance.ui.show_frame("browse_transactions", browse_mode="browse")
+    register_instance.ui.frames["browse_transactions"].browse_index.set(9999)
+
+    current_trans_id = (
+        register_instance.ui.frames["browse_transactions"]
+        .text.get("1.0", "end-1c")
+        .split("Trans ID: ", 1)[1]
+        .split(" |", 1)[0]
+    )
+
+    max_transaction_id = c.execute("SELECT MAX(sale_id) FROM sales").fetchone()[0]
+
+    assert current_trans_id == str(max_transaction_id)
+    assert int(current_trans_id) > 1
+
+    register_instance.ui.frames["browse_transactions"].browse_index.set(-1)
+
+    current_trans_id = (
+        register_instance.ui.frames["browse_transactions"]
+        .text.get("1.0", "end-1c")
+        .split("Trans ID: ", 1)[1]
+        .split(" |", 1)[0]
+    )
+
+    min_transaction_id = c.execute("SELECT MIN(sale_id) FROM sales").fetchone()[0]
+
+    assert current_trans_id == str(min_transaction_id)
+
+
+def test_browse_transaction_scroll_left(register_instance):
+    """Scrolling left should move to one less than the current
+    transaction being displayed."""
+    for i in range(0, 4):
+        _sell_test_item(register_instance)
+        register_instance.complete_sale()
+
+    register_instance.ui.show_frame("browse_transactions", browse_mode="browse")
+
+    prev_trans_id = (
+        register_instance.ui.frames["browse_transactions"]
+        .text.get("1.0", "end-1c")
+        .split("Trans ID: ", 1)[1]
+        .split(" |", 1)[0]
+    )
+
+    register_instance.ui.frames["browse_transactions"].prev_button.invoke()
+
+    current_trans_id = (
+        register_instance.ui.frames["browse_transactions"]
+        .text.get("1.0", "end-1c")
+        .split("Trans ID: ", 1)[1]
+        .split(" |", 1)[0]
+    )
+
+    assert int(current_trans_id) == int(prev_trans_id) - 1
+
+
+def test_browse_transaction_scroll_right(register_instance):
+    """Scrolling right should move to one more than the current
+    transaction being displayed."""
+    for i in range(0, 4):
+        _sell_test_item(register_instance)
+        register_instance.complete_sale()
+
+    register_instance.ui.show_frame("browse_transactions", browse_mode="browse")
+    register_instance.ui.frames["browse_transactions"].browse_index.set(-1)
+
+    prev_trans_id = (
+        register_instance.ui.frames["browse_transactions"]
+        .text.get("1.0", "end-1c")
+        .split("Trans ID: ", 1)[1]
+        .split(" |", 1)[0]
+    )
+
+    register_instance.ui.frames["browse_transactions"].next_button.invoke()
+
+    current_trans_id = (
+        register_instance.ui.frames["browse_transactions"]
+        .text.get("1.0", "end-1c")
+        .split("Trans ID: ", 1)[1]
+        .split(" |", 1)[0]
+    )
+
+    assert int(current_trans_id) == int(prev_trans_id) + 1
+
+
+def test_browse_transaction_text_formatting(register_instance, db):
+    """Test that the formatted text in the text widget
+    matches that of the output from print_transaction_info"""
+    c = db.cursor()
+    _sell_test_item(register_instance)
+    register_instance.complete_sale()
+
+    register_instance.ui.show_frame("browse_transactions", browse_mode="browse")
+
+    text_widget_value = register_instance.ui.frames["browse_transactions"].text.get(
+        "1.0", "end-1c"
+    )
+
+    function_output_value = register_instance.ui.frames[
+        "browse_transactions"
+    ].print_transaction_info(
+        c.execute(
+            "SELECT * FROM sales WHERE sale_id = (SELECT MAX(sale_id) FROM sales)"
+        ).fetchone()
+    )
+
+    assert text_widget_value == function_output_value

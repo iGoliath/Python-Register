@@ -211,21 +211,6 @@ class Register:
             self.ui.invisible_entry.focus_set()
             return
 
-    def print_transaction_info(self, text_widget, transaction_info):
-        """Print item info for transaction into a text widget. (Currently formatted for
-        4 height)."""
-        text_widget.delete("1.0", "end")
-        text_widget.insert("end", f"Trans ID: {str(transaction_info[0])} |\t")
-        text_widget.insert("end", f"Total: ${transaction_info[4]:.2f}\n")
-        text_widget.insert("end", f"Items Sold: {str(transaction_info[5])} |\t")
-        text_widget.insert("end", f"Cash: ${transaction_info[8]:.2f}\n")
-        text_widget.insert("end", f"CC: ${transaction_info[9]:.2f} |\t")
-        text_widget.insert("end", f"Date: {transaction_info[6]}\n")
-        text_widget.insert("end", f"Time: {transaction_info[7]} | ")
-        text_widget.insert(
-            "end", "Voided?: Yes" if transaction_info[10] == 1 else "Voided?: No"
-        )
-
     def on_cash(self, event=None):
         """Handles when cashier attempts to finalize transaction using cash."""
         if self.state_mgr.trans.total == 0:

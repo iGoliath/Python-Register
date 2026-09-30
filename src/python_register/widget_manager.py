@@ -724,15 +724,3 @@ class WidgetManager:
                 self.show_frame("add_vendor")
             case 7:
                 self.show_frame("add_quantity")
-
-    def print_seasonal_info(self, seasonal_info):
-        self.browse_text.delete("1.0", "end")
-        # self.ui.browse_text.insert("end", f"ID: {seasonal_info[0]}  |  Site: {seasonal_info[3]}\n")
-        self.browse_text.insert("end", "ID: ", "bold")
-        self.browse_text.insert("end", seasonal_info[0])
-        self.browse_text.insert("end", "|Site: ", "bold")
-        self.browse_text.insert("end", f"{seasonal_info[3]}")
-        self.browse_text.insert("end", "|Balance: ", "bold")
-        self.browse_text.insert("end", f"{seasonal_info[4]:.2f}\n")
-        self.browse_text.insert("end", "Name: ", "bold")
-        self.browse_text.insert("end", f"{seasonal_info[1]}\n{seasonal_info[2]}\n")
