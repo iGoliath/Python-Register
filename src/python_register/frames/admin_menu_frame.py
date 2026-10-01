@@ -65,6 +65,13 @@ class AdminMenuFrame(BaseFrame):
             command=lambda: self.wm.show_frame("main_menu"),
         )
 
+        self.enter_reconciling_mode_button = tk.Button(
+            buttons_frame,
+            text="Reconciling Mode",
+            font=("Arial", 58),
+            command=lambda: self.controller.enter_reconciling_mode(),
+        )
+
         self.run_x_button.grid(column=0, row=0, sticky="nsew", pady=2)
         self.new_item_button.grid(column=1, row=0, sticky="nsew", pady=2)
         self.browse_transactions_button.grid(column=1, row=1, sticky="nsew", pady=2)
@@ -72,6 +79,7 @@ class AdminMenuFrame(BaseFrame):
         self.admin_menu_back_button.grid(column=0, row=2, sticky="nsew", pady=2)
         self.run_reports_button.grid(column=1, row=2, sticky="nsew", pady=2)
         self.settings_menu_button.grid(column=0, row=3, sticky="nsew")
+        self.enter_reconciling_mode_button.grid(column=1, row=3, sticky="nsew")
 
     def on_show(self):
         pass

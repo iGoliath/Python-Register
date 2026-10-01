@@ -62,6 +62,10 @@ def check_item_exists(state_manager: StateManager, barcode: str) -> bool:
             (found_item_info["vendor_id"],),
         ).fetchone()
         state_manager.add_item_dict.vendor = vendor["vendor_name"] if vendor else None
+        state_manager.add_item_dict.reconciled = found_item_info["item_reconciled"]
+        state_manager.add_item_dict.date_last_reconciled = found_item_info[
+            "item_date_last_reconciled"
+        ]
         state_manager.add_item_index = state_manager.ADD_ITEM_LAST_STEP
         state_manager.updating_existing_item = True
         return True

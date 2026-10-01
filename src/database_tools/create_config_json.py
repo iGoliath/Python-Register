@@ -15,6 +15,7 @@ def create_config_json():
         "printer_vendor_id": "0x0000",
         "printer_product_id": "0x0000",
         "email_address": "johnsmith123@gmail.com",
+        "reconciling_mode": True,
     }
     try:
         with open(

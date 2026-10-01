@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 
 
@@ -17,3 +18,5 @@ class AddItemData:
     subcategory: str = ""
     vendor: str = ""
     quantity: Dec4 = Dec4("0")
+    reconciled: bool = False
+    date_last_reconciled: datetime = datetime.now()

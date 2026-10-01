@@ -1,5 +1,6 @@
 import sqlite3
 import tkinter as tk
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -18,11 +19,10 @@ sqlite3.register_converter("FOURDECINT", lambda b: Dec4(b.decode()) / Dec4("1000
 
 
 class StateManager:
-    def __init__(
-        self, root_window, database_name, db_connection, tax_rate=Decimal("1")
-    ):
+    def __init__(self, root_window, db_connection, config):
+        self.config = config
         self.add_item_dict = AddItemData()
-        self.tax_rate = Decimal(tax_rate)
+        self.tax_rate = self.config.data["tax_amount"]
         self.add_item_index = self.coupon = 0
         self.sale_items_listbox_index = -1
         self.coupon_reason = ""
@@ -38,11 +38,10 @@ class StateManager:
         self.browse_mode = tk.StringVar(root_window)
         self.popup_var = tk.StringVar(root_window)
         self.sale_items_listbox_var = tk.IntVar(root_window, -1)
-        self.binding_manager = None
-        self.current_dir = Path(__file__).parent
         if db_connection == None:
             self.conn = sqlite3.connect(
-                self.current_dir / database_name, detect_types=sqlite3.PARSE_DECLTYPES
+                Path(__file__).parent / self.config.data["database_name"],
+                detect_types=sqlite3.PARSE_DECLTYPES,
             )
         else:
             self.conn = db_connection
@@ -145,9 +144,10 @@ class StateManager:
 
     def commit_item(self):
         """Commit items in the add_item_dict to inventory"""
+        time = datetime.now()
         try:
             self.cursor.execute(
-                "INSERT INTO inventory VALUES (NULL, ?, ?, ?, ?, ?, (SELECT category_id FROM categories WHERE category_name  = ?), (SELECT category_id FROM categories WHERE category_name = ?), (SELECT vendor_id FROM vendors WHERE vendor_name = ?))",
+                "INSERT INTO inventory VALUES (NULL, ?, ?, ?, ?, ?, (SELECT category_id FROM categories WHERE category_name  = ?), (SELECT category_id FROM categories WHERE category_name = ?), (SELECT vendor_id FROM vendors WHERE vendor_name = ?), ?, ?)",
                 (
                     self.add_item_dict.name,
                     self.add_item_dict.price,
@@ -157,17 +157,21 @@ class StateManager:
                     self.add_item_dict.category,
                     self.add_item_dict.subcategory,
                     self.add_item_dict.vendor,
+                    1 if self.config.data["reconciling_mode"] else 0,
+                    time if self.config.data["reconciling_mode"] else None,
                 ),
             )
             self.conn.commit()
+            return time
         except sqlite3.Error as e:
             print(f"Error when committing item. state_manager.commit_item. Error: {e} ")
 
-    def update_item(self, old_barcode):
+    def update_item(self, old_barcode) -> datetime:
         """Update item in inventory with new attributes, given the old barcode"""
+        time = datetime.now()
         try:
             self.cursor.execute(
-                "UPDATE inventory SET item_name = ?, item_price = ?, item_taxable = ?, item_barcode = ?, item_quantity = ?, category_id = (SELECT category_id from categories where category_name = ?), subcategory_id = (SELECT category_id FROM categories WHERE category_name = ?), vendor_id = (SELECT vendor_id FROM vendors WHERE vendor_name = ?) WHERE item_barcode = ?",
+                "UPDATE inventory SET item_name = ?, item_price = ?, item_taxable = ?, item_barcode = ?, item_quantity = ?, category_id = (SELECT category_id from categories where category_name = ?), subcategory_id = (SELECT category_id FROM categories WHERE category_name = ?), vendor_id = (SELECT vendor_id FROM vendors WHERE vendor_name = ?), item_reconciled = ?, item_date_last_reconciled = ? WHERE item_barcode = ?",
                 (
                     self.add_item_dict.name,
                     self.add_item_dict.price,
@@ -177,10 +181,21 @@ class StateManager:
                     self.add_item_dict.category,
                     self.add_item_dict.subcategory,
                     self.add_item_dict.vendor,
+                    (
+                        1
+                        if self.config.data["reconciling_mode"]
+                        else self.add_item_dict.reconciled
+                    ),
+                    (
+                        time
+                        if self.config.data["reconciling_mode"]
+                        else self.add_item_dict.date_last_reconciled
+                    ),
                     old_barcode,
                 ),
             )
             self.conn.commit()
+            return time
         except sqlite3.Error as e:
             print(f"Error when updating item. state_manager.update_item. Error: {e}")
             print(

@@ -45,12 +45,7 @@ class Register:
             print(e)
             self.seg = None
         self.config = Config()
-        self.state_mgr = StateManager(
-            root,
-            self.config.data["database_name"],
-            db_connection,
-            self.config.data["tax_amount"],
-        )
+        self.state_mgr = StateManager(root, db_connection, self.config)
         self.state_mgr.sale_items_listbox_var.trace_add(
             "write", self.on_sale_items_listbox_var
         )
@@ -76,6 +71,19 @@ class Register:
             self.ui.vendor_var,
             self.ui.quantity_var,
         ]
+
+    def enter_reconciling_mode(self):
+        """Check whether or not reconciling mode is set.
+        If so, turn it off, if not turn it on."""
+        print(self.config.data["reconciling_mode"])
+        if self.config.data["reconciling_mode"]:
+            self.ui.popup_description_label_var.set("Reconciling mode is now OFF")
+            self.config.data["reconciling_mode"] = False
+        else:
+            self.ui.popup_description_label_var.set("Reconciling mode is now ON")
+            self.config.data["reconciling_mode"] = True
+        self.config.write_out_config()
+        self.ui.popup_frame.tkraise()
 
     def enter_add_item_lookup(self):
         self.ui.show_frame("lookup_items")

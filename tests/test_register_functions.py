@@ -42,6 +42,8 @@ def _create_schema(conn):
             category_id INTEGER, 
             subcategory_id INTEGER, 
             vendor_id INTEGER, 
+            item_reconciled BOOLEAN,
+            item_date_last_reconciled TEXT,
             FOREIGN KEY (category_id) REFERENCES categories(category_id), 
             FOREIGN KEY (subcategory_id) REFERENCES categories(category_id), 
             FOREIGN KEY (vendor_id) REFERENCES vendors(vendor_id));
@@ -96,16 +98,16 @@ def _create_schema(conn):
         INSERT INTO categories VALUES(0, 'Camping', NULL);
         INSERT INTO categories VALUES(1, 'BBQ Supplies', 0);
         INSERT INTO vendors VALUES(0, 'ABC 123');
-        INSERT INTO inventory VALUES(NULL, 'Test', 123, 0, 'Test', 1000000, 0, 0, 0);
-        INSERT INTO inventory VALUES(NULL, 'Test1', 123, 1, 'Test1', 1000000, 0, 0, 0);
-        INSERT INTO inventory VALUES(NULL, 'Test2', 123, 0, 'Test2', 1000000, 0, 0, 0);
-        INSERT INTO inventory VALUES(NULL, 'Test3', 123, 1, 'Test3', 1000000, 0, 0, 0);
-        INSERT INTO inventory VALUES(NULL, 'Test4', 123, 0, 'Test4', 1000000, 0, 0, 0);
-        INSERT INTO inventory VALUES(NULL, 'Test5', 123, 1, 'Test5', 1000000, 0, 0, 0);
-        INSERT INTO inventory VALUES(NULL, 'Test6', 123, 0, 'Test6', 1000000, 0, 0, 0);
-        INSERT INTO inventory VALUES(NULL, 'Test7', 123, 1, 'Test7', 1000000, 0, 0, 0);
-        INSERT INTO inventory VALUES(NULL, 'Test8', 123, 0, 'Test8', 1000000, 0, 0, 0);
-        INSERT INTO inventory VALUES(NULL, 'Test9', 123, 1, 'Test9', 1000000, 0, 0, 0);
+        INSERT INTO inventory VALUES(NULL, 'Test', 123, 0, 'Test', 1000000, 0, 0, 0, 0, NULL);
+        INSERT INTO inventory VALUES(NULL, 'Test1', 123, 1, 'Test1', 1000000, 0, 0, 0, 0, NULL);
+        INSERT INTO inventory VALUES(NULL, 'Test2', 123, 0, 'Test2', 1000000, 0, 0, 0, 0, NULL);
+        INSERT INTO inventory VALUES(NULL, 'Test3', 123, 1, 'Test3', 1000000, 0, 0, 0, 0, NULL);
+        INSERT INTO inventory VALUES(NULL, 'Test4', 123, 0, 'Test4', 1000000, 0, 0, 0, 0, NULL);
+        INSERT INTO inventory VALUES(NULL, 'Test5', 123, 1, 'Test5', 1000000, 0, 0, 0, 0, NULL);
+        INSERT INTO inventory VALUES(NULL, 'Test6', 123, 0, 'Test6', 1000000, 0, 0, 0, 0, NULL);
+        INSERT INTO inventory VALUES(NULL, 'Test7', 123, 1, 'Test7', 1000000, 0, 0, 0, 0, NULL);
+        INSERT INTO inventory VALUES(NULL, 'Test8', 123, 0, 'Test8', 1000000, 0, 0, 0, 0, NULL);
+        INSERT INTO inventory VALUES(NULL, 'Test9', 123, 1, 'Test9', 1000000, 0, 0, 0, 0, NULL);
     """)
 
 

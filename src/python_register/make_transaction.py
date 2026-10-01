@@ -9,7 +9,7 @@ class Transaction:
     def __init__(self, db_conn, db_cursor, tax_rate):
         self.db_conn = db_conn
         self.db_cursor = db_cursor
-        self.tax_rate = tax_rate
+        self.tax_rate = Decimal(tax_rate)
         self.nontax = self.pretax = self.tax = Decimal("0.0")
         self.total = self.cash_used = self.cc_used = Decimal("0.0")
         self.cash_tendered = self.cc_tendered = Decimal("0.0")
