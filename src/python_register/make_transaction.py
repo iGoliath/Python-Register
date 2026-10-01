@@ -118,6 +118,7 @@ class Transaction:
                     ),
                 )
             self.db_conn.commit()
+            return True
         except sqlite3.IntegrityError as e:
             print(e)
             self.db_conn.rollback()

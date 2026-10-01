@@ -381,6 +381,31 @@ def test_inventory_decrement(register_instance, db):
     assert register_instance.state_mgr.trans.total == Decimal("0")
 
 
+def test_empty_decrement(register_instance, db):
+    """Empty decrement should do nothing"""
+    c = db.cursor()
+
+    expected_max_decrement_id = c.execute(
+        "SELECT MAX(decrement_id) FROM inventory_decrements"
+    ).fetchone()[0]
+
+    register_instance.complete_decrement()
+
+    actual_max_decrement_id = c.execute(
+        "SELECT MAX(decrement_id) FROM inventory_decrements"
+    ).fetchone()[0]
+
+    actual_max_decrement_items_id = c.execute(
+        "SELECT MAX(decrement_id) FROM inventory_decrements_items"
+    ).fetchone()[0]
+
+    assert (
+        expected_max_decrement_id
+        == actual_max_decrement_id
+        == actual_max_decrement_items_id
+    )
+
+
 def test_manual_quantity_input(register_instance):
 
     _sell_test_item(register_instance)
