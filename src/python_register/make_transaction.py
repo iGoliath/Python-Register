@@ -87,6 +87,8 @@ class Transaction:
 
     def complete_as_decrement(self):
         global datetime
+        if self.items_sold == Decimal("0"):
+            return False
         try:
             self.db_cursor.execute(
                 """INSERT INTO inventory_decrements VALUES (NULL, ?)""",

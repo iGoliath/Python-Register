@@ -363,8 +363,13 @@ class Register:
         self.seg.text = f"{' ' * (9 - len(str(to_print)))}{to_print}"
 
     def complete_decrement(self):
-        self.state_mgr.trans.complete_as_decrement()
-        self.enter_register_frame()
+        if self.state_mgr.trans.complete_as_decrement():
+            self.enter_register_frame()
+        else:
+            self.ui.popup_description_label_var.set(
+                "Cannot decrement inventory,\nnothing entered!"
+            )
+            self.ui.popup_frame.tkraise()
 
     def clear(self, event=None):
         """Clear number user entered in register."""
