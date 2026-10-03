@@ -253,6 +253,16 @@ def test_reenter_name(register_instance):
     )
 
 
+def test_reenter_name_prints_to_entry(register_instance):
+    """Reentering the name prints the current name to
+    the entry widget."""
+    _enter_full_item(register_instance)
+
+    register_instance.reenter_button_pressed("name")
+    entry_name = register_instance.ui.frames["add_name"].add_name_entry.get()
+    assert register_instance.state_mgr.add_item_dict.name == entry_name
+
+
 def test_reenter_price(register_instance):
     """Reentering price updates only the price."""
     _enter_full_item(register_instance)

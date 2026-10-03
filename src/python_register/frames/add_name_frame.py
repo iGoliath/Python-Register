@@ -43,10 +43,11 @@ class AddNameFrame(BaseFrame):
             command=lambda: self.wm.show_frame("main_menu"),
         ).grid(column=1, row=0, sticky="ew")
 
-    def on_show(self, reentering=False):
+    def on_show(self, reentering=False, item_name=""):
 
         self.add_name_entry.focus_set()
         if reentering:
             self.add_name_back_button.config(
                 command=lambda: self.controller.reenter_back_button()
             )
+            self.add_name_entry.insert(0, item_name)

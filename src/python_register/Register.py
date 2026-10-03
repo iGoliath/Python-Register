@@ -555,7 +555,11 @@ class Register:
                 self.ui.show_frame("add_barcode", reentering=True)
             case "name":
                 self.state_mgr.add_item_index = 1
-                self.ui.show_frame("add_name", reentering=True)
+                self.ui.show_frame(
+                    "add_name",
+                    reentering=True,
+                    item_name=self.state_mgr.add_item_dict.name,
+                )
             case "price":
                 self.state_mgr.add_item_index = 2
                 self.ui.show_frame("add_price", reentering=True)
@@ -677,22 +681,18 @@ class Register:
         yes_no_answer = self.state_mgr.yes_no_var.get()
         if yes_no_answer == "yes":
             if self.state_mgr.coming_from_register:
-                print("A")
                 invf.yes_register(self.state_mgr)
                 self.process_sale(None, self.state_mgr.add_item_dict.barcode)
                 self.state_mgr.coming_from_register = False
                 self.ui.register_frame.tkraise()
                 self.ui.invisible_entry.focus_set()
             elif self.state_mgr.updating_existing_item:
-                print("B")
                 invf.yes_existing(self.state_mgr)
                 self.enter_add_item_frame()
             elif not self.state_mgr.coming_from_register:
-                print("C")
                 invf.yes_not_register(self.state_mgr)
                 self.enter_add_item_frame()
         elif yes_no_answer == "no":
-            print("D")
             self.ui.show_frame("reenter")
 
     def process_return(self, event=None):
