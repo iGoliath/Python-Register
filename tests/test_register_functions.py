@@ -160,11 +160,11 @@ def _assert_sale_state(
 ) -> None:
     assert (
         register.ui.user_entry.get()
-        == f"${Decimal(items_sold * nontax * pretax).quantize(Decimal("0.01"))}"
+        == f"${Decimal(items_sold * nontax * pretax).quantize(Decimal('0.01'))}"
     )
     assert (
         register.ui.balance_entry.get()
-        == f"${Decimal(items_sold * nontax * pretax).quantize(Decimal("0.01"))}"
+        == f"${Decimal(items_sold * nontax * pretax).quantize(Decimal('0.01'))}"
     )
     assert register.state_mgr.trans.items_sold == items_sold
     assert register.state_mgr.trans.nontax == nontax
