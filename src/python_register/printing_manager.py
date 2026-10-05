@@ -13,13 +13,16 @@ class Printer:
         self.state_manager = state_manager
         self.config = config
         self.printer = self.check_printer_exists(
-            self.config.data["printer_vendor_id"],
-            self.config.data["printer_product_id"],
+            int(self.config.data["printer_vendor_id"], 16),
+            int(self.config.data["printer_product_id"], 16),
         )
 
     def check_printer_exists(self, vendor_id, product_id, file_path="/tmp/output.bin"):
 
-        device = usb.core.find(idVendor=vendor_id, idProduct=product_id)
+        device = usb.core.find(
+            idVendor=vendor_id,
+            idProduct=product_id,
+        )
 
         if device is not None:
             return Usb(vendor_id, product_id)

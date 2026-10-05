@@ -15,6 +15,7 @@ dependencies = [
   "luma.core",
   "luma.led_matrix",
   "spidev",
+  "keyring",
 ]
 
 [tool.setuptools.packages.find]

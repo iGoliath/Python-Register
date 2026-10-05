@@ -68,7 +68,7 @@ class AdminMenuFrame(BaseFrame):
         self.enter_reconciling_mode_button = tk.Button(
             buttons_frame,
             text="Reconciling Mode",
-            font=("Arial", 58),
+            font=("Arial", 48),
             command=lambda: self.controller.enter_reconciling_mode(),
         )
 
