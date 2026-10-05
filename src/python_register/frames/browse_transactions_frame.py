@@ -242,15 +242,15 @@ class BrowseTransactionsFrame(BaseFrame):
         """Print item info for transaction into a text widget. (Currently formatted for
         4 height)."""
         transaction_string = ""
-        transaction_string += f"Trans ID: {str(transaction_info["sale_id"])} |\t"
-        transaction_string += f"Total: ${transaction_info["total"]:.2f}\n"
+        transaction_string += f"Trans ID: {str(transaction_info['sale_id'])} |\t"
+        transaction_string += f"Total: ${transaction_info['total']:.2f}\n"
         transaction_string += (
-            f"Items Sold: {str(transaction_info["num_items_sold"])} |\t"
+            f"Items Sold: {str(transaction_info['num_items_sold'])} |\t"
         )
-        transaction_string += f"Cash: ${transaction_info["cash_used"]:.2f}\n"
-        transaction_string += f"CC: ${transaction_info["cc_used"]:.2f} |\t"
-        transaction_string += f"Date: {transaction_info["sale_date"]}\n"
-        transaction_string += f"Time: {transaction_info["sale_time"]} | "
+        transaction_string += f"Cash: ${transaction_info['cash_used']:.2f}\n"
+        transaction_string += f"CC: ${transaction_info['cc_used']:.2f} |\t"
+        transaction_string += f"Date: {transaction_info['sale_date']}\n"
+        transaction_string += f"Time: {transaction_info['sale_time']} | "
         transaction_string += (
             "Voided?: Yes" if transaction_info["is_voided"] == 1 else "Voided?: No"
         )
