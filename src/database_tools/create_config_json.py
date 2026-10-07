@@ -3,7 +3,9 @@ import os
 from pathlib import Path
 
 
-def create_config_json():
+def create_config_json(
+    json_path=Path(__file__).parent / "../python_register/config.json",
+):
     default_data = {
         "printing_width": 42,
         "backup_interval": 5,
@@ -18,10 +20,8 @@ def create_config_json():
         "reconciling_mode": True,
     }
     try:
-        with open(
-            Path(__file__).parent / "../python_register/config.json", "x"
-        ) as file:
-            json.dump(default_data, file)
+        with open(json_path, "x") as file:
+            json.dump(default_data, file, indent=4)
             return True
     except FileExistsError:
         return False

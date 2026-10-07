@@ -9,6 +9,3 @@ CREATE TABLE seasonals(seasonal_id INTEGER PRIMARY KEY AUTOINCREMENT, seasonal_l
 CREATE TABLE seasonal_sales(seasonal_sale_id INTEGER PRIMARY KEY AUTOINCREMENT, seasonal_id INTEGER, sale_id INTEGER, FOREIGN KEY(seasonal_id) REFERENCES seasonals(seasonal_id), FOREIGN KEY(sale_id) REFERENCES sales(sale_id))
 CREATE TABLE categories(category_id INTEGER PRIMARY KEY NOT NULL, category_name TEXT NOT NULL, parent_id INTEGER REFERENCES categories(category_id))
 CREATE TABLE vendors(vendor_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, vendor_name TEXT NOT NULL)
-
-
-

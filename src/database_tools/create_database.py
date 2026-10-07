@@ -4,8 +4,10 @@ import sys
 from pathlib import Path
 
 
-def create_database():
-    database_path = Path(__file__).parent / "../python_register/RegisterDatabase"
+def create_database(
+    database_path=Path(__file__).parent / "../python_register.RegisterDatabase",
+):
+    database_path = database_path
     if os.path.exists(database_path):
         return False
 
@@ -26,11 +28,11 @@ def create_database():
     return True
 
 
-def seed_database():
+def seed_database(
+    database_path=Path(__file__).parent / "../python_register/RegisterDatabase",
+):
 
-    conn = sqlite3.connect(
-        (Path(__file__).parent / "../python_register/RegisterDatabase")
-    )
+    conn = sqlite3.connect((database_path))
     cursor = conn.cursor()
 
     with open(Path(__file__).parent / "example_database_data.txt") as fp:
@@ -41,6 +43,8 @@ def seed_database():
                 cursor.execute(command)
             except sqlite3.Error as e:
                 print(e)
+                return False
 
     conn.commit()
     conn.close()
+    return True

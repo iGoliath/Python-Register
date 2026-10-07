@@ -37,9 +37,8 @@ Additionally, it brings small businesses into the modern day in terms of their P
 4. Either in-program or helper program tools to retrieve database information. I.E. sales of chocolate bars from date X to Y, perhaps displayed in a graph.
 5. Ease of changing inventory. This could look like the ability to upload your tables to excel and edit them, or perhaps tools that call SQL.
 6. Settings are currently handled through a manually edited JSON file. I'd like to add a settings page.
-7. To go along with settings, eventually I'd like to add a "welcome mode" or "tutorial mode" upon first program boot to help user set up their environment and understand the program.
-8. Outward facing screen to display totals to customer. Currently I am working on using a max7219 and the luma module.
-9. I'd like to eventually write a proper instruction/user manual. For now that makes no sense with how much will definitely change.
+7. To go along with settings, eventually I'd like to add a "welcome mode" or "tutorial mode" upon first program boot to help users set up their environment and understand the program.
+8. I'd like to eventually write a proper instruction/user manual. For now that makes no sense with how much will definitely change.
 
 ## How to Use
 
@@ -69,29 +68,29 @@ python3 -m python_register.Register
 
 ```
 
-By default, backups will be disabled and the printer will be set to a file output. Additionally, the config.json file is setup for my personal environment. You can edit these as follows:
+By default, backups will direct to ~/Desktop and the printer will be set to a file output. You can edit these as follows:
 ### Backups:
-1. Open Python-Register/src/python_register/Register.py in your editor of choice.
-2. Uncomment lines 771-779.
-3. Replace the directory in the connect statement in the function perform_backup() with your desired location for backups.
+Change the "backup_path" field in config.json to the desired directory.
 
 ### Printer:
-1. Open Python-Register/src/python_register/printing_manager.py in your editor of choice.
-2. Comment the line 'self.printer = File("/tmp/output.bin")'
-3. Open Terminal
-4. Run lsusb and find the vendor ID and product ID of your esc-pos compatible receipt printer. They are the numbers in the format XXXX:XXXX
-5. Replace these sections in the 'self.printer = Usb' line above the one you commented out. For example, my printer is 0FE6:811E. The line would then be 'self.printer = Usb(0x0f36, 0x811e, 0)
+1. Run `lsusb` find the vendor and product id's of your ESC/POS compatible printer. 
+2. Change the "printer_vendor_id" and "printer_product_id" fields of config.json to match that of your printer.
+
 
 ### Config:
 
 Edit config.json located in Python-Register/src/python_register
-The fields are as follows:
-printing_width: Width in characters of receipt printer. Most are 42 or 48.
-backup_interval: Time, in seconds, to perform each scheduled backup.
-tax_amount: Amount of tax to be applied to sold items.
-backup_removal_cutoff: Time, in days, back in history that backups will be removed by remove_old_backups()
-manual_time_last_boot: Flag whether or not the last boot could not establish the time. This is less used for right now.
-database_name: Name of the database. Only RegisterDatabase is accepted for now.
+The fields are as follows:\
+printing_width: Width in characters of receipt printer. Most are 42 or 48.\
+backup_interval: Time, in seconds, to perform each scheduled backup.\
+tax_amount: Amount of tax to be applied to sold items.\
+backup_removal_cutoff: Time, in days, back in history that backups will be removed by remove_old_backups()\
+manual_time_last_boot: Flag whether or not the last boot could not establish the time. This is less used for right now.\
+database_name: Name of the database. Only RegisterDatabase is accepted for now.\
+backup_path: Path where backups are written to.\
+printer_vendor_id and printer_product_id: Values of USB ESC/POS compatible receipt printer.\
+email_address: Email address used for sending email reports from POS system.\
+reconciling_mode: Whether or not items will be marked as reconciled.\
 
 ### Default keybinds are as follows:
 Backspace - Clear  
