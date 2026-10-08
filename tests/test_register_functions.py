@@ -117,6 +117,7 @@ def register_instance(db):
     register = Register(root, db)
     pygame.mixer.init()
     root.withdraw()
+    register.ui.show_frame("register")
     root.update()
     yield register
     root.destroy()
@@ -139,31 +140,31 @@ sqlite3.register_converter("FOURDECINT", lambda b: Dec4(b.decode()) / Dec4("1000
 
 def _sell_test_item(register_instance):
     """Helper function, sell one item 'Test'"""
-    register_instance.ui.invisible_entry_var.set("Test")
-    register_instance.process_sale()
+    register_instance.ui.frames["register"].invisible_entry_var.set("Test")
+    register_instance.ui.frames["register"].process_sale()
 
 
 def _assert_sale_empty(register: Register) -> None:
     """Helper function for checking that current transaction is empty"""
-    assert register.ui.user_entry.get() == "$0.00"
-    assert register.ui.balance_entry.get() == "$0.00"
+    assert register.ui.frames["register"].user_entry.get() == "$0.00"
+    assert register.ui.frames["register"].balance_entry.get() == "$0.00"
     assert register.state_mgr.trans.items_sold == Decimal("0")
     assert register.state_mgr.trans.nontax == Decimal("0")
     assert register.state_mgr.trans.pretax == Decimal("0")
     assert register.state_mgr.trans.tax == Decimal("0")
     assert register.state_mgr.trans.total == Decimal("0")
-    assert register.ui.sale_items_listbox.get(0, tk.END) == ()
+    assert register.ui.frames["register"].sale_items_listbox.get(0, tk.END) == ()
 
 
 def _assert_sale_state(
     register: Register, items_sold, nontax, pretax, tax, total
 ) -> None:
     assert (
-        register.ui.user_entry.get()
+        register.ui.frames["register"].user_entry.get()
         == f"${Decimal(items_sold * nontax * pretax).quantize(Decimal('0.01'))}"
     )
     assert (
-        register.ui.balance_entry.get()
+        register.ui.frames["register"].balance_entry.get()
         == f"${Decimal(items_sold * nontax * pretax).quantize(Decimal('0.01'))}"
     )
     assert register.state_mgr.trans.items_sold == items_sold
@@ -190,7 +191,7 @@ def test_basic_sale_(register_instance, payment_method, cash_used, cc_used, db):
         num_sales_beginning = 0
 
     _sell_test_item(register_instance)
-    getattr(register_instance, f"on_{payment_method}")()
+    getattr(register_instance.ui.frames["register"], f"on_{payment_method}")()
 
     num_entries_ending = c.execute("SELECT MAX(sale_id) FROM sales").fetchone()[0]
 
@@ -205,13 +206,24 @@ def test_basic_sale_(register_instance, payment_method, cash_used, cc_used, db):
     assert row["is_voided"] == 0
 
 
+def test_basic_sale_item_not_found(register_instance, db):
+    """Sale of an item that is not in the inventory."""
+    register_instance.ui.frames["register"].invisible_entry_var.set("NOTFOUNDITEM")
+    register_instance.ui.frames["register"].process_sale()
+    _assert_sale_empty(register_instance)
+    register_instance.ui.frames[
+        "register_add_item_prompt"
+    ].register_add_item_yes_button.invoke()
+    assert register_instance.state_mgr.add_item_dict.barcode == "NOTFOUNDITEM"
+
+
 def test_basic_sale_cc(register_instance, db):
     """Sale of one item, no specified cc amount"""
 
     c = db.cursor()
 
     _sell_test_item(register_instance)
-    register_instance.on_cc()
+    register_instance.ui.frames["register"].on_cc()
 
     c.execute("SELECT * FROM sales WHERE sale_id = (SELECT MAX(sale_id) FROM sales)")
     results = c.fetchall()
@@ -232,9 +244,9 @@ def test_sale_cash_cc(register_instance, db):
     c = db.cursor()
 
     _sell_test_item(register_instance)
-    register_instance.ui.invisible_entry_var.set("100")
-    register_instance.on_cash()
-    register_instance.on_cc()
+    register_instance.ui.frames["register"].invisible_entry_var.set("100")
+    register_instance.ui.frames["register"].on_cash()
+    register_instance.ui.frames["register"].on_cc()
 
     c.execute(
         "SELECT non_tax, cash_used, cc_used FROM sales WHERE sale_id = (SELECT MAX(sale_id) FROM sales)"
@@ -251,9 +263,9 @@ def test_sale_cc_cash(register_instance, db):
     c = db.cursor()
 
     _sell_test_item(register_instance)
-    register_instance.ui.invisible_entry_var.set("100+")
-    register_instance.on_cc()
-    register_instance.on_cash()
+    register_instance.ui.frames["register"].invisible_entry_var.set("100+")
+    register_instance.ui.frames["register"].on_cc()
+    register_instance.ui.frames["register"].on_cash()
 
     c.execute(
         "SELECT non_tax, cash_used, cc_used FROM sales WHERE sale_id = (SELECT MAX(sale_id) FROM sales)"
@@ -274,8 +286,8 @@ def test_cc_invalid(register_instance, db):
     c = db.cursor()
 
     _sell_test_item(register_instance)
-    register_instance.ui.invisible_entry_var.set("124+")
-    register_instance.on_cc()
+    register_instance.ui.frames["register"].invisible_entry_var.set("124+")
+    register_instance.ui.frames["register"].on_cc()
 
     result = register_instance.ui.popup_description_label_var.get()
     assert result == "CC Amount Entered\nExceeds Balance!"
@@ -291,7 +303,7 @@ def test_quantity_decrement_single(register_instance, db):
     ).fetchone()["item_quantity"]
 
     _sell_test_item(register_instance)
-    register_instance.on_cash()
+    register_instance.ui.frames["register"].on_cash()
 
     new_quantity = c.execute(
         "SELECT item_quantity FROM inventory WHERE item_barcode = ?", ("Test",)
@@ -318,9 +330,9 @@ def test_quantity_decrement_double(register_instance, db):
 
     _sell_test_item(register_instance)
     _sell_test_item(register_instance)
-    register_instance.ui.invisible_entry_var.set("Test1")
-    register_instance.process_sale()
-    register_instance.on_cash()
+    register_instance.ui.frames["register"].invisible_entry_var.set("Test1")
+    register_instance.ui.frames["register"].process_sale()
+    register_instance.ui.frames["register"].on_cash()
 
     c.execute("SELECT item_quantity FROM inventory WHERE item_barcode = ?", ("Test",))
     results = c.fetchall()
@@ -345,9 +357,9 @@ def test_basic_return(register_instance, db):
         "SELECT item_quantity FROM inventory WHERE item_barcode = ?", ("Test",)
     ).fetchone()["item_quantity"]
 
-    register_instance.process_return()
+    register_instance.ui.frames["register"].process_return()
     _sell_test_item(register_instance)
-    register_instance.state_mgr.return_var.set("cash")
+    register_instance.ui.frames["register"].return_var.set("cash")
 
     c.execute("SELECT item_quantity FROM inventory WHERE item_barcode = ?", ("Test",))
     results = c.fetchone()["item_quantity"]
@@ -368,7 +380,7 @@ def test_inventory_decrement(register_instance, db):
     starting_sale_id = c.fetchall()[0][0]
 
     _sell_test_item(register_instance)
-    register_instance.complete_decrement()
+    register_instance.ui.frames["register"].complete_decrement()
 
     c.execute("SELECT item_quantity FROM inventory WHERE item_barcode = 'Test'")
     ending_quantity = c.fetchall()[0][0]
@@ -378,8 +390,10 @@ def test_inventory_decrement(register_instance, db):
 
     assert ending_quantity == starting_quantity - Decimal("1")
     assert starting_sale_id == ending_sale_id
-    assert register_instance.ui.user_entry.get() == "$0.00"
-    assert register_instance.ui.sale_items_listbox.get(0, tk.END) == ()
+    assert register_instance.ui.frames["register"].user_entry.get() == "$0.00"
+    assert (
+        register_instance.ui.frames["register"].sale_items_listbox.get(0, tk.END) == ()
+    )
     assert register_instance.state_mgr.trans.total == Decimal("0")
 
 
@@ -391,7 +405,7 @@ def test_empty_decrement(register_instance, db):
         "SELECT MAX(decrement_id) FROM inventory_decrements"
     ).fetchone()[0]
 
-    register_instance.complete_decrement()
+    register_instance.ui.frames["register"].complete_decrement()
 
     actual_max_decrement_id = c.execute(
         "SELECT MAX(decrement_id) FROM inventory_decrements"
@@ -412,9 +426,9 @@ def test_manual_quantity_input(register_instance):
 
     _sell_test_item(register_instance)
 
-    register_instance.ui.sale_items_listbox.selection_set(0)
-    register_instance.ui.invisible_entry_var.set("1.2345")
-    register_instance.process_sale_multiples()
+    register_instance.ui.frames["register"].sale_items_listbox.selection_set(0)
+    register_instance.ui.frames["register"].invisible_entry_var.set("1.2345")
+    register_instance.ui.frames["register"].process_sale_multiples()
 
     assert register_instance.state_mgr.trans.items_sold == Decimal("1.2345")
 
@@ -428,10 +442,10 @@ def test_decimal_sale(register_instance, db):
 
     _sell_test_item(register_instance)
 
-    register_instance.ui.sale_items_listbox.selection_set(0)
-    register_instance.ui.invisible_entry_var.set("1.2345")
-    register_instance.process_sale_multiples()
-    register_instance.on_cash()
+    register_instance.ui.frames["register"].sale_items_listbox.selection_set(0)
+    register_instance.ui.frames["register"].invisible_entry_var.set("1.2345")
+    register_instance.ui.frames["register"].process_sale_multiples()
+    register_instance.ui.frames["register"].on_cash()
 
     c.execute(
         """SELECT * FROM sales WHERE sale_id = (SELECT MAX(sale_id) from sales)"""
@@ -453,8 +467,8 @@ def test_decimal_sale(register_instance, db):
 
 def test_tax_sale(register_instance):
 
-    register_instance.ui.invisible_entry_var.set("Test1")
-    register_instance.process_sale()
+    register_instance.ui.frames["register"].invisible_entry_var.set("Test1")
+    register_instance.ui.frames["register"].process_sale()
 
     assert register_instance.state_mgr.trans.tax == Decimal("1.23") * Decimal(
         register_instance.config.data["tax_amount"]
@@ -464,10 +478,10 @@ def test_tax_sale(register_instance):
 @pytest.mark.parametrize("item_name", [("Test"), ("Test1")])
 def test_cancel_entire_single_item_sale(register_instance, item_name):
 
-    register_instance.ui.invisible_entry_var.set(item_name)
-    register_instance.process_sale()
+    register_instance.ui.frames["register"].invisible_entry_var.set(item_name)
+    register_instance.ui.frames["register"].process_sale()
 
-    register_instance.cancel_sale()
+    register_instance.ui.frames["register"].cancel_sale()
 
     _assert_sale_empty(register_instance)
 
@@ -518,31 +532,37 @@ def test_cancel_single_item(
 
     _sell_test_item(register_instance)
 
-    register_instance.ui.invisible_entry_var.set("Test1")
-    register_instance.process_sale()
+    register_instance.ui.frames["register"].invisible_entry_var.set("Test1")
+    register_instance.ui.frames["register"].process_sale()
 
-    register_instance.ui.sale_items_listbox.selection_set(listbox_index)
-    register_instance.cancel_sale()
+    register_instance.ui.frames["register"].sale_items_listbox_var.set(listbox_index)
+    register_instance.ui.frames["register"].cancel_sale()
 
-    assert register_instance.ui.balance_entry.get() == balance_entry
-    assert register_instance.ui.user_entry.get() == user_entry
+    assert register_instance.ui.frames["register"].balance_entry.get() == balance_entry
+    assert register_instance.ui.frames["register"].user_entry.get() == user_entry
     assert register_instance.state_mgr.trans.nontax == nontax
     assert register_instance.state_mgr.trans.pretax == pretax
     assert register_instance.state_mgr.trans.tax.quantize(Decimal("0.01")) == tax
     assert register_instance.state_mgr.trans.total.quantize(Decimal("0.01")) == total
     assert register_instance.state_mgr.trans.items_sold == items_sold
-    assert register_instance.ui.sale_items_listbox.get(1, tk.END) == listbox_first_item
-    assert register_instance.ui.sale_items_listbox.get(0, 1) == listbox_second_item
+    assert (
+        register_instance.ui.frames["register"].sale_items_listbox.get(1, tk.END)
+        == listbox_first_item
+    )
+    assert (
+        register_instance.ui.frames["register"].sale_items_listbox.get(0, 1)
+        == listbox_second_item
+    )
 
 
 def test_cancel_entire_multiple_item_sale(register_instance):
 
     _sell_test_item(register_instance)
 
-    register_instance.ui.invisible_entry_var.set("Test1")
-    register_instance.process_sale()
+    register_instance.ui.frames["register"].invisible_entry_var.set("Test1")
+    register_instance.ui.frames["register"].process_sale()
 
-    register_instance.cancel_sale()
+    register_instance.ui.frames["register"].cancel_sale()
 
     _assert_sale_empty(register_instance)
 
@@ -551,14 +571,14 @@ def test_cancel_entire_multiple_item_sale_taxable_decimal(register_instance):
 
     _sell_test_item(register_instance)
 
-    register_instance.ui.invisible_entry_var.set("Test1")
-    register_instance.process_sale()
+    register_instance.ui.frames["register"].invisible_entry_var.set("Test1")
+    register_instance.ui.frames["register"].process_sale()
 
-    register_instance.ui.sale_items_listbox.selection_set(1)
-    register_instance.ui.invisible_entry_var.set(1.2345)
-    register_instance.process_sale_multiples()
+    register_instance.ui.frames["register"].sale_items_listbox.selection_set(1)
+    register_instance.ui.frames["register"].invisible_entry_var.set(1.2345)
+    register_instance.ui.frames["register"].process_sale_multiples()
 
-    register_instance.cancel_sale()
+    register_instance.ui.frames["register"].cancel_sale()
 
     _assert_sale_empty(register_instance)
 
@@ -568,7 +588,7 @@ def test_void_sale(register_instance, db):
     c = db.cursor()
 
     _sell_test_item(register_instance)
-    register_instance.complete_sale()
+    register_instance.ui.frames["register"].complete_sale()
 
     is_voided = c.execute(
         "SELECT is_voided FROM sales WHERE sale_id = (SELECT MAX(sale_id) FROM sales)"
@@ -637,7 +657,7 @@ def test_browse_transaction_go_past_max(register_instance, db):
 
     for i in range(0, 4):
         _sell_test_item(register_instance)
-        register_instance.complete_sale()
+        register_instance.ui.frames["register"].complete_sale()
 
     register_instance.ui.show_frame("browse_transactions", browse_mode="browse")
     register_instance.ui.frames["browse_transactions"].browse_index.set(1)
@@ -672,7 +692,7 @@ def test_browse_transaction_go_past_min(register_instance, db):
 
     for i in range(0, 4):
         _sell_test_item(register_instance)
-        register_instance.complete_sale()
+        register_instance.ui.frames["register"].complete_sale()
 
     register_instance.ui.show_frame("browse_transactions", browse_mode="browse")
     register_instance.ui.frames["browse_transactions"].browse_index.set(9999)
@@ -708,7 +728,7 @@ def test_browse_transaction_scroll_left(register_instance):
     transaction being displayed."""
     for i in range(0, 4):
         _sell_test_item(register_instance)
-        register_instance.complete_sale()
+        register_instance.ui.frames["register"].complete_sale()
 
     register_instance.ui.show_frame("browse_transactions", browse_mode="browse")
 
@@ -736,7 +756,7 @@ def test_browse_transaction_scroll_right(register_instance):
     transaction being displayed."""
     for i in range(0, 4):
         _sell_test_item(register_instance)
-        register_instance.complete_sale()
+        register_instance.ui.frames["register"].complete_sale()
 
     register_instance.ui.show_frame("browse_transactions", browse_mode="browse")
     register_instance.ui.frames["browse_transactions"].browse_index.set(-1)
@@ -765,7 +785,7 @@ def test_browse_transaction_text_formatting(register_instance, db):
     matches that of the output from print_transaction_info"""
     c = db.cursor()
     _sell_test_item(register_instance)
-    register_instance.complete_sale()
+    register_instance.ui.frames["register"].complete_sale()
 
     register_instance.ui.show_frame("browse_transactions", browse_mode="browse")
 

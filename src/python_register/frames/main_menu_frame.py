@@ -30,6 +30,6 @@ class MainMenuFrame(BaseFrame):
             self,
             text="Back",
             font=("Arial", 60),
-            command=lambda: self.wm.return_to_register(),
+            command=lambda: self.wm.show_frame("register"),
         )
         self.main_menu_back_button.grid(column=1, row=3, sticky="nsew", pady=5)

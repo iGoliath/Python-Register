@@ -34,7 +34,7 @@ class RegisterMenuFrame(BaseFrame):
             buttons_frame,
             text="Make Return",
             font=("Arial", 58),
-            command=lambda: self.controller.process_return(),
+            command=lambda: self.wm.frames["register"].process_return(),
         )
 
         self.back_to_register_button = tk.Button(

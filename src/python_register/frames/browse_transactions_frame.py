@@ -99,7 +99,7 @@ class BrowseTransactionsFrame(BaseFrame):
         if enter:
             pass
         else:
-            self.wm.return_to_register()
+            self.wm.show_frame("register")
             self.wm.popup_description_label_var.set("No Transactions Yet!")
             self.wm.popup_frame.tkraise()
 
@@ -205,7 +205,7 @@ class BrowseTransactionsFrame(BaseFrame):
             self.controller.printer.print_receipt(
                 "sale", item_results, transaction_info
             )
-        self.wm.return_to_register()
+        self.wm.show_frame("register")
 
     def void_print_pressed(self):
         if self.controller.state_mgr.check_voided(self.browse_index.get()):
@@ -236,7 +236,7 @@ class BrowseTransactionsFrame(BaseFrame):
         finally:
             self.controller.printer.print_receipt("void", items, transaction_info)
             self.remove_void_widgets()
-            self.wm.return_to_register()
+            self.wm.show_frame("register")
 
     def print_transaction_info(self, transaction_info: sqlite3.Row) -> str:
         """Print item info for transaction into a text widget. (Currently formatted for

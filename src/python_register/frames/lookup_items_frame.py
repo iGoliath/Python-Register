@@ -53,7 +53,7 @@ class LookupItemsFrame(BaseFrame):
             self.buttons_frame,
             text="Back",
             font=("Arial", 50),
-            command=lambda: self.wm.return_to_register(),
+            command=lambda: self.wm.show_frame("register"),
         )
         self.lookup_items_back_button.grid(column=0, row=0, sticky="ew")
 
@@ -94,7 +94,6 @@ class LookupItemsFrame(BaseFrame):
             self.wm.popup_frame.tkraise()
             return
         name = self.lookup_items_listbox.get(index).strip()
-        print(f"Name: {name}")
         if name in ("", " "):
             self.wm.popup_description_label_var.set("Cannot enter blank item!")
             self.wm.popup_frame.tkraise()

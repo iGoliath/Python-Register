@@ -26,12 +26,6 @@ class WidgetManager:
 
         """Initialize all frames necessary for the program"""
 
-        self.register_frame = tk.Frame(self.root, bg="black")
-        self.register_info_frame = tk.Frame(self.register_frame, bg="black")
-        self.register_add_item_prompt_frame = tk.Frame(self.root)
-        self.register_add_item_yes_no_frame = tk.Frame(
-            self.register_add_item_prompt_frame
-        )
         self.popup_frame = tk.Frame(
             self.root, width=400, height=300, borderwidth=20, relief="ridge", bg="black"
         )
@@ -56,15 +50,12 @@ class WidgetManager:
         self.subcategory_var = tk.StringVar()
         self.vendor_var = tk.StringVar()
 
-        self.invisible_entry_var = tk.StringVar()
         self.popup_label_var = tk.StringVar()
         self.popup_description_label_var = tk.StringVar()
 
         # Loop through frames, fit them to screen, and configure them so that widgets in column 1 are centered
         # Widgets in column 1 will determine the width of the rest of the widgets
         for frame in (
-            self.register_frame,
-            self.register_add_item_prompt_frame,
             self.edit_seasonal_frame,
             self.datetime_frame,
             self.coupon_frame,
@@ -78,8 +69,6 @@ class WidgetManager:
         configure them as such."""
         for frame in (
             self.edit_seasonal_buttons_frame,
-            self.register_info_frame,
-            self.register_add_item_yes_no_frame,
             self.coupon_buttons_frame,
         ):
             frame.columnconfigure(1, weight=1)
@@ -105,98 +94,6 @@ class WidgetManager:
         self.seasonal_buttons_frame.columnconfigure(0, weight=1, uniform="equal")
         self.seasonal_buttons_frame.columnconfigure(1, weight=1, uniform="equal")
         self.seasonal_buttons_frame.columnconfigure(2, weight=1, uniform="equal")
-
-        # ===============================
-        # Widgets for Register Mode frame
-        # ===============================
-
-        self.register_label = tk.Label(
-            self.register_info_frame,
-            font=("Arial", 30),
-            text="Mode: Register",
-            fg="#68FF00",
-            bg="black",
-        )
-        self.register_label.grid(column=0, row=0, sticky="sw", pady=5)
-
-        self.balance_entry = tk.Entry(
-            self.register_info_frame,
-            font=("Arial", 91),
-            bg="black",
-            fg="#68FF00",
-            justify="right",
-            width=9,
-        )
-        self.balance_entry.insert(tk.END, "$0.00")
-        self.balance_entry.grid(column=1, row=0, sticky="e", padx=2)
-        self.balance_entry.bind("<FocusIn>", self.return_invisible_entry_focus)
-
-        # Invisible entry where user input actually occurs. Allows user entry to be untampered so
-        # same entry box can be used for barcodes and numberic values alike
-
-        self.invisible_entry = tk.Entry(
-            self.register_frame, textvariable=self.invisible_entry_var
-        )
-        self.invisible_entry.place(x=-100, y=-100)
-        self.invisible_entry.bind("<Return>", controller.process_sale)
-        self.bind_invisible_entry_keys()
-
-        self.user_entry = tk.Entry(
-            self.register_info_frame,
-            font=("Arial", 35),
-            width=10,
-            bg="black",
-            fg="#68FF00",
-        )
-        self.user_entry.insert(tk.END, "$0.00")
-        self.user_entry.grid(column=0, row=0, sticky="nw")
-        self.user_entry.bind("<FocusIn>", self.return_invisible_entry_focus)
-
-        self.register_info_frame.grid(column=1, row=0, sticky="nsew")
-        self.sale_items_listbox = tk.Listbox(
-            self.register_frame,
-            width=34,
-            bg="black",
-            height=8,
-            font=("Courier New", 37),
-            fg="white",
-        )
-        self.sale_items_listbox.grid(column=1, row=2, sticky="nsw")
-        self.sale_items_listbox.bind("<FocusIn>", self.return_invisible_entry_focus)
-        self.sale_items_listbox.bind(
-            "<<ListboxSelect>>", lambda event: controller.on_sale_items_listbox_select()
-        )
-        self.sale_items_scrollbar = tk.Scrollbar(
-            self.register_frame, bg="white", orient=tk.VERTICAL, width=40
-        )
-        self.sale_items_scrollbar.grid(column=1, row=2, sticky="nse")
-        self.sale_items_listbox.config(yscrollcommand=self.sale_items_scrollbar.set)
-        self.sale_items_scrollbar.config(command=self.sale_items_listbox.yview)
-
-        self.register_add_item_prompt_label = tk.Label(
-            self.register_add_item_prompt_frame,
-            text="Item not found\nAdd it?",
-            font=("Arial", 50),
-        )
-        self.register_add_item_prompt_label.grid(row=0, column=1, sticky="ew")
-
-        self.register_add_item_yes_no_frame.grid(row=1, column=1, sticky="nsew")
-
-        self.register_add_item_yes_button = tk.Button(
-            self.register_add_item_yes_no_frame,
-            text="Yes",
-            font=("Arial", 90),
-            command=lambda: self.controller.state_mgr.register_yes_no_var.set("yes"),
-        )
-        self.register_add_item_yes_button.grid(row=0, column=0, sticky="nsew")
-
-        self.register_add_item_no_button = tk.Button(
-            self.register_add_item_yes_no_frame,
-            text="No",
-            font=("Arial", 90),
-            command=lambda: self.controller.state_mgr.register_yes_no_var.set("no"),
-        )
-        self.register_add_item_no_button.grid(row=0, column=1, sticky="nsew")
 
         # =====================
         # Widgets for coupons
@@ -226,7 +123,7 @@ class WidgetManager:
             self.coupon_buttons_frame,
             text="Back",
             font=("Arial", 50),
-            command=lambda: self.register_frame.tkraise(),
+            command=lambda: self.show_frame("register"),
         )
         self.coupon_confirm_button = tk.Button(
             self.coupon_buttons_frame,
@@ -502,11 +399,6 @@ class WidgetManager:
         else:
             return False
 
-    def return_to_register(self):
-        self.register_frame.tkraise()
-        self.invisible_entry.delete(0, tk.END)
-        self.invisible_entry.focus_set()
-
     def enter_add_item_frame(self):
         self.show_frame("add_name")
         self.show_frame("add_price")
@@ -530,16 +422,6 @@ class WidgetManager:
         # self.add_vendor_skip_button.grid(column = 1, row = 4, sticky='ew')
         pass
 
-    def enter_register_frame(self):
-        self.invisible_entry.delete(0, tk.END)
-        self.sale_items_listbox.delete(0, tk.END)
-        self.update_entry(self.user_entry, "$0.00")
-        self.update_entry(self.balance_entry, "$0.00")
-        self.register_label.config(text="Mode: Register", fg="#68FF00")
-        self.register_frame.tkraise()
-        self.bind_invisible_entry_keys()
-        self.invisible_entry.focus_force()
-
     def setup_seasonal_sale(self):
         self.register_label.config(text="Mode: Seasonal Sale", fg="red")
         self.unbind_invisible_entry_keys()
@@ -562,81 +444,6 @@ class WidgetManager:
         )
         self.popup_frame.tkraise()
         self.browse_entry.focus_set()
-
-    def bind_invisible_entry_keys(self):
-        for key in (
-            "Home",
-            "Up",
-            "Prior",
-            "Left",
-            "Begin",
-            "Right",
-            "End",
-            "Down",
-            "Next",
-            "Insert",
-            "Delete",
-        ):
-            self.invisible_entry.bind(
-                f"<KeyRelease-KP_{key}>", lambda e: self.number_pressed()
-            )
-        self.invisible_entry.bind("<KeyRelease-BackSpace>", self.controller.clear)
-        self.invisible_entry.bind(
-            "<KeyRelease-KP_Enter>", lambda event: self.controller.on_cash()
-        )
-        self.invisible_entry.bind(
-            "<KeyRelease-KP_Add>", lambda event: self.controller.on_cc()
-        )
-        self.invisible_entry.bind(
-            "<KeyRelease-KP_Multiply>", lambda event: self.show_frame("main_menu")
-        )
-        self.invisible_entry.bind(
-            "<KeyRelease-KP_Divide>", lambda event: self.controller.cancel_sale()
-        )
-        self.invisible_entry.bind(
-            "<KeyRelease-KP_Subtract>", lambda event: self.controller.no_sale()
-        )
-        self.invisible_entry.bind(
-            "<KeyRelease-backslash>", lambda event: self.controller.complete_decrement()
-        )
-        self.invisible_entry.unbind("<KeyRelease-Escape>")
-
-    def number_pressed(self):
-
-        pygame.mixer.music.load(Path(__file__).parent / "short-beep.mp3")
-        pygame.mixer.music.play()
-
-        string = self.invisible_entry_var.get().strip()
-
-        while len(string) < 3:
-            string = "0" + string
-
-        self.update_entry(self.user_entry, f"${string[0:-2]}.{string[-2:]}")
-
-    def unbind_invisible_entry_keys(self):
-        for key in (
-            "Home",
-            "Up",
-            "Prior",
-            "Left",
-            "Begin",
-            "Right",
-            "End",
-            "Down",
-            "Next",
-            "Insert",
-        ):
-            self.invisible_entry.unbind(f"<KeyRelease-KP_{key}>")
-        self.invisible_entry.unbind("<KeyRelease-BackSpace>")
-        self.invisible_entry.unbind("<KeyRelease-KP_Enter>")
-        self.invisible_entry.unbind("<KeyRelease-KP_Add>")
-        self.invisible_entry.unbind("<KeyRelease-KP_Multiply>")
-        self.invisible_entry.unbind("<KeyRelease-KP_Divide>")
-        self.invisible_entry.unbind("<KeyRelease-KP_Subtract>")
-
-    def update_entry(self, entry, text):
-        entry.delete(0, tk.END)
-        entry.insert(0, text)
 
     def setup_coupon(self):
         self.update_entry(self.coupon_entry, "$0.00")
@@ -698,12 +505,6 @@ class WidgetManager:
         self.popup_label.config(text="NOTE:")
         self.popup_ok_button.grid_forget()
         self.popup_back_confirm_frame.grid(column=1, row=2, sticky="ew")
-
-    def return_invisible_entry_focus(self, event):
-        """Bound to FocusIn on register widgets. Returns focus to invisible
-        entry, and returns 'break' to stop propagating event."""
-        self.invisible_entry.focus_set()
-        return "break"
 
     def add_item_go_back(self, add_item_index):
 

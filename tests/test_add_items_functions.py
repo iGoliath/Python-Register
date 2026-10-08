@@ -95,6 +95,7 @@ def register_instance(db):
     root = tk.Tk()
     register = Register(root, db)
     root.withdraw()
+    register.ui.show_frame("register")
     root.update()
     yield register
     root.destroy()
@@ -343,8 +344,8 @@ def test_add_item_coming_from_register(register_instance, db):
     """Enter an item when coming from the register. Ensure that
     only one item was entered, and that state is reset as expected."""
     c = db.cursor()
-    register_instance.ui.invisible_entry_var.set("UNKNOWN BARCODE")
-    register_instance.process_sale()
+    register_instance.ui.frames["register"].invisible_entry_var.set("UNKNOWN BARCODE")
+    register_instance.ui.frames["register"].process_sale()
     register_instance.state_mgr.register_yes_no_var.set("yes")
     _enter_full_item(register_instance, skipping_barcode=True)
     register_instance.state_mgr.yes_no_var.set("yes")

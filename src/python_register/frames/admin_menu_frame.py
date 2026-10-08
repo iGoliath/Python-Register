@@ -77,8 +77,8 @@ class AdminMenuFrame(BaseFrame):
         self.browse_transactions_button.grid(column=1, row=1, sticky="nsew", pady=2)
         self.quit_program_button.grid(column=0, row=1, sticky="nsew", pady=2)
         self.admin_menu_back_button.grid(column=0, row=2, sticky="nsew", pady=2)
-        self.run_reports_button.grid(column=1, row=2, sticky="nsew", pady=2)
-        self.settings_menu_button.grid(column=0, row=3, sticky="nsew")
+        # self.run_reports_button.grid(column=1, row=2, sticky="nsew", pady=2)
+        # self.settings_menu_button.grid(column=0, row=3, sticky="nsew")
         self.enter_reconciling_mode_button.grid(column=1, row=3, sticky="nsew")
 
     def on_show(self):

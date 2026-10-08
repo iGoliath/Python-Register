@@ -34,10 +34,8 @@ class StateManager:
         self.yes_no_var = tk.StringVar(root_window)
         self.register_yes_no_var = tk.StringVar(root_window)
         self.seasonal_id_var = tk.StringVar(root_window)
-        self.return_var = tk.StringVar(root_window)
         self.browse_mode = tk.StringVar(root_window)
         self.popup_var = tk.StringVar(root_window)
-        self.sale_items_listbox_var = tk.IntVar(root_window, -1)
         if db_connection == None:
             self.conn = sqlite3.connect(
                 Path(__file__).parent / self.config.data["database_name"],
@@ -212,3 +210,10 @@ class StateManager:
 
     def get_max_sale_id(self):
         return self.cursor.execute("SELECT MAX(sale_id) FROM sales").fetchone()[0]
+
+    def update_no_sale(self):
+        self.cursor.execute(
+            "UPDATE no_sale SET times_pressed = times_pressed + 1 WHERE date = ?",
+            (datetime.today().strftime("%Y-%m-%d"),),
+        )
+        self.conn.commit()
