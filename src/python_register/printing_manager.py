@@ -1,10 +1,13 @@
 import calendar
+import sqlite3
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 
 import usb.core
 from escpos.exceptions import DeviceNotFoundError
 from escpos.printer import File, Usb
+
+from .models import Receipt
 
 
 class Printer:
@@ -30,33 +33,38 @@ class Printer:
             return File(file_path)
 
     def print_receipt(
-        self, receipt_type, items, sale_info, cash_tend=None, cc_tend=None
-    ):
-        """Print receipt based on what type of transaction occured."""
-        self.print_receipt_header(receipt_type, sale_info["sale_id"])
+        self,
+        receipt_type: str,
+        receipt: Receipt,
+        cash_tend=None,
+        cc_tend=None,
+    ) -> None:
+        """Print receipt based on what type of transaction occured.
+        receipt info:
+        ['sale_info']"""
+        self.print_receipt_header(receipt_type, receipt.sale_info.sale_id)
         if receipt_type == "return":
-            for category in ("non_tax", "pre_tax", "tax", "total"):
-                sale_info[category] *= -1
+            receipt.sale_info.non_tax *= -1
+            receipt.sale_info.pre_tax *= -1
+            receipt.sale_info.tax *= -1
+            receipt.sale_info.total *= -1
 
-        for sublist in items:
-            self.state_manager.cursor.execute(
-                """SELECT item_name FROM inventory WHERE item_id = ?""", (sublist[3],)
-            )
-            self.printer.textln(self.state_manager.cursor.fetchall()[0][0])
-            if sublist[3] == 1:
+        for sale_item in receipt.sale_items_info:
+            self.printer.textln(sale_item.item_name)
+            if sale_item.item_taxable == 1:
                 self.printer.text("TX ")
             else:
                 self.printer.text("NT ")
-            self.printer.textln(f"${sublist[1]} QTY {sublist[2]}")
+            self.printer.textln(f"${sale_item.price_at_sale} QTY {sale_item.quantity}")
 
         self.printer.ln(1)
 
-        if sale_info["tax"] != 0:
+        if receipt.sale_info.tax != 0:
             self.printer.ln(1)
             self.printer.textln(
                 self._line(
                     "Subtotal:",
-                    f"${(sale_info['non_tax'] + sale_info['pre_tax']):.2f}",
+                    f"${(receipt.sale_info.tax + receipt.sale_info.pre_tax):.2f}",
                     self.config.data["printing_width"],
                 )
             )
@@ -64,7 +72,7 @@ class Printer:
             self.printer.textln(
                 self._line(
                     "Tax:",
-                    f"${sale_info['tax']:.2f}",
+                    f"${receipt.sale_info.tax:.2f}",
                     self.config.data["printing_width"],
                 )
             )
@@ -72,7 +80,7 @@ class Printer:
         self.printer.textln(
             self._line(
                 "Total:",
-                f"${sale_info['total']:.2f}",
+                f"${receipt.sale_info.total:.2f}",
                 self.config.data["printing_width"],
             )
         )
@@ -86,7 +94,7 @@ class Printer:
             spaces = self.config.data["printing_width"] - 14 - len(rounded)
             self.printer.textln(f"CC Tendered: {' ' * spaces}${rounded}")
         if cash_tend != 0 and cc_tend != 0:
-            change = f"{abs(sale_info['total'] - (cash_tend if cash_tend is not None else 0) - (cc_tend if cc_tend is not None else 0)):.2f}"
+            change = f"{abs(receipt.sale_info.total - (cash_tend if cash_tend is not None else 0) - (cc_tend if cc_tend is not None else 0)):.2f}"
             spaces = self.config.data["printing_width"] - 13 - len(change)
             self.printer.textln(f"Change Due: {' ' * spaces}${change}")
             self.printer.ln(2)

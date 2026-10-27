@@ -1,7 +1,7 @@
 import sqlite3
 import tkinter as tk
 
-from ..add_item_data import Dec4
+from ..models import Dec4
 from .base_frame import BaseFrame
 
 
@@ -185,12 +185,15 @@ class BrowseTransactionsFrame(BaseFrame):
             self.wm.print_seasonal_info(results)
 
     def browse_print_receipt(self):
+        receipt_info = self.state_mgr.get_receipt_info(self.browse_index.get())
+
         self.controller.state_mgr.cursor.execute(
             """SELECT * FROM sales WHERE sale_id = ?""", (self.browse_index.get(),)
         )
         transaction_info = self.controller.state_mgr.cursor.fetchall()[0]
         self.controller.state_mgr.cursor.execute(
-            """SELECT * FROM sale_items WHERE sale_id = ?""", (self.browse_index.get(),)
+            """SELECT price_at_sale, quantity, item_id FROM sale_items WHERE sale_id = ?""",
+            (self.browse_index.get(),),
         )
         item_results = self.controller.state_mgr.cursor.fetchall()
         if transaction_info["is_voided"] == 1:
@@ -202,9 +205,7 @@ class BrowseTransactionsFrame(BaseFrame):
                 "return", item_results, transaction_info
             )
         else:
-            self.controller.printer.print_receipt(
-                "sale", item_results, transaction_info
-            )
+            self.controller.printer.print_receipt("sale", receipt_info)
         self.wm.show_frame("register")
 
     def void_print_pressed(self):

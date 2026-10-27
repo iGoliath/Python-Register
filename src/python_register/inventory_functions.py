@@ -2,7 +2,7 @@ import sqlite3
 import tkinter as tk
 from decimal import Decimal
 
-from .add_item_data import Dec4
+from .models import Dec4
 from .state_manager import StateManager
 from .widget_manager import WidgetManager
 

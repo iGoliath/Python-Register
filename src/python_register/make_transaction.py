@@ -2,7 +2,7 @@ import sqlite3
 from datetime import datetime
 from decimal import Decimal
 
-from .add_item_data import Dec4
+from .models import Dec4
 
 
 class Transaction:

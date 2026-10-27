@@ -4,8 +4,8 @@ from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
-from .add_item_data import AddItemData, Dec4
 from .make_transaction import Transaction
+from .models import AddItemData, Dec4, Receipt, SaleInfo, SaleItemsInfo
 
 sqlite3.register_adapter(
     Decimal, lambda d: int(d.quantize(Decimal("0.01")) * Decimal("100"))
@@ -217,3 +217,34 @@ class StateManager:
             (datetime.today().strftime("%Y-%m-%d"),),
         )
         self.conn.commit()
+
+    def get_item_taxable(self, item_id: int) -> int:
+        return self.cursor.execute(
+            "SELECT item_taxable FROM inventory WHERE item_id = ?", (item_id,)
+        ).fetchone()["item_taxable"]
+
+    def get_item_name(self, item_id: int) -> str:
+        return self.cursor.execute(
+            "SELECT item_name FROM inventory WHERE item_id = ?", (item_id,)
+        ).fetchone()["item_name"]
+
+    def get_receipt_info(self, sale_id: int):
+
+        sale_info_query = self.cursor.execute(
+            "SELECT sale_id, non_tax, pre_tax, tax, total FROM sales WHERE sale_id = ?",
+            (sale_id,),
+        ).fetchall()[0]
+        sale_info = SaleInfo(**sale_info_query)
+        sale_items_list = self.cursor.execute(
+            "SELECT price_at_sale, quantity, item_id FROM sale_items WHERE sale_id = ?",
+            (sale_id,),
+        ).fetchall()
+        sale_items_info = []
+        for sale_item in sale_items_list:
+            item_info = self.cursor.execute(
+                "" "SELECT item_name, item_taxable FROM inventory WHERE item_id = ?",
+                (sale_item["item_id"],),
+            ).fetchone()
+            sale_items_info.append(SaleItemsInfo(**sale_item, **item_info))
+
+        return Receipt(sale_info, sale_items_info)
