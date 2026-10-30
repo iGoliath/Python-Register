@@ -395,12 +395,13 @@ class RegisterFrame(BaseFrame):
             )
         else:
             self.state_mgr.trans.complete_transaction()
-        # self.state_mgr.cursor.execute('''SELECT * FROM sales WHERE sale_id = (SELECT MAX(sale_id) FROM SALES)''')
-        # results = self.state_mgr.cursor.fetchall()
-        # sale_info = results[0]
-        # self.state_mgr.cursor.execute('''SELECT * FROM sale_items WHERE sale_id = ?''', (sale_info[0], ))
-        # sale_items_list = self.state_mgr.cursor.fetchall()
-        # self.printer.print_receipt("sale", sale_items_list, sale_info, self.state_mgr.trans.cash_tendered, self.state_mgr.trans.cc_tendered)
+        sale_id = self.state_mgr.get_max_sale_id()
+        self.controller.printer.print_receipt(
+            "sale",
+            self.state_mgr.get_receipt_info(sale_id),
+            self.state_mgr.trans.cash_tendered,
+            self.state_mgr.trans.cc_tendered,
+        )
         self.sale_items_listbox.delete(0, tk.END)
         self.state_mgr.new_transaction()
         if self.controller.seg:
@@ -562,10 +563,10 @@ class RegisterFrame(BaseFrame):
         self.state_mgr.trans.returning = True
         self.unbind_invisible_entry_keys()
         self.invisible_entry.bind(
-            "<KeyRelease-KP_Enter>", lambda event: self.state_mgr.return_var.set("cash")
+            "<KeyRelease-KP_Enter>", lambda event: self.return_var.set("cash")
         )
         self.invisible_entry.bind(
-            "<KeyRelease-KP_Add>", lambda event: self.state_mgr.return_var.set("cc")
+            "<KeyRelease-KP_Add>", lambda event: self.return_var.set("cc")
         )
         self.invisible_entry.bind(
             "<KeyRelease-Escape>", lambda event: self.enter_register_frame()
@@ -589,15 +590,9 @@ class RegisterFrame(BaseFrame):
             self.state_mgr.trans.cc_used = self.state_mgr.trans.total
 
         self.state_mgr.trans.complete_transaction()
-        self.state_mgr.cursor.execute(
-            """SELECT * FROM sales WHERE sale_id = (SELECT MAX(sale_id) FROM SALES)"""
+        sale_id = self.state_mgr.get_max_sale_id()
+        self.controller.printer.print_receipt(
+            "return", self.state_mgr.get_receipt_info(sale_id)
         )
-        results = self.state_mgr.cursor.fetchall()
-        row = results[0]
-        self.state_mgr.cursor.execute(
-            """SELECT * FROM sale_items WHERE sale_id = ?""", (row[0],)
-        )
-        item_results = self.state_mgr.cursor.fetchall()
-        self.controller.printer.print_receipt("return", item_results, dict(row))
         self.bind_invisible_entry_keys()
         self.enter_register_frame()

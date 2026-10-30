@@ -152,7 +152,9 @@ class Printer:
             ),
         ).fetchall()
         propane_sold = (
-            sum(row[0] * row[1] for row in propane_results).quantize(Decimal("0.01"))
+            sum(
+                row["price_at_sale"] * row["quantity"] for row in propane_results
+            ).quantize(Decimal("0.01"))
             if propane_results
             else Decimal("0.00")
         )

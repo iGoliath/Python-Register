@@ -185,25 +185,13 @@ class BrowseTransactionsFrame(BaseFrame):
             self.wm.print_seasonal_info(results)
 
     def browse_print_receipt(self):
-        receipt_info = self.state_mgr.get_receipt_info(self.browse_index.get())
 
-        self.controller.state_mgr.cursor.execute(
-            """SELECT * FROM sales WHERE sale_id = ?""", (self.browse_index.get(),)
-        )
-        transaction_info = self.controller.state_mgr.cursor.fetchall()[0]
-        self.controller.state_mgr.cursor.execute(
-            """SELECT price_at_sale, quantity, item_id FROM sale_items WHERE sale_id = ?""",
-            (self.browse_index.get(),),
-        )
-        item_results = self.controller.state_mgr.cursor.fetchall()
-        if transaction_info["is_voided"] == 1:
-            self.controller.printer.print_receipt(
-                "void", item_results, transaction_info
-            )
-        elif transaction_info["total"] < 0:
-            self.controller.printer.print_receipt(
-                "return", item_results, transaction_info
-            )
+        receipt_info = self.state_mgr.get_receipt_info(self.browse_index.get())
+        print(type(receipt_info))
+        if receipt_info["is_voided"] == 1:
+            self.controller.printer.print_receipt("void", receipt_info)
+        elif receipt_info["total"] < 0:
+            self.controller.printer.print_receipt("return", receipt_info)
         else:
             self.controller.printer.print_receipt("sale", receipt_info)
         self.wm.show_frame("register")
@@ -235,7 +223,9 @@ class BrowseTransactionsFrame(BaseFrame):
         except sqlite3.Error as e:
             self.controller.state_mgr.conn.rollback()
         finally:
-            self.controller.printer.print_receipt("void", items, transaction_info)
+            self.controller.printer.print_receipt(
+                "void", self.state_mgr.get_receipt_info(transaction_info["sale_id"])
+            )
             self.remove_void_widgets()
             self.wm.show_frame("register")
 

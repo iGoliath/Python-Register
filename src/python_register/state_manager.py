@@ -231,7 +231,7 @@ class StateManager:
     def get_receipt_info(self, sale_id: int):
 
         sale_info_query = self.cursor.execute(
-            "SELECT sale_id, non_tax, pre_tax, tax, total FROM sales WHERE sale_id = ?",
+            "SELECT sale_id, non_tax, pre_tax, tax, total, is_voided FROM sales WHERE sale_id = ?",
             (sale_id,),
         ).fetchall()[0]
         sale_info = SaleInfo(**sale_info_query)

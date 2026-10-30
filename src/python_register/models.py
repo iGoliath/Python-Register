@@ -36,6 +36,7 @@ class SaleInfo:
     pre_tax: Decimal
     tax: Decimal
     total: Decimal
+    is_voided: int
 
 
 @dataclass
