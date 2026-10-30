@@ -1,8 +1,8 @@
 __pycache__/
 *.pyc
+*.egg-info
 RegisterDatabase
-src/python_register/RegisterDatabase
-src/python_register/config.json
-src/database_tools/print.py
-src/database_tools/decrements_tables_convert.py
-src/database_tools/convert.py
+config.json
+print.py
+decrements_tables_convert.py
+convert.py

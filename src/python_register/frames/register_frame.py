@@ -396,12 +396,12 @@ class RegisterFrame(BaseFrame):
         else:
             self.state_mgr.trans.complete_transaction()
         sale_id = self.state_mgr.get_max_sale_id()
-        self.controller.printer.print_receipt(
+        """self.controller.printer.print_receipt(
             "sale",
             self.state_mgr.get_receipt_info(sale_id),
             self.state_mgr.trans.cash_tendered,
             self.state_mgr.trans.cc_tendered,
-        )
+        )"""
         self.sale_items_listbox.delete(0, tk.END)
         self.state_mgr.new_transaction()
         if self.controller.seg:
